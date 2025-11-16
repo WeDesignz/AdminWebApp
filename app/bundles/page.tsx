@@ -9,6 +9,7 @@ import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Bundle, Design } from '@/types';
+import type { ApiResponse, PaginatedResponse } from '@/lib/api/types';
 import { useState } from 'react';
 import {
   PlusIcon,
@@ -46,7 +47,7 @@ export default function BundlesPage() {
     queryFn: () => MockAPI.getBundles({ search }),
   });
 
-  const { data: designsData } = useQuery({
+  const { data: designsData } = useQuery<ApiResponse<PaginatedResponse<Design>>>({
     queryKey: ['designs-for-bundle'],
     queryFn: () => MockAPI.getDesigns({ status: 'approved', limit: 1000 }),
     enabled: showDesignSelector || showCreateModal || showEditModal,
