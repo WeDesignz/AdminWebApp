@@ -9,7 +9,7 @@ import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Bundle, Design } from '@/types';
-import type { ApiResponse, PaginatedResponse } from '@/lib/api/types';
+import type { ListApiResponse } from '@/lib/api/types';
 import { useState } from 'react';
 import {
   PlusIcon,
@@ -47,7 +47,7 @@ export default function BundlesPage() {
     queryFn: () => MockAPI.getBundles({ search }),
   });
 
-  const { data: designsData } = useQuery<ApiResponse<PaginatedResponse<Design>>>({
+  const { data: designsData } = useQuery<ListApiResponse<Design>>({
     queryKey: ['designs-for-bundle'],
     queryFn: () => MockAPI.getDesigns({ status: 'approved', limit: 1000 }),
     enabled: showDesignSelector || showCreateModal || showEditModal,
@@ -391,9 +391,9 @@ export default function BundlesPage() {
               Select Designs <span className="text-error">*</span>
             </label>
             <div className="border border-border rounded-lg p-4 max-h-[400px] overflow-y-auto">
-              {designsData?.data?.data && designsData.data.data.length > 0 ? (
+              {designsData?.data && designsData.data.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {designsData.data.data.map((design: Design) => (
+                  {designsData.data.map((design: Design) => (
                     <div
                       key={design.id}
                       onClick={() => toggleDesignSelection(design.id)}
@@ -503,9 +503,9 @@ export default function BundlesPage() {
               Select Designs <span className="text-error">*</span>
             </label>
             <div className="border border-border rounded-lg p-4 max-h-[400px] overflow-y-auto">
-              {designsData?.data?.data && designsData.data.data.length > 0 ? (
+              {designsData?.data && designsData.data.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {designsData.data.data.map((design: Design) => (
+                  {designsData.data.map((design: Design) => (
                     <div
                       key={design.id}
                       onClick={() => toggleDesignSelection(design.id)}
