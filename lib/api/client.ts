@@ -13,14 +13,14 @@ class ApiClient {
   /**
    * Get authentication headers
    */
-  private getAuthHeaders(): HeadersInit {
+  private async getAuthHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
       ...API_CONFIG.headers,
     };
 
     if (isBrowser) {
       // Dynamically import to avoid SSR issues
-      const { useAuthStore } = require('@/store/authStore');
+      const { useAuthStore } = await import('@/store/authStore');
       const state = useAuthStore.getState();
       if (state.accessToken) {
         headers['Authorization'] = `Bearer ${state.accessToken}`;
@@ -56,7 +56,7 @@ class ApiClient {
   private async performTokenRefresh(): Promise<string | null> {
     if (!isBrowser) return null;
     
-    const { useAuthStore } = require('@/store/authStore');
+    const { useAuthStore } = await import('@/store/authStore');
     const state = useAuthStore.getState();
     if (!state.refreshToken) {
       // No refresh token, logout user
@@ -131,7 +131,7 @@ class ApiClient {
     retryOn401 = true
   ): Promise<ApiResponse<T>> {
     const url = getApiUrl(endpoint);
-    const headers = this.getAuthHeaders();
+    const headers = await this.getAuthHeaders();
 
     try {
       const response = await fetch(url, {
@@ -336,7 +336,7 @@ class ApiClient {
     const headers: HeadersInit = {};
 
     if (isBrowser) {
-      const { useAuthStore } = require('@/store/authStore');
+      const { useAuthStore } = await import('@/store/authStore');
       const state = useAuthStore.getState();
       if (state.accessToken) {
         headers['Authorization'] = `Bearer ${state.accessToken}`;
