@@ -93,8 +93,8 @@ export default function DesignersPage() {
 
   // Filter designers based on onboarding status filter
   const filteredDesigners = onboardingStatusFilter 
-    ? data?.data.filter(d => d.onboardingStatus === onboardingStatusFilter) || []
-    : data?.data || [];
+    ? (data?.data?.filter(d => d.onboardingStatus === onboardingStatusFilter) || [])
+    : (data?.data || []);
 
   const handleViewDesigner = (designer: Designer) => {
     setSelectedDesigner(designer);

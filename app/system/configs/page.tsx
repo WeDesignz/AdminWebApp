@@ -68,7 +68,7 @@ export default function SystemConfigsPage() {
     }
   }, [configData]);
 
-  const activeDesigns = designsData?.data.filter((d: Design) => d.status === 'approved') || [];
+  const activeDesigns = designsData?.data?.filter((d: Design) => d.status === 'approved') || [];
 
   const handleSave = async () => {
     // Validation

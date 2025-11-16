@@ -41,9 +41,7 @@ export default function DesignsPage() {
       status: statusFilter, 
       search, 
       page, 
-      limit: pageSize,
-      sortBy: 'uploadedAt',
-      sortOrder 
+      limit: pageSize
     }),
   });
 
@@ -204,17 +202,17 @@ export default function DesignsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <KpiCard
               title="Total Designs"
-              value={statsData.data.totalDesigns}
+              value={statsData.data.total}
               icon={<PhotoIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Approved Designs"
-              value={statsData.data.approvedDesigns}
+              value={statsData.data.approved}
               icon={<CheckCircleIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Pending Approval"
-              value={statsData.data.pendingApproval}
+              value={statsData.data.pending}
               icon={<ClockIcon className="w-6 h-6" />}
             />
           </div>
@@ -281,12 +279,12 @@ export default function DesignsPage() {
                 <div className="col-span-full text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                 </div>
-                ) : data?.data.length === 0 ? (
+                ) : !data?.data || data.data.length === 0 ? (
                   <div className="col-span-full text-center py-8 text-muted">
                     No designs found
                 </div>
               ) : (
-                data?.data.map((design) => (
+                data.data.map((design) => (
                   <div key={design.id} className="card-hover group">
                     <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-3">
                       <img
@@ -408,14 +406,14 @@ export default function DesignsPage() {
                           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                         </td>
                       </tr>
-                    ) : data?.data.length === 0 ? (
+                    ) : !data?.data || data.data.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="text-center py-8 text-muted">
                           No designs found
                         </td>
                       </tr>
                     ) : (
-                      data?.data.map((design) => (
+                      data.data.map((design) => (
                     <tr key={design.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                           <td className="py-3 px-4 font-medium whitespace-nowrap">{design.title}</td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{design.designerName}</td>
@@ -562,13 +560,13 @@ export default function DesignsPage() {
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold border-b border-border pb-2">Design Previews</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {designDetail.data.previews.map((preview, idx) => {
+                  {(designDetail.data?.previews || []).map((preview, idx) => {
                     // Collect all images for navigation
-                    const imageFiles = designDetail.data.files?.filter(file => 
+                    const imageFiles = designDetail.data?.files?.filter(file => 
                       file.type.toLowerCase().includes('image') || 
                       file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
                     ) || [];
-                    const allImages = [...designDetail.data.previews, ...imageFiles.map(file => file.url)];
+                    const allImages = [...(designDetail.data?.previews || []), ...imageFiles.map(file => file.url)];
                     const previewIndex = idx;
                     
                     return (

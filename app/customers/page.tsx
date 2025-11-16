@@ -127,17 +127,17 @@ export default function CustomersPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <KpiCard
               title="Total Customers"
-              value={statsData.data.totalCustomers}
+              value={statsData.data.total}
               icon={<UsersIcon className="w-6 h-6" />}
             />
             <KpiCard
-              title="Monthly Active Users"
-              value={statsData.data.monthlyActiveUsers}
+              title="Active Users"
+              value={statsData.data.active}
               icon={<ChartBarIcon className="w-6 h-6" />}
             />
             <KpiCard
-              title="Paid Users"
-              value={statsData.data.paidUsers}
+              title="Inactive Users"
+              value={statsData.data.inactive}
               icon={<CreditCardIcon className="w-6 h-6" />}
             />
           </div>
@@ -213,14 +213,14 @@ export default function CustomersPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                     </td>
                   </tr>
-                ) : data?.data.length === 0 ? (
+                ) : !data?.data || data.data.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="text-center py-8 text-muted">
                       No customers found
                     </td>
                   </tr>
                 ) : (
-                  data?.data.map((customer) => (
+                  data.data.map((customer) => (
                     <tr key={customer.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                       <td className="py-3 px-4 font-medium whitespace-nowrap">{customer.name}</td>
                       <td className="py-3 px-4 text-muted whitespace-nowrap">{customer.email}</td>

@@ -18,6 +18,7 @@ import {
   CurrencyDollarIcon,
   ClockIcon,
   CheckCircleIcon,
+  XCircleIcon,
   XMarkIcon,
   CheckIcon,
   ArrowPathIcon,
@@ -48,12 +49,8 @@ export default function OrdersPage() {
     queryFn: () => MockAPI.getOrders({ 
       page, 
       limit: pageSize,
-      search,
-      orderType: orderTypeFilter,
+      type: orderTypeFilter,
       status: statusFilter,
-      userId: userIdFilter,
-      dateFrom,
-      dateTo,
     }),
   });
 
@@ -193,28 +190,23 @@ export default function OrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <KpiCard
               title="Total Orders"
-              value={statsData.data.totalOrders}
+              value={statsData.data.total}
               icon={<ShoppingCartIcon className="w-6 h-6" />}
             />
             <KpiCard
-              title="Total Revenue"
-              value={formatCurrency(statsData.data.totalRevenue)}
-              icon={<BanknotesIcon className="w-6 h-6" />}
-            />
-            <KpiCard
-              title="Monthly Revenue"
-              value={formatCurrency(statsData.data.monthlyRevenue)}
-              icon={<CurrencyDollarIcon className="w-6 h-6" />}
-            />
-            <KpiCard
               title="Pending Orders"
-              value={statsData.data.pendingOrders}
+              value={statsData.data.pending}
               icon={<ClockIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Completed Orders"
-              value={statsData.data.completedOrders}
+              value={statsData.data.completed}
               icon={<CheckCircleIcon className="w-6 h-6" />}
+            />
+            <KpiCard
+              title="Cancelled Orders"
+              value={statsData.data.cancelled}
+              icon={<XCircleIcon className="w-6 h-6" />}
             />
           </div>
         )}
@@ -321,14 +313,14 @@ export default function OrdersPage() {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                   </td>
                 </tr>
-              ) : data?.data.length === 0 ? (
+              ) : !data?.data || data.data.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-8 text-muted">
                     No orders found
                   </td>
                 </tr>
               ) : (
-                data?.data.map((order) => (
+                (data?.data || []).map((order) => (
                   <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                     <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.id}</td>
                     <td className="py-3 px-4 whitespace-nowrap">

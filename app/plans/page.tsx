@@ -280,14 +280,14 @@ export default function PlansPage() {
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                     </td>
                   </tr>
-                ) : data?.data.length === 0 ? (
+                ) : !data?.data || data.data.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted">
                       No plans found. Create your first plan to get started.
                     </td>
                   </tr>
                 ) : (
-                  data?.data.map((plan) => (
+                  data.data.map((plan) => (
                     <tr key={plan.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                       <td className="py-3 px-4 font-medium whitespace-nowrap">{plan.planName}</td>
                       <td className="py-3 px-4">
@@ -361,12 +361,12 @@ export default function PlansPage() {
               <div className="col-span-full text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
               </div>
-            ) : data?.data.length === 0 ? (
+            ) : !data?.data || data.data.length === 0 ? (
               <div className="col-span-full text-center py-8 text-muted">
                 No plans found. Create your first plan to get started.
               </div>
             ) : (
-              data?.data.map((plan) => (
+              data.data.map((plan) => (
                 <div key={plan.id} className="card hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-2xl font-bold">{plan.planName}</h3>

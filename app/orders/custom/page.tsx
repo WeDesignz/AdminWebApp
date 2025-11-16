@@ -236,7 +236,7 @@ export default function CustomOrdersPage() {
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     setUpdatingOrderId(orderId);
-    await MockAPI.updateCustomOrderStatus(orderId, newStatus);
+    await MockAPI.updateCustomOrderStatus(orderId, newStatus as CustomOrder['status']);
     setUpdatingOrderId(null);
     refetch();
     refetchStats(); // Refetch statistics when order status changes
@@ -280,24 +280,24 @@ export default function CustomOrdersPage() {
         {statsData?.data && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <KpiCard
-              title="Total Orders Today"
-              value={statsData.data.totalToday}
+              title="Total Orders"
+              value={statsData.data.total}
               icon={<ShoppingCartIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Pending Orders"
-              value={statsData.data.totalPending}
+              value={statsData.data.pending}
               icon={<ClockIconSolid className="w-6 h-6" />}
             />
             <KpiCard
-              title="Completed Orders"
-              value={statsData.data.totalCompleted}
-              icon={<CheckCircleIcon className="w-6 h-6" />}
+              title="In Progress Orders"
+              value={statsData.data.inProgress}
+              icon={<ArrowPathIcon className="w-6 h-6" />}
             />
             <KpiCard
-              title="In Progress Orders"
-              value={statsData.data.totalInProgress}
-              icon={<ArrowPathIcon className="w-6 h-6" />}
+              title="Completed Orders"
+              value={statsData.data.completed}
+              icon={<CheckCircleIcon className="w-6 h-6" />}
             />
           </div>
         )}
@@ -331,7 +331,7 @@ export default function CustomOrdersPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
             </div>
           ) : (
-            data?.data.map((order) => (
+            (data?.data || []).map((order) => (
               <div key={order.id} className="card-hover">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

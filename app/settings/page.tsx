@@ -136,10 +136,10 @@ export default function SettingsPage() {
 
     setIsUpdatingPassword(true);
     try {
-      const response = await MockAPI.updateAdminPassword(
-        passwordData.currentPassword,
-        passwordData.newPassword
-      );
+      const response = await MockAPI.updateAdminPassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
 
       if (response.success) {
         toast.success('Password changed successfully');

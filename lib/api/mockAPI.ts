@@ -926,6 +926,7 @@ class MockAPI {
       designIds: [],
       price: 200,
       status: 'active',
+      createdAt: new Date().toISOString(),
       ...data,
       updatedAt: new Date().toISOString(),
     };

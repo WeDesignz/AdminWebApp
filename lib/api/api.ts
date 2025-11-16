@@ -117,7 +117,7 @@ export const AuthAPI = {
    * Logout
    */
   async logout(): Promise<ApiResponse<void>> {
-    const response = await apiClient.post('api/coreadmin/logout/');
+    const response = await apiClient.post<void>('api/coreadmin/logout/');
     return response;
   },
 };
@@ -150,7 +150,7 @@ export const DashboardAPI = {
         },
         newDesigners: {
           count: response.data.new_designers?.count || 0,
-          period: response.data.new_designers?.period || '7d',
+          period: '7d' as const,
         },
         pendingPayouts: {
           count: response.data.pending_payouts?.count || 0,

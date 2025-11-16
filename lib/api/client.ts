@@ -305,7 +305,10 @@ class ApiClient {
       );
 
       if (!response.success || !response.data) {
-        return response as ApiResponse<PaginatedResponse<T>>;
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch paginated data',
+        } as ApiResponse<PaginatedResponse<T>>;
       }
 
       return {

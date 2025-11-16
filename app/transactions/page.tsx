@@ -17,6 +17,8 @@ import {
   CurrencyDollarIcon,
   ArrowPathIcon,
   ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
   XMarkIcon,
   CheckIcon,
   BanknotesIcon,
@@ -64,15 +66,8 @@ export default function TransactionsPage() {
     queryFn: () => MockAPI.getTransactions({ 
       page, 
       limit: pageSize,
-      search,
-      category: categoryFilter,
       type: typeFilter,
       status: statusFilter,
-      orderTransactionType: orderTransactionTypeFilter,
-      razorpayId: razorpayIdFilter,
-      dateFrom,
-      dateTo,
-      userId: userIdFilter,
     }),
   });
 
@@ -218,15 +213,8 @@ export default function TransactionsPage() {
       // Fetch all filtered transactions without pagination
       const allTransactions = await MockAPI.getTransactions({ 
         limit: 10000, // Large limit to get all
-        search,
-        category: categoryFilter,
         type: typeFilter,
         status: statusFilter,
-        orderTransactionType: orderTransactionTypeFilter,
-        razorpayId: razorpayIdFilter,
-        dateFrom,
-        dateTo,
-        userId: userIdFilter,
       });
 
       if (!allTransactions.data || allTransactions.data.length === 0) {
@@ -326,28 +314,23 @@ export default function TransactionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <KpiCard
               title="Total Transactions"
-              value={statsData.data.totalTransactions}
+              value={statsData.data.total}
               icon={<CurrencyDollarIcon className="w-6 h-6" />}
-            />
-            <KpiCard
-              title="Total Revenue"
-              value={formatCurrency(statsData.data.totalRevenue)}
-              icon={<BanknotesIcon className="w-6 h-6" />}
-            />
-            <KpiCard
-              title="Monthly Revenue"
-              value={formatCurrency(statsData.data.monthlyRevenue)}
-              icon={<CurrencyDollarIcon className="w-6 h-6" />}
-            />
-            <KpiCard
-              title="Total Refunds"
-              value={formatCurrency(statsData.data.totalRefunds)}
-              icon={<ArrowPathIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Pending Transactions"
-              value={statsData.data.pendingTransactions}
+              value={statsData.data.pending}
               icon={<ClockIcon className="w-6 h-6" />}
+            />
+            <KpiCard
+              title="Completed Transactions"
+              value={statsData.data.completed}
+              icon={<CheckCircleIcon className="w-6 h-6" />}
+            />
+            <KpiCard
+              title="Failed Transactions"
+              value={statsData.data.failed}
+              icon={<XCircleIcon className="w-6 h-6" />}
             />
           </div>
         )}
@@ -479,14 +462,14 @@ export default function TransactionsPage() {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                   </td>
                 </tr>
-              ) : data?.data.length === 0 ? (
+              ) : !data?.data || data.data.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="text-center py-8 text-muted">
                     No transactions found
                   </td>
                 </tr>
               ) : (
-                data?.data.map((transaction) => (
+                (data?.data || []).map((transaction) => (
                   <tr key={transaction.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                     <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">
                       {transaction.category === 'order' 
@@ -1041,11 +1024,11 @@ export default function TransactionsPage() {
                     <h3 className="text-sm font-semibold">Address</h3>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">{customerData.data.address.street}</p>
+                    <p className="text-sm font-medium">{customerData.data.address?.street || 'N/A'}</p>
                     <p className="text-sm text-muted">
-                      {customerData.data.city}, {customerData.data.state} {customerData.data.pincode}
+                      {customerData.data.address ? `${customerData.data.address.city || ''}, ${customerData.data.address.state || ''} ${customerData.data.address.pincode || ''}` : 'N/A'}
                     </p>
-                    <p className="text-sm text-muted">{customerData.data.address.country}</p>
+                    <p className="text-sm text-muted">{customerData.data.address?.country || 'N/A'}</p>
                   </div>
                 </div>
               )}
