@@ -20,7 +20,7 @@ export function formatCurrency(amount: number): string {
 /**
  * Format a date string
  */
-export function formatDate(dateString: string | null | undefined): string {
+export function formatDate(dateString: string | null | undefined, format: 'short' | 'long' = 'short'): string {
   if (!dateString) {
     return 'N/A';
   }
@@ -29,6 +29,19 @@ export function formatDate(dateString: string | null | undefined): string {
   if (isNaN(date.getTime())) {
     return 'Invalid Date';
   }
+  
+  if (format === 'long') {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    }).format(date);
+  }
+  
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
