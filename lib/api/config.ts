@@ -1,10 +1,14 @@
 /**
  * API Configuration
  * Centralized configuration for API client
+ * 
+ * API endpoint is configured via NEXT_PUBLIC_API_BASE environment variable.
+ * Set it in .env.local file (see .env.local.example for template)
  */
 
 export const API_CONFIG = {
-  baseURL: process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000',
+  // API base URL - can be overridden via NEXT_PUBLIC_API_BASE in .env.local
+  baseURL: process.env.NEXT_PUBLIC_API_BASE || 'https://devapi.wedesignz.com',
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
