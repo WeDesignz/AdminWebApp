@@ -202,11 +202,32 @@ class ApiClient {
   private async parseErrorResponse(response: Response): Promise<ApiError> {
     try {
       const data = await response.json();
+      
+      // Handle Django REST Framework serializer errors (field-level errors)
+      if (data.email || data.password || data.non_field_errors) {
+        const fieldErrors: string[] = [];
+        if (data.email) {
+          fieldErrors.push(Array.isArray(data.email) ? data.email.join(', ') : data.email);
+        }
+        if (data.password) {
+          fieldErrors.push(Array.isArray(data.password) ? data.password.join(', ') : data.password);
+        }
+        if (data.non_field_errors) {
+          fieldErrors.push(Array.isArray(data.non_field_errors) ? data.non_field_errors.join(', ') : data.non_field_errors);
+        }
+        return {
+          error: fieldErrors.join(' ') || 'Validation error',
+          message: fieldErrors.join(' ') || 'Validation error',
+          detail: data,
+          errors: data,
+        };
+      }
+      
       return {
-        error: data.error || data.message || data.detail,
-        message: data.message,
+        error: data.error || data.message || data.detail || 'Request failed',
+        message: data.message || data.detail || 'Request failed',
         detail: data.detail,
-        errors: data.errors,
+        errors: data.errors || data,
       };
     } catch {
       return {
@@ -242,6 +263,9 @@ class ApiClient {
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: data ? JSON.stringify(data) : undefined,
     });
   }

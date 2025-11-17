@@ -141,9 +141,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted mb-2">Demo code: <span className="font-mono font-bold">123456</span></p>
-          </div>
         </div>
       </div>
     );
@@ -199,12 +196,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-8 p-4 glass rounded-xl">
-            <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-muted">Email: admin@wedesignz.com</p>
-            <p className="text-xs text-muted">Password: admin123</p>
-            <p className="text-xs text-muted">2FA Code: 123456</p>
-          </div>
         </div>
       </div>
 
