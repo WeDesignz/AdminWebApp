@@ -302,6 +302,13 @@ export const DesignersAPI = {
   },
 
   /**
+   * Get Designer Onboarding Details
+   */
+  async getDesignerOnboarding(designerId: string): Promise<ApiResponse<any>> {
+    return apiClient.get(`api/coreadmin/designers/${designerId}/onboarding/`);
+  },
+
+  /**
    * Get Designer Statistics
    */
   async getDesignerStats(): Promise<
@@ -340,8 +347,12 @@ export const DesignersAPI = {
   /**
    * Update Designer Status
    */
-  async updateDesignerStatus(designerId: string, status: string, reason?: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/designers/${designerId}/update-status/`, { status, reason });
+  async updateDesignerStatus(designerId: string, status: string, isActive?: boolean): Promise<ApiResponse<any>> {
+    const body: any = { status };
+    if (isActive !== undefined) {
+      body.is_active = isActive;
+    }
+    return apiClient.put(`api/coreadmin/designers/${designerId}/update-status/`, body);
   },
 
   /**

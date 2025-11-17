@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
 /**
@@ -8,15 +8,26 @@ import { useAuthStore } from '@/store/authStore';
  */
 export function useAuth(requireAuth: boolean = true) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Wait for Zustand store to hydrate from localStorage
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
-    if (requireAuth && !isAuthenticated) {
-      router.push('/login');
+    // Only redirect after hydration to prevent redirects during page refresh
+    if (isHydrated && requireAuth && !isAuthenticated) {
+      // Only redirect if we're not already on the login page
+      if (pathname !== '/login') {
+        router.push('/login');
+      }
     }
-  }, [requireAuth, isAuthenticated, router]);
+  }, [requireAuth, isAuthenticated, router, isHydrated, pathname]);
 
-  return { isAuthenticated };
+  return { isAuthenticated, isHydrated };
 }
 
 

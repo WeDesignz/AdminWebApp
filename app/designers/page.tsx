@@ -9,7 +9,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
-import { MagnifyingGlassIcon, EyeIcon, XMarkIcon, UsersIcon, ClockIcon, CreditCardIcon, XCircleIcon, CheckIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, EyeIcon, XMarkIcon, UsersIcon, ClockIcon, CreditCardIcon, XCircleIcon, CheckIcon, PlusIcon, ArrowUpIcon, ArrowDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Designer, DesignerOnboardingStep1, DesignerOnboardingStep2, DesignerOnboardingStep3 } from '@/types';
 import { KpiCard } from '@/components/common/KpiCard';
 import { API } from '@/lib/api';
@@ -25,13 +25,20 @@ export default function DesignersPage() {
   const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRejectModalFromTable, setShowRejectModalFromTable] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvingDesignerId, setApprovingDesignerId] = useState<string | null>(null);
   const [showAddDesignerModal, setShowAddDesignerModal] = useState(false);
   const [isSubmittingDesigner, setIsSubmittingDesigner] = useState(false);
   const [addDesignerError, setAddDesignerError] = useState<string | null>(null);
   const [addDesignerSuccess, setAddDesignerSuccess] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [previewImagesList, setPreviewImagesList] = useState<Array<{ url: string; title: string }>>([]);
   
   // Add Designer form state
   const [addDesignerForm, setAddDesignerForm] = useState<{
@@ -83,6 +90,13 @@ export default function DesignersPage() {
     queryFn: () => MockAPI.getDesignerStats(),
   });
 
+  // Fetch onboarding details when a designer is selected
+  const { data: onboardingData, isLoading: isLoadingOnboarding } = useQuery({
+    queryKey: ['designerOnboarding', selectedDesigner?.id],
+    queryFn: () => selectedDesigner ? API.designers.getDesignerOnboarding(selectedDesigner.id) : null,
+    enabled: !!selectedDesigner && showViewModal,
+  });
+
   // Filter options for onboarding status
   const onboardingStatusOptions = [
     { value: '', label: 'All' },
@@ -112,7 +126,7 @@ export default function DesignersPage() {
   };
 
   const handleCreateRazorpayAccount = () => {
-    setShowViewModal(false);
+    // Keep the view modal open, just open the Razorpay modal
     setShowRazorpayModal(true);
   };
 
@@ -153,6 +167,48 @@ export default function DesignersPage() {
     setRejectionReason('');
     setSelectedDesigner(null);
     // In real app, you would call the API here
+  };
+
+  const handleApproveDesigner = (designer: any) => {
+    if (!designer?.id) return;
+    setSelectedDesigner(designer);
+    setApprovingDesignerId(designer.id);
+    setShowApproveModal(true);
+  };
+
+  const handleCloseApproveModal = () => {
+    setShowApproveModal(false);
+    setApprovingDesignerId(null);
+    setSelectedDesigner(null);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!selectedDesigner?.id) return;
+    
+    setIsApproving(true);
+    // Close modal immediately when confirm is clicked
+    handleCloseApproveModal();
+    
+    try {
+      const response = await API.designers.updateDesignerStatus(selectedDesigner.id.toString(), 'verified', true);
+      
+      if (response.success) {
+        // Force refresh the designers list to get updated status
+        await queryClient.invalidateQueries({ queryKey: ['designers'] });
+        await queryClient.invalidateQueries({ queryKey: ['designerStats'] });
+        // Refetch the data immediately
+        await queryClient.refetchQueries({ queryKey: ['designers'] });
+        // Show success message (you can add a toast notification here)
+        alert('Designer approved successfully!');
+      } else {
+        alert(response.error || 'Failed to approve designer');
+      }
+    } catch (error) {
+      console.error('Error approving designer:', error);
+      alert('An error occurred while approving the designer');
+    } finally {
+      setIsApproving(false);
+    }
   };
 
   const handleAddDesigner = () => {
@@ -448,44 +504,84 @@ export default function DesignersPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredDesigners.map((designer) => (
-                    <tr key={designer.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{designer.name}</td>
-                      <td className="py-3 px-4 text-muted whitespace-nowrap">{designer.email}</td>
-                      <td className="py-3 px-4 text-muted whitespace-nowrap">{formatDate(designer.joinedAt)}</td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                          designer.status === 'active' ? 'bg-success/20 text-success' :
-                          designer.status === 'pending' ? 'bg-warning/20 text-warning' :
-                          'bg-error/20 text-error'
-                        }`}>
-                          {designer.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">{formatCurrency(designer.lifetimeEarnings)}</td>
-                      <td className="py-3 px-4 whitespace-nowrap">{formatCurrency(designer.pendingPayout)}</td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleViewDesigner(designer)}
-                            title="View"
-                          >
-                            <EyeIcon className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="danger"
-                            onClick={() => handleRejectFromTable(designer)}
-                            title="Reject"
-                          >
-                            <XMarkIcon className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  filteredDesigners.map((designer: any) => {
+                    // Map API response to display format
+                    const designerName = designer.name || 
+                      (designer.first_name && designer.last_name 
+                        ? `${designer.first_name} ${designer.last_name}`.trim()
+                        : designer.first_name || designer.last_name || designer.username || 'N/A');
+                    const designerEmail = designer.email || 'N/A';
+                    const joinedDate = designer.joinedAt || designer.joined_date || designer.date_joined || '';
+                    // Get designer status - prioritize designer_status (from DesignerProfile.status), then status field, then derive from is_active
+                    let designerStatus = designer.designer_status || designer.status;
+                    if (!designerStatus) {
+                      designerStatus = designer.is_active ? 'active' : 'inactive';
+                    }
+                    const lifetimeEarnings = designer.lifetimeEarnings || designer.total_earnings || 0;
+                    const pendingPayout = designer.pendingPayout || designer.pending_withdrawals || 0;
+                    
+                    return (
+                      <tr key={designer.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                        <td className="py-3 px-4 font-medium whitespace-nowrap">{designerName}</td>
+                        <td className="py-3 px-4 text-muted whitespace-nowrap">{designerEmail}</td>
+                        <td className="py-3 px-4 text-muted whitespace-nowrap">{joinedDate ? formatDate(joinedDate) : 'N/A'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                            designerStatus === 'active' || designerStatus === 'verified' ? 'bg-success/20 text-success' :
+                            designerStatus === 'pending' ? 'bg-warning/20 text-warning' :
+                            'bg-error/20 text-error'
+                          }`}>
+                            {designerStatus}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">{formatCurrency(lifetimeEarnings)}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">{formatCurrency(pendingPayout)}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleViewDesigner(designer)}
+                              title="View Onboarding Details"
+                            >
+                              <EyeIcon className="w-4 h-4 mr-2" />
+                              View
+                            </Button>
+                            {designerStatus === 'verified' ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                disabled
+                                title="Designer Already Approved"
+                              >
+                                <CheckIcon className="w-4 h-4 mr-2" />
+                                Approved
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="primary"
+                                onClick={() => handleApproveDesigner(designer)}
+                                title="Approve Designer"
+                              >
+                                <CheckIcon className="w-4 h-4 mr-2" />
+                                Approve
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="danger"
+                              onClick={() => handleRejectFromTable(designer)}
+                              title="Reject Designer"
+                            >
+                              <XMarkIcon className="w-4 h-4 mr-2" />
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -523,177 +619,275 @@ export default function DesignersPage() {
       <Modal
         isOpen={showViewModal}
         onClose={handleCloseViewModal}
-        title="Designer Onboarding Details"
+        title={`Designer Onboarding Details${selectedDesigner?.name ? ` - ${selectedDesigner.name}` : selectedDesigner?.id ? ` - ID: ${selectedDesigner.id}` : ''}`}
         size="xl"
       >
-        {selectedDesigner?.onboarding ? (
+        {isLoadingOnboarding ? (
+          <div className="py-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted mt-4">Loading onboarding details...</p>
+          </div>
+        ) : onboardingData?.data ? (
           <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2">
-            {/* ONBOARDING STEP 1 */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 1 - Personal Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-2">Profile Photo</label>
-                  <div className="w-32 h-32 rounded-lg overflow-hidden border border-border">
-                    <img 
-                      src={selectedDesigner.onboarding.step1.profilePhoto} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">First Name</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step1.firstName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Last Name</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step1.lastName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step1.email}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Phone Number</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step1.phoneNumber}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* ONBOARDING STEP 2 */}
-            <div className="space-y-4 border-t border-border pt-4">
-              <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 2 - Business Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Business Email</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.businessEmail}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Business Phone Number</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.businessPhoneNumber}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Legal Business Name</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.legalBusinessName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Business Type</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.businessType}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Category</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.category}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Subcategory</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.subcategory}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Business Model</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.businessModel}</p>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-2">Street Address</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.streetAddress}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">City</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.city}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">State</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.state}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Pincode</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.pincode}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Country</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.country}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">PAN Number</label>
-                  <p className="text-muted">{selectedDesigner.onboarding.step2.panNumber}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">PAN Document File</label>
-                  <div className="mt-2">
-                    <a 
-                      href={selectedDesigner.onboarding.step2.panDocumentFile} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      View PAN Document
-                    </a>
-                  </div>
-                </div>
-                {selectedDesigner.onboarding.step2.gstNumber && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">GST Number</label>
-                    <p className="text-muted">{selectedDesigner.onboarding.step2.gstNumber}</p>
-                  </div>
-                )}
-                {selectedDesigner.onboarding.step2.msmeNumber && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">MSME Number</label>
-                    <p className="text-muted">{selectedDesigner.onboarding.step2.msmeNumber}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ONBOARDING STEP 3 */}
-            <div className="space-y-4 border-t border-border pt-4">
-              <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 3 - Designs Upload</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Designs Uploaded</label>
-                  <p className="text-muted">
-                    {selectedDesigner.onboarding.step3.designsUploaded} / 50 (Minimum Required)
-                    {selectedDesigner.onboarding.step3.designsUploaded >= 50 && (
-                      <span className="ml-2 text-success">✓ Requirement Met</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Uploaded Designs</label>
-                  <div className="grid grid-cols-4 gap-3 max-h-64 overflow-y-auto">
-                    {selectedDesigner.onboarding.step3.designs.slice(0, 20).map((design) => (
-                      <div key={design.id} className="aspect-square rounded-lg overflow-hidden border border-border">
+            {/* ONBOARDING STEP 1 - Personal Details */}
+            {onboardingData.data.step1 && Object.keys(onboardingData.data.step1).length > 0 && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 1 - Personal Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {onboardingData.data.step1.profile_photo_url && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium mb-2">Profile Photo</label>
+                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-border">
                         <img 
-                          src={design.url} 
-                          alt={design.title}
+                          src={onboardingData.data.step1.profile_photo_url} 
+                          alt="Profile" 
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
                         />
                       </div>
-                    ))}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">First Name</label>
+                    <p className="text-muted">{onboardingData.data.step1.first_name || 'N/A'}</p>
                   </div>
-                  {selectedDesigner.onboarding.step3.designs.length > 20 && (
-                    <p className="text-sm text-muted mt-2">
-                      + {selectedDesigner.onboarding.step3.designs.length - 20} more designs
-                    </p>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Last Name</label>
+                    <p className="text-muted">{onboardingData.data.step1.last_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Email</label>
+                    <div className="flex items-center gap-2">
+                      <p className="text-muted">{onboardingData.data.step1.email || 'N/A'}</p>
+                      {onboardingData.data.step1.email_verified !== undefined && (
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          onboardingData.data.step1.email_verified ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
+                        }`}>
+                          {onboardingData.data.step1.email_verified ? 'Verified' : 'Not Verified'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Phone Number</label>
+                    <div className="flex items-center gap-2">
+                      <p className="text-muted">{onboardingData.data.step1.phone || 'N/A'}</p>
+                      {onboardingData.data.step1.phone_verified !== undefined && (
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          onboardingData.data.step1.phone_verified ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
+                        }`}>
+                          {onboardingData.data.step1.phone_verified ? 'Verified' : 'Not Verified'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Profile Type</label>
+                    <p className="text-muted">{onboardingData.data.step1.is_individual ? 'Individual' : 'Company'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ONBOARDING STEP 2 - Business Details */}
+            {onboardingData.data.step2 && Object.keys(onboardingData.data.step2).length > 0 && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 2 - Business Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Business Email</label>
+                    <p className="text-muted">{onboardingData.data.step2.business_email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Business Phone Number</label>
+                    <p className="text-muted">{onboardingData.data.step2.business_phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Legal Business Name</label>
+                    <p className="text-muted">{onboardingData.data.step2.legal_business_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Business Type</label>
+                    <p className="text-muted">{onboardingData.data.step2.business_type || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Category</label>
+                    <p className="text-muted">{onboardingData.data.step2.category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Subcategory</label>
+                    <p className="text-muted">{onboardingData.data.step2.subcategory || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Business Model</label>
+                    <p className="text-muted">{onboardingData.data.step2.business_model || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium mb-2">Street Address</label>
+                    <p className="text-muted">{onboardingData.data.step2.street_address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">City</label>
+                    <p className="text-muted">{onboardingData.data.step2.city || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">State</label>
+                    <p className="text-muted">{onboardingData.data.step2.state || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Pincode</label>
+                    <p className="text-muted">{onboardingData.data.step2.pincode || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Country</label>
+                    <p className="text-muted">{onboardingData.data.step2.country || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">PAN Number</label>
+                    <p className="text-muted font-mono">{onboardingData.data.step2.pan_number || 'N/A'}</p>
+                  </div>
+                  {onboardingData.data.step2.pan_card_url && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">PAN Document</label>
+                      <div className="mt-2">
+                        <a 
+                          href={onboardingData.data.step2.pan_card_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          View PAN Document
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {onboardingData.data.step2.gst_number && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">GST Number</label>
+                      <p className="text-muted font-mono">{onboardingData.data.step2.gst_number}</p>
+                    </div>
+                  )}
+                  {onboardingData.data.step2.msme_number && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">MSME Number</label>
+                      <p className="text-muted font-mono">{onboardingData.data.step2.msme_number}</p>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* ONBOARDING STEP 3 - Designs Upload */}
+            {onboardingData.data.step3 && Object.keys(onboardingData.data.step3).length > 0 && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <h3 className="text-xl font-semibold border-b border-border pb-2">ONBOARDING STEP 3 - Designs Upload</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Designs Uploaded</label>
+                    <p className="text-muted">
+                      {onboardingData.data.step3.designs_uploaded || 0} / {onboardingData.data.step3.minimum_required || 50} (Minimum Required)
+                      {onboardingData.data.step3.requirement_met && (
+                        <span className="ml-2 text-success">✓ Requirement Met</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ONBOARDING STEP 4 - Product Images */}
+            {onboardingData.data.step4 && onboardingData.data.step4.products && onboardingData.data.step4.products.length > 0 && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <h3 className="text-xl font-semibold border-b border-border pb-2">
+                  ONBOARDING STEP 4 - Product Images ({onboardingData.data.step4.total_products || onboardingData.data.step4.products.length} Products)
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {onboardingData.data.step4.products.map((product: any) => (
+                    product.image && (
+                      <div 
+                        key={`${product.product_id}-${product.image.id}`} 
+                        className="relative group"
+                      >
+                        <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted/10 relative">
+                          <img
+                            src={product.image.url}
+                            alt={product.image.title || product.title || `Product ${product.product_id}`}
+                            className="w-full h-full object-cover transition-transform duration-200 rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLImageElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-muted text-xs rounded-lg">Image not available</div>';
+                              }
+                            }}
+                          />
+                          {/* Hover Overlay with Eye Icon */}
+                          <div 
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center cursor-pointer"
+                            onClick={() => {
+                              // Build list of all images from step4 products
+                              const imagesList = onboardingData.data.step4.products
+                                .filter((p: any) => p.image)
+                                .map((p: any) => ({
+                                  url: p.image.url,
+                                  title: p.title || p.image.title || `Product ${p.product_id}`
+                                }));
+                              
+                              // Find current image index
+                              const currentIndex = imagesList.findIndex(img => img.url === product.image.url);
+                              
+                              setPreviewImagesList(imagesList);
+                              setCurrentImageIndex(currentIndex >= 0 ? currentIndex : 0);
+                              setPreviewImage({
+                                url: product.image.url,
+                                title: product.title || product.image.title || `Product ${product.product_id}`
+                              });
+                              setShowImagePreview(true);
+                            }}
+                          >
+                            <div className="bg-white/10 backdrop-blur-sm rounded-full p-3 hover:bg-white/20 transition-colors">
+                              <EyeIcon className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+                        </div>
+                        {product.title && (
+                          <p className="mt-1 text-xs text-muted truncate" title={product.title}>
+                            {product.title}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  ))}
+                </div>
+                {onboardingData.data.step4.products.length === 0 && (
+                  <p className="text-muted text-center py-4">No product images available</p>
+                )}
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={handleCloseViewModal} title="Close">
-                <XMarkIcon className="w-4 h-4" />
+              <Button variant="outline" onClick={handleCloseViewModal} title="Close Modal">
+                <XMarkIcon className="w-4 h-4 mr-2" />
+                Close
               </Button>
-              <Button variant="primary" onClick={handleCreateRazorpayAccount} title="Create Razorpay Linked Account">
-                <CheckIcon className="w-4 h-4" />
-              </Button>
+              {!onboardingData.data.razorpay_account_verified && (
+                <Button variant="primary" onClick={handleCreateRazorpayAccount} title="Create Razorpay Linked Account">
+                  <PlusIcon className="w-4 h-4 mr-2" />
+                  Create Razorpay Account
+                </Button>
+              )}
             </div>
           </div>
         ) : (
           <div className="py-8 text-center">
-            <p className="text-muted">Onboarding data is not available for this designer.</p>
-            <Button variant="outline" onClick={handleCloseViewModal} className="mt-4" title="Close">
-              <XMarkIcon className="w-4 h-4" />
+            <p className="text-muted">
+              {onboardingData?.data?.message || 'Onboarding data is not available for this designer.'}
+            </p>
+            <Button variant="outline" onClick={handleCloseViewModal} className="mt-4" title="Close Modal">
+              <XMarkIcon className="w-4 h-4 mr-2" />
+              Close
             </Button>
           </div>
         )}
@@ -706,7 +900,7 @@ export default function DesignersPage() {
         title="Create Razorpay Linked Account"
         size="lg"
       >
-        {selectedDesigner?.razorpayDetails && (
+        {onboardingData?.data && selectedDesigner ? (
           <div className="space-y-4">
             <p className="text-sm text-muted mb-4">
               Review the following details before creating the Razorpay linked account. All fields are for display only.
@@ -714,68 +908,114 @@ export default function DesignersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Name</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.name}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.designer_name || selectedDesigner.name || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Email</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.email}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.designer_email || selectedDesigner.email || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Phone</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.phone}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step1?.phone || onboardingData.data.contact_phone || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Business Name</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.businessName}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.legal_business_name || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Business Type</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.businessType}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.business_type || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">PAN Number</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.panNumber}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.pan_number || 'N/A'}
+                </p>
               </div>
-              {selectedDesigner.razorpayDetails.gstNumber && (
+              {onboardingData.data.step2?.gst_number && (
                 <div>
                   <label className="block text-sm font-medium mb-2">GST Number</label>
-                  <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.gstNumber}</p>
+                  <p className="text-muted bg-muted/10 p-2 rounded-lg">{onboardingData.data.step2.gst_number}</p>
                 </div>
               )}
               <div className="col-span-2">
                 <label className="block text-sm font-medium mb-2">Street Address</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.streetAddress}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.street_address || onboardingData.data.contact_address || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">City</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.city}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.city || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">State</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.state}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.state || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Pincode</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.pincode}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.pincode || 'N/A'}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Country</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">{selectedDesigner.razorpayDetails.country}</p>
+                <p className="text-muted bg-muted/10 p-2 rounded-lg">
+                  {onboardingData.data.step2?.country || 'India'}
+                </p>
               </div>
+              {onboardingData.data.bank_account_holder_name && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bank Account Holder Name</label>
+                  <p className="text-muted bg-muted/10 p-2 rounded-lg">{onboardingData.data.bank_account_holder_name}</p>
+                </div>
+              )}
+              {onboardingData.data.bank_account_number && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bank Account Number</label>
+                  <p className="text-muted bg-muted/10 p-2 rounded-lg font-mono">{onboardingData.data.bank_account_number}</p>
+                </div>
+              )}
+              {onboardingData.data.bank_ifsc_code && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bank IFSC Code</label>
+                  <p className="text-muted bg-muted/10 p-2 rounded-lg font-mono">{onboardingData.data.bank_ifsc_code}</p>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button variant="outline" onClick={handleCloseRazorpayModal} title="Cancel">
-                <XMarkIcon className="w-4 h-4" />
+                <XMarkIcon className="w-4 h-4 mr-2" />
+                Cancel
               </Button>
               <Button 
                 variant="primary" 
                 onClick={handleCreateAccount}
                 isLoading={isCreatingAccount}
-                title="Create Account"
+                title="Create Razorpay Account"
               >
-                <CheckIcon className="w-4 h-4" />
+                <CheckIcon className="w-4 h-4 mr-2" />
+                Create Account
               </Button>
             </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-muted">Loading designer details...</p>
           </div>
         )}
       </Modal>
@@ -801,8 +1041,9 @@ export default function DesignersPage() {
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" onClick={handleCloseRejectModal} title="Cancel">
-              <XMarkIcon className="w-4 h-4" />
+            <Button variant="outline" onClick={handleCloseRejectModal} title="Cancel Rejection">
+              <XMarkIcon className="w-4 h-4 mr-2" />
+              Cancel
             </Button>
             <Button 
               variant="danger" 
@@ -811,7 +1052,8 @@ export default function DesignersPage() {
               isLoading={isRejecting}
               title="Submit Rejection"
             >
-              <CheckIcon className="w-4 h-4" />
+              <XCircleIcon className="w-4 h-4 mr-2" />
+              Submit Rejection
             </Button>
           </div>
         </div>
@@ -1148,6 +1390,139 @@ export default function DesignersPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Approve Confirmation Modal */}
+      <Modal
+        isOpen={showApproveModal}
+        onClose={handleCloseApproveModal}
+        title="Approve Designer"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Are you sure you want to approve this designer? This will set their DesignerProfile status to &quot;verified&quot; and activate their account.
+          </p>
+          {selectedDesigner && (
+            <div className="bg-muted/10 p-3 rounded-lg">
+              <p className="text-sm font-medium">
+                Designer: {selectedDesigner.name || 
+                  (selectedDesigner.first_name && selectedDesigner.last_name 
+                    ? `${selectedDesigner.first_name} ${selectedDesigner.last_name}`.trim()
+                    : selectedDesigner.first_name || selectedDesigner.last_name || selectedDesigner.username || 'N/A')}
+              </p>
+              <p className="text-xs text-muted mt-1">
+                Email: {selectedDesigner.email || 'N/A'}
+              </p>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={handleCloseApproveModal} title="Cancel">
+              <XMarkIcon className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleConfirmApprove}
+              title="Confirm Approval"
+            >
+              <CheckIcon className="w-4 h-4 mr-2" />
+              Confirm Approval
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Image Preview Modal */}
+      <Modal
+        isOpen={showImagePreview}
+        onClose={() => {
+          setShowImagePreview(false);
+          setPreviewImage(null);
+          setPreviewImagesList([]);
+          setCurrentImageIndex(0);
+        }}
+        title={previewImage?.title || 'Image Preview'}
+        size="lg"
+      >
+        {previewImage && previewImagesList.length > 0 && (
+          <div className="space-y-4">
+            <div className="relative w-full flex items-center justify-center bg-muted/10 rounded-lg p-4 min-h-[400px]">
+              {/* Previous Button */}
+              {previewImagesList.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const prevIndex = currentImageIndex > 0 ? currentImageIndex - 1 : previewImagesList.length - 1;
+                    setCurrentImageIndex(prevIndex);
+                    setPreviewImage(previewImagesList[prevIndex]);
+                  }}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-colors"
+                  title="Previous Image"
+                >
+                  <ChevronLeftIcon className="w-6 h-6" />
+                </button>
+              )}
+              
+              {/* Image */}
+              <img
+                src={previewImage.url}
+                alt={previewImage.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-muted">Image not available</div>';
+                  }
+                }}
+              />
+              
+              {/* Next Button */}
+              {previewImagesList.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const nextIndex = currentImageIndex < previewImagesList.length - 1 ? currentImageIndex + 1 : 0;
+                    setCurrentImageIndex(nextIndex);
+                    setPreviewImage(previewImagesList[nextIndex]);
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-colors"
+                  title="Next Image"
+                >
+                  <ChevronRightIcon className="w-6 h-6" />
+                </button>
+              )}
+              
+              {/* Image Counter */}
+              {previewImagesList.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                  {currentImageIndex + 1} / {previewImagesList.length}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-muted">
+                {previewImagesList.length > 1 && (
+                  <span>Use arrow buttons to navigate</span>
+                )}
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowImagePreview(false);
+                  setPreviewImage(null);
+                  setPreviewImagesList([]);
+                  setCurrentImageIndex(0);
+                }}
+                title="Close Preview"
+              >
+                <XMarkIcon className="w-4 h-4 mr-2" />
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </DashboardLayout>
   );
