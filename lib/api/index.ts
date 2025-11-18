@@ -388,7 +388,7 @@ class RealAPI {
     price: number;
     duration: 'Monthly' | 'Annually';
     status: 'Active' | 'Inactive';
-  }): Promise<ApiResponse<Plan>> {
+  }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     return API.plans.createPlan(data);
   }
 

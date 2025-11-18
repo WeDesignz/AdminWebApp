@@ -974,7 +974,7 @@ export const PlansAPI = {
     price: number;
     duration: 'Monthly' | 'Annually';
     status: 'Active' | 'Inactive';
-  }): Promise<ApiResponse<Plan>> {
+  }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     // Transform frontend data to backend format
     const backendData = {
       plan_name: data.planName.toLowerCase(), // Convert to lowercase: 'Basic' -> 'basic'
@@ -985,12 +985,18 @@ export const PlansAPI = {
     };
     const response = await apiClient.post<any>('api/coreadmin/subscription-plans/create/', backendData);
     if (response.success && response.data) {
+      // Preserve was_reactivated from backend response
+      const wasReactivated = response.data.was_reactivated;
+      const transformedPlan = transformBackendPlanToFrontend(response.data);
       return {
         ...response,
-        data: transformBackendPlanToFrontend(response.data),
+        data: {
+          ...transformedPlan,
+          was_reactivated: wasReactivated,
+        } as Plan & { was_reactivated?: boolean },
       };
     }
-    return response as ApiResponse<Plan>;
+    return response as ApiResponse<Plan & { was_reactivated?: boolean }>;
   },
 
   /**
