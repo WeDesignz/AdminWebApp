@@ -514,6 +514,74 @@ export const CustomersAPI = {
 };
 
 /**
+ * Transform backend Product to frontend Design
+ */
+function transformProductToDesign(product: any): Design {
+  // Map backend status to frontend status
+  const statusMap: Record<string, 'pending' | 'approved' | 'rejected'> = {
+    'draft': 'pending',
+    'active': 'approved',
+    'inactive': 'rejected',
+    'deleted': 'rejected',
+  };
+
+  // Get first media file as thumbnail - check both 'file' and 'url' fields
+  const firstMedia = product.media_files?.[0];
+  const thumbnailUrl = firstMedia?.file || 
+                       firstMedia?.url ||
+                       product.thumbnail_url || 
+                       'https://via.placeholder.com/300?text=No+Image';
+
+  // Extract previews from media files
+  const previews = (product.media_files || [])
+    .map((m: any) => m.file || m.url)
+    .filter(Boolean);
+
+  // Transform media files to DesignFile format
+  const files = (product.media_files || []).map((m: any) => {
+    const fileUrl = m.file || m.url;
+    return {
+      id: String(m.id),
+      name: fileUrl?.split('/').pop() || 'file',
+      url: fileUrl,
+      type: (m.media_type === 'image' ? 'image' : 'other') as 'image' | 'vector' | 'document' | 'other',
+      size: 0,
+      uploadedAt: m.created_at || new Date().toISOString(),
+    };
+  });
+
+  return {
+    id: String(product.id),
+    title: product.title || 'Untitled Design',
+    designerId: String(product.created_by || ''),
+    designerName: product.designer_name || 'Unknown Designer',
+    category: product.category_name || product.category || 'Uncategorized',
+    thumbnailUrl,
+    status: statusMap[product.status] || 'pending',
+    featured: false,
+    trending: false,
+    uploadedAt: product.created_at || new Date().toISOString(),
+    price: product.price ? parseFloat(String(product.price)) : 0,
+    downloads: product.total_downloads || product.downloads || 0,
+    flagged: product.flagged || false,
+    flagReason: product.flag_reason,
+    statistics: {
+      totalViews: product.total_views || 0,
+      totalDownloads: product.total_downloads || 0,
+      totalPurchases: product.total_purchases || 0,
+      averageRating: product.average_rating || 0,
+      revenueGenerated: product.revenue_generated || 0,
+    },
+    previews,
+    files,
+    // Include additional fields if present (from detail view)
+    metadata: product.metadata,
+    approvalHistory: product.approval_history || product.approvalHistory,
+    designer: product.designer,
+  };
+}
+
+/**
  * Designs API
  */
 export const DesignsAPI = {
@@ -527,17 +595,54 @@ export const DesignsAPI = {
     search?: string;
   }): Promise<ApiResponse<PaginatedResponse<Design>>> {
     const queryParams: Record<string, string | number> = {};
-    if (params.status) queryParams.status = params.status;
+    if (params.status) {
+      // Map frontend status to backend status
+      const statusMap: Record<string, string> = {
+        'pending': 'draft',
+        'approved': 'active',
+        'rejected': 'inactive',
+      };
+      queryParams.status = statusMap[params.status] || params.status;
+    }
     if (params.search) queryParams.search = params.search;
 
-    return apiClient.getPaginated<Design>('api/coreadmin/designs/', params.page || 1, params.limit || 10, queryParams);
+    const response = await apiClient.getPaginated<any>('api/coreadmin/designs/', params.page || 1, params.limit || 10, queryParams);
+    
+    if (response.success && response.data) {
+      return {
+        success: true,
+        data: {
+          data: response.data.data.map(transformProductToDesign),
+          pagination: response.data.pagination,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch designs',
+    };
   },
 
   /**
    * Get Design Details
    */
   async getDesign(designId: string): Promise<ApiResponse<Design>> {
-    return apiClient.get<Design>(`api/coreadmin/designs/${designId}/`);
+    const response = await apiClient.get<any>(`api/coreadmin/designs/${designId}/`);
+    
+    if (response.success && response.data) {
+      // Handle both direct data and nested data structure
+      const productData = response.data.data || response.data;
+      return {
+        success: true,
+        data: transformProductToDesign(productData),
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch design',
+    };
   },
 
   /**
@@ -556,7 +661,7 @@ export const DesignsAPI = {
       pending?: number;
       approved?: number;
       rejected?: number;
-    }>('api/coreadmin/designs/analytics/');
+    }>('api/coreadmin/designs/stats/');
 
     if (response.success && response.data) {
       return {
@@ -580,24 +685,40 @@ export const DesignsAPI = {
    * Approve/Reject Design
    */
   async approveDesign(designId: string, data: { approved: boolean; reason?: string }): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, {
+    const payload: any = {
       action: data.approved ? 'approve' : 'reject',
-      reason: data.reason,
-    });
+    };
+    
+    if (data.approved) {
+      // For approval, use admin_notes if reason is provided
+      if (data.reason) {
+        payload.admin_notes = data.reason;
+      }
+    } else {
+      // For rejection, rejection_reason is required
+      payload.rejection_reason = data.reason || 'No reason provided';
+    }
+    
+    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, payload);
   },
 
   /**
    * Flag Design
    */
   async flagDesign(designId: string, reason: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, { action: 'flag', reason });
+    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, { 
+      action: 'flag', 
+      reason: reason 
+    });
   },
 
   /**
    * Resolve Flag
    */
   async resolveFlag(designId: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, { action: 'resolve_flag' });
+    return apiClient.post(`api/coreadmin/designs/${designId}/action/`, { 
+      action: 'resolve_flag' 
+    });
   },
 };
 

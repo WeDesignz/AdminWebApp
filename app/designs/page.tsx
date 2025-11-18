@@ -79,13 +79,27 @@ export default function DesignsPage() {
 
   const handleApproveDesign = async (design: Design) => {
     setIsUpdatingStatus(true);
-    await MockAPI.approveDesign(design.id, { approved: true });
-    setIsUpdatingStatus(false);
-    if (selectedDesign?.id === design.id) {
-      setShowDetailModal(false);
-      setSelectedDesign(null);
+    try {
+      const response = await MockAPI.approveDesign(design.id, { approved: true });
+      if (response.success) {
+        if (selectedDesign?.id === design.id) {
+          setShowDetailModal(false);
+          setSelectedDesign(null);
+        }
+        refetch();
+        if (designDetail?.data?.id === design.id) {
+          refetchDesignDetail();
+        }
+      } else {
+        console.error('Failed to approve design:', response.error);
+        // TODO: Show error toast/notification
+      }
+    } catch (error) {
+      console.error('Error approving design:', error);
+      // TODO: Show error toast/notification
+    } finally {
+      setIsUpdatingStatus(false);
     }
-    refetch();
   };
 
   const handleRejectDesign = (design: Design) => {
@@ -101,13 +115,24 @@ export default function DesignsPage() {
   const handleSubmitRejection = async () => {
     if (!selectedDesign || !rejectionReason.trim()) return;
     setIsUpdatingStatus(true);
-    await MockAPI.approveDesign(selectedDesign.id, { approved: false, reason: rejectionReason });
-    setIsUpdatingStatus(false);
-    setShowRejectModal(false);
-    setShowDetailModal(false);
-    setRejectionReason('');
-    setSelectedDesign(null);
-    refetch();
+    try {
+      const response = await MockAPI.approveDesign(selectedDesign.id, { approved: false, reason: rejectionReason });
+      if (response.success) {
+        setShowRejectModal(false);
+        setShowDetailModal(false);
+        setRejectionReason('');
+        setSelectedDesign(null);
+        refetch();
+      } else {
+        console.error('Failed to reject design:', response.error);
+        // TODO: Show error toast/notification
+      }
+    } catch (error) {
+      console.error('Error rejecting design:', error);
+      // TODO: Show error toast/notification
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handleFlagDesign = (design: Design) => {
@@ -123,23 +148,45 @@ export default function DesignsPage() {
   const handleSubmitFlag = async () => {
     if (!selectedDesign || !flagReason.trim()) return;
     setIsFlagging(true);
-    await MockAPI.flagDesign(selectedDesign.id, flagReason);
-    setIsFlagging(false);
-    setShowFlagModal(false);
-    setFlagReason('');
-    refetch();
-    if (selectedDesign.id === designDetail?.data?.id) {
-      refetchDesignDetail();
+    try {
+      const response = await MockAPI.flagDesign(selectedDesign.id, flagReason);
+      if (response.success) {
+        setShowFlagModal(false);
+        setFlagReason('');
+        refetch();
+        if (selectedDesign.id === designDetail?.data?.id) {
+          refetchDesignDetail();
+        }
+      } else {
+        console.error('Failed to flag design:', response.error);
+        // TODO: Show error toast/notification
+      }
+    } catch (error) {
+      console.error('Error flagging design:', error);
+      // TODO: Show error toast/notification
+    } finally {
+      setIsFlagging(false);
     }
   };
 
   const handleResolveFlag = async (design: Design) => {
     setIsResolvingFlag(true);
-    await MockAPI.resolveFlag(design.id);
-    setIsResolvingFlag(false);
-    refetch();
-    if (design.id === designDetail?.data?.id) {
-      refetchDesignDetail();
+    try {
+      const response = await MockAPI.resolveFlag(design.id);
+      if (response.success) {
+        refetch();
+        if (design.id === designDetail?.data?.id) {
+          refetchDesignDetail();
+        }
+      } else {
+        console.error('Failed to resolve flag:', response.error);
+        // TODO: Show error toast/notification
+      }
+    } catch (error) {
+      console.error('Error resolving flag:', error);
+      // TODO: Show error toast/notification
+    } finally {
+      setIsResolvingFlag(false);
     }
   };
 
