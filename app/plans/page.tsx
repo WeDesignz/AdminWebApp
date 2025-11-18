@@ -129,8 +129,8 @@ export default function PlansPage() {
       planName: '',
       description: '',
       price: '',
-      duration: 'Monthly',
-      status: 'Active',
+      duration: 'monthly',
+      status: 'active',
     });
   };
 
@@ -547,7 +547,7 @@ export default function PlansPage() {
             <Dropdown
               options={durationOptions}
               value={formData.duration}
-              onChange={(value) => setFormData({ ...formData, duration: value as 'Monthly' | 'Annually' })}
+              onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
               placeholder="Select Duration"
             />
           </div>
@@ -559,7 +559,7 @@ export default function PlansPage() {
             <Dropdown
               options={statusOptions}
               value={formData.status}
-              onChange={(value) => setFormData({ ...formData, status: value as 'Active' | 'Inactive' })}
+              onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
               placeholder="Select Status"
             />
           </div>
@@ -645,7 +645,7 @@ export default function PlansPage() {
             <Dropdown
               options={durationOptions}
               value={formData.duration}
-              onChange={(value) => setFormData({ ...formData, duration: value as 'Monthly' | 'Annually' })}
+              onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
               placeholder="Select Duration"
             />
           </div>
@@ -657,7 +657,7 @@ export default function PlansPage() {
             <Dropdown
               options={statusOptions}
               value={formData.status}
-              onChange={(value) => setFormData({ ...formData, status: value as 'Active' | 'Inactive' })}
+              onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
               placeholder="Select Status"
             />
           </div>
