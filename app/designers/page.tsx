@@ -1406,10 +1406,7 @@ export default function DesignersPage() {
           {selectedDesigner && (
             <div className="bg-muted/10 p-3 rounded-lg">
               <p className="text-sm font-medium">
-                Designer: {selectedDesigner.name || 
-                  (selectedDesigner.first_name && selectedDesigner.last_name 
-                    ? `${selectedDesigner.first_name} ${selectedDesigner.last_name}`.trim()
-                    : selectedDesigner.first_name || selectedDesigner.last_name || selectedDesigner.username || 'N/A')}
+                Designer: {selectedDesigner.name || 'N/A'}
               </p>
               <p className="text-xs text-muted mt-1">
                 Email: {selectedDesigner.email || 'N/A'}
