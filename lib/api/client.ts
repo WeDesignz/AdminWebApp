@@ -25,9 +25,8 @@ class ApiClient {
         const state = useAuthStore.getState();
         if (state.accessToken) {
           headers['Authorization'] = `Bearer ${state.accessToken}`;
-        } else {
-          console.warn('No access token found in auth store');
         }
+        // Don't warn if no token - this is normal during login/2FA flow
       } catch (error) {
         console.error('Error getting auth headers:', error);
       }
