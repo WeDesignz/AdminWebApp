@@ -3,7 +3,7 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery } from '@tanstack/react-query';
 import { MockAPI } from '@/lib/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
 import { Squares2X2Icon, ListBulletIcon, MagnifyingGlassIcon, PhotoIcon, CheckCircleIcon, ClockIcon, ArrowUpIcon, ArrowDownIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, FlagIcon, ShieldCheckIcon, ChartBarIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -12,6 +12,7 @@ import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Design } from '@/types';
+import { useAuthStore } from '@/store/authStore';
 
 export default function DesignsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -34,6 +35,17 @@ export default function DesignsPage() {
   const [isResolvingFlag, setIsResolvingFlag] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivityDesign, setSelectedActivityDesign] = useState<Design | null>(null);
+  
+  // Wait for auth store to hydrate
+  const { isAuthenticated, accessToken } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  // Only enable queries when authenticated and hydrated
+  const isReady = isHydrated && isAuthenticated && !!accessToken;
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['designs', statusFilter, search, page, pageSize, sortOrder],
@@ -43,11 +55,13 @@ export default function DesignsPage() {
       page, 
       limit: pageSize
     }),
+    enabled: isReady, // Only fetch when authenticated
   });
 
   const { data: statsData } = useQuery({
     queryKey: ['designStats'],
     queryFn: () => MockAPI.getDesignStats(),
+    enabled: isReady, // Only fetch when authenticated
   });
 
   const { data: designDetail, refetch: refetchDesignDetail } = useQuery({
@@ -215,6 +229,17 @@ export default function DesignsPage() {
     { value: '48', label: '48' },
     { value: '96', label: '96' },
   ];
+
+  // Show loading while waiting for auth to hydrate
+  if (!isHydrated || !isReady) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

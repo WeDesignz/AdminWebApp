@@ -19,11 +19,17 @@ class ApiClient {
     };
 
     if (isBrowser) {
-      // Dynamically import to avoid SSR issues
-      const { useAuthStore } = await import('@/store/authStore');
-      const state = useAuthStore.getState();
-      if (state.accessToken) {
-        headers['Authorization'] = `Bearer ${state.accessToken}`;
+      try {
+        // Dynamically import to avoid SSR issues
+        const { useAuthStore } = await import('@/store/authStore');
+        const state = useAuthStore.getState();
+        if (state.accessToken) {
+          headers['Authorization'] = `Bearer ${state.accessToken}`;
+        } else {
+          console.warn('No access token found in auth store');
+        }
+      } catch (error) {
+        console.error('Error getting auth headers:', error);
       }
     }
 
@@ -161,6 +167,14 @@ class ApiClient {
 
           if (!retryResponse.ok) {
             const error = await this.parseErrorResponse(retryResponse);
+            // If still 401 after refresh, logout and redirect
+            if (retryResponse.status === 401) {
+              if (isBrowser) {
+                const { useAuthStore } = await import('@/store/authStore');
+                useAuthStore.getState().logout();
+                window.location.href = '/login';
+              }
+            }
             return {
               success: false,
               error: error.error || error.message || 'Request failed',
@@ -170,6 +184,12 @@ class ApiClient {
           const data = await retryResponse.json();
           return transformResponse<T>(data);
         } else {
+          // Token refresh failed, logout and redirect
+          if (isBrowser) {
+            const { useAuthStore } = await import('@/store/authStore');
+            useAuthStore.getState().logout();
+            window.location.href = '/login';
+          }
           return {
             success: false,
             error: 'Authentication failed. Please login again.',
@@ -315,18 +335,21 @@ class ApiClient {
       ...params,
     };
 
-    const url = endpoint;
+    // Build query string
     const searchParams = new URLSearchParams();
     Object.entries(allParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         searchParams.append(key, String(value));
       }
     });
-    const fullUrl = `${url}?${searchParams.toString()}`;
+    const queryString = searchParams.toString();
+    const fullEndpoint = queryString ? `${endpoint}?${queryString}` : endpoint;
 
     try {
-      // Try to get the raw response to check format
-      const response = await this.get<any>(fullUrl);
+      // Use request method directly to ensure auth headers are included
+      const response = await this.request<any>(fullEndpoint, {
+        method: 'GET',
+      });
 
       if (!response.success || !response.data) {
         return {
