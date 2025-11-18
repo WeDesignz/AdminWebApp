@@ -635,14 +635,10 @@ export const DesignsAPI = {
       const productData = response.data.data || response.data;
       const transformed = transformProductToDesign(productData);
       
-      // Include preview_files and sub_products from backend
+      // Include preview_files from backend
       if (productData.preview_files) {
         // Update previews to use preview_files
         transformed.previews = productData.preview_files.map((f: any) => f.url || f.file).filter(Boolean);
-      }
-      
-      if (productData.sub_products) {
-        transformed.subProducts = productData.sub_products;
       }
       
       // Include approval history
