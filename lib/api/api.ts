@@ -525,12 +525,26 @@ function transformProductToDesign(product: any): Design {
     'deleted': 'rejected',
   };
 
-  // Get first media file as thumbnail - check both 'file' and 'url' fields
-  const firstMedia = product.media_files?.[0];
-  const thumbnailUrl = firstMedia?.file || 
-                       firstMedia?.url ||
-                       product.thumbnail_url || 
-                       'https://via.placeholder.com/300?text=No+Image';
+  // Get thumbnail - prioritize mockup images, then JPG/PNG, then first media file
+  let thumbnailUrl = product.thumbnail_url || 'https://via.placeholder.com/300?text=No+Image';
+  
+  if (product.media_files && product.media_files.length > 0) {
+    // First, try to find a mockup image
+    const mockupMedia = product.media_files.find((m: any) => m.is_mockup === true);
+    if (mockupMedia) {
+      thumbnailUrl = mockupMedia.file || mockupMedia.url || thumbnailUrl;
+    } else {
+      // If no mockup, try to find a JPG/PNG image
+      const jpgPngMedia = product.media_files.find((m: any) => m.is_jpg_png === true);
+      if (jpgPngMedia) {
+        thumbnailUrl = jpgPngMedia.file || jpgPngMedia.url || thumbnailUrl;
+      } else {
+        // Fallback to first media file
+        const firstMedia = product.media_files[0];
+        thumbnailUrl = firstMedia?.file || firstMedia?.url || thumbnailUrl;
+      }
+    }
+  }
 
   // Extract previews from media files
   const previews = (product.media_files || [])
