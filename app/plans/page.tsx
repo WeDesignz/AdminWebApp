@@ -156,8 +156,8 @@ export default function PlansPage() {
         planName: formData.planName,
         description: descriptionArray,
         price: parseFloat(formData.price),
-        duration: formData.duration,
-        status: formData.status,
+        duration: formData.duration.charAt(0).toUpperCase() + formData.duration.slice(1) as 'Monthly' | 'Annually',
+        status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1) as 'Active' | 'Inactive',
       });
 
       if (response.success) {
@@ -223,8 +223,8 @@ export default function PlansPage() {
         planName: formData.planName,
         description: descriptionArray,
         price: parseFloat(formData.price),
-        duration: formData.duration,
-        status: formData.status,
+        duration: formData.duration.charAt(0).toUpperCase() + formData.duration.slice(1) as 'Monthly' | 'Annually',
+        status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1) as 'Active' | 'Inactive',
       });
 
       if (response.success) {
