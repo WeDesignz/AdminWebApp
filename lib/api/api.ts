@@ -637,7 +637,6 @@ export const DesignsAPI = {
       
       // Include preview_files and sub_products from backend
       if (productData.preview_files) {
-        transformed.previewFiles = productData.preview_files;
         // Update previews to use preview_files
         transformed.previews = productData.preview_files.map((f: any) => f.url || f.file).filter(Boolean);
       }
