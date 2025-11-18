@@ -836,7 +836,7 @@ export default function DesignersPage() {
                                 }));
                               
                               // Find current image index
-                              const currentIndex = imagesList.findIndex(img => img.url === product.image.url);
+                              const currentIndex = imagesList.findIndex((img: { url: string; title: string }) => img.url === product.image.url);
                               
                               setPreviewImagesList(imagesList);
                               setCurrentImageIndex(currentIndex >= 0 ? currentIndex : 0);
