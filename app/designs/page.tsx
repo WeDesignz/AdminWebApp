@@ -1,8 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { RealAPI as API } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
@@ -13,19 +13,19 @@ import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Design } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import toast from 'react-hot-toast';
 
 export default function DesignsPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(20);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [fullPreviewImage, setFullPreviewImage] = useState<string | null>(null);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [allDesignImages, setAllDesignImages] = useState<string[]>([]);
@@ -35,10 +35,12 @@ export default function DesignsPage() {
   const [isResolvingFlag, setIsResolvingFlag] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivityDesign, setSelectedActivityDesign] = useState<Design | null>(null);
+  const [approvingDesignId, setApprovingDesignId] = useState<string | null>(null);
   
   // Wait for auth store to hydrate
   const { isAuthenticated, accessToken } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setIsHydrated(true);
@@ -49,7 +51,7 @@ export default function DesignsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['designs', statusFilter, search, page, pageSize, sortOrder],
-    queryFn: () => MockAPI.getDesigns({ 
+    queryFn: () => API.getDesigns({ 
       status: statusFilter, 
       search, 
       page, 
@@ -60,13 +62,13 @@ export default function DesignsPage() {
 
   const { data: statsData } = useQuery({
     queryKey: ['designStats'],
-    queryFn: () => MockAPI.getDesignStats(),
+    queryFn: () => API.getDesignStats(),
     enabled: isReady, // Only fetch when authenticated
   });
 
   const { data: designDetail, refetch: refetchDesignDetail } = useQuery({
     queryKey: ['design', selectedDesign?.id],
-    queryFn: () => MockAPI.getDesign(selectedDesign!.id),
+    queryFn: () => API.getDesign(selectedDesign!.id),
     enabled: !!selectedDesign && showDetailModal,
   });
 
@@ -92,27 +94,42 @@ export default function DesignsPage() {
   };
 
   const handleApproveDesign = async (design: Design) => {
-    setIsUpdatingStatus(true);
+    // Set loading state - disable button while API call is running
+    setApprovingDesignId(design.id);
+    
     try {
-      const response = await MockAPI.approveDesign(design.id, { approved: true });
+      // Call the API with timeout handling (handled by apiClient)
+      const response = await API.approveDesign(design.id, { approved: true });
+      
       if (response.success) {
-        if (selectedDesign?.id === design.id) {
-          setShowDetailModal(false);
-          setSelectedDesign(null);
-        }
-        refetch();
-        if (designDetail?.data?.id === design.id) {
-          refetchDesignDetail();
-        }
+        // Show success toast first - this must always appear
+        toast.success('Approved successfully');
+        
+        // Wait to ensure toast is visible before refetching (700ms as requested)
+        await new Promise(resolve => setTimeout(resolve, 700));
+        
+        // Invalidate and refetch all related queries to update UI
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['designs'] }),
+          queryClient.invalidateQueries({ queryKey: ['designStats'] }),
+          queryClient.invalidateQueries({ queryKey: ['design', design.id] }),
+        ]);
+        
+        // Refetch the designs list to get updated data
+        await queryClient.refetchQueries({ queryKey: ['designs'] });
       } else {
-        console.error('Failed to approve design:', response.error);
-        // TODO: Show error toast/notification
+        // Show error toast with specific error message
+        toast.error(response.error || 'Failed to approve design');
       }
     } catch (error) {
+      // Handle any unexpected errors
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while approving the design';
+      toast.error(errorMessage);
       console.error('Error approving design:', error);
-      // TODO: Show error toast/notification
     } finally {
-      setIsUpdatingStatus(false);
+      // CRITICAL: Always reset loading state, regardless of success or failure
+      // This ensures button is never permanently disabled
+      setApprovingDesignId(null);
     }
   };
 
@@ -127,25 +144,32 @@ export default function DesignsPage() {
   };
 
   const handleSubmitRejection = async () => {
-    if (!selectedDesign || !rejectionReason.trim()) return;
-    setIsUpdatingStatus(true);
+    if (!selectedDesign || !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    const rejectedDesignId = selectedDesign.id;
+    const rejectedDesignTitle = selectedDesign.title;
     try {
-      const response = await MockAPI.approveDesign(selectedDesign.id, { approved: false, reason: rejectionReason });
+      const response = await API.approveDesign(selectedDesign.id, { approved: false, reason: rejectionReason });
       if (response.success) {
-        setShowRejectModal(false);
-        setShowDetailModal(false);
-        setRejectionReason('');
-        setSelectedDesign(null);
-        refetch();
+        toast.success(`Design "${rejectedDesignTitle}" rejected successfully`);
+        
+        // Close the modal
+        handleCloseRejectModal();
+        
+        // Invalidate and refetch all related queries
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['designs'] }),
+          queryClient.refetchQueries({ queryKey: ['designStats'] }),
+          queryClient.refetchQueries({ queryKey: ['design', rejectedDesignId] }),
+        ]);
       } else {
-        console.error('Failed to reject design:', response.error);
-        // TODO: Show error toast/notification
+        toast.error(response.error || 'Failed to reject design');
       }
     } catch (error) {
-      console.error('Error rejecting design:', error);
-      // TODO: Show error toast/notification
-    } finally {
-      setIsUpdatingStatus(false);
+      toast.error('An error occurred while rejecting the design');
+      console.error(error);
     }
   };
 
@@ -160,25 +184,34 @@ export default function DesignsPage() {
   };
 
   const handleSubmitFlag = async () => {
-    if (!selectedDesign || !flagReason.trim()) return;
+    if (!selectedDesign || !flagReason.trim()) {
+      toast.error('Please provide a reason for flagging');
+      return;
+    }
     setIsFlagging(true);
+    const flaggedDesignId = selectedDesign.id;
     try {
-      const response = await MockAPI.flagDesign(selectedDesign.id, flagReason);
+      const response = await API.flagDesign(selectedDesign.id, flagReason);
       if (response.success) {
+        toast.success(`Design "${selectedDesign.title}" flagged successfully`);
         setShowFlagModal(false);
         setFlagReason('');
-        refetch();
-        if (selectedDesign.id === designDetail?.data?.id) {
-          refetchDesignDetail();
-        }
+        
+        // Invalidate and refetch all related queries
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['designs'] }),
+          queryClient.refetchQueries({ queryKey: ['design', flaggedDesignId] }),
+        ]);
+        
+        setIsFlagging(false);
       } else {
+        toast.error(response.error || 'Failed to flag design');
         console.error('Failed to flag design:', response.error);
-        // TODO: Show error toast/notification
+        setIsFlagging(false);
       }
     } catch (error) {
+      toast.error('An error occurred while flagging the design');
       console.error('Error flagging design:', error);
-      // TODO: Show error toast/notification
-    } finally {
       setIsFlagging(false);
     }
   };
@@ -186,20 +219,25 @@ export default function DesignsPage() {
   const handleResolveFlag = async (design: Design) => {
     setIsResolvingFlag(true);
     try {
-      const response = await MockAPI.resolveFlag(design.id);
+      const response = await API.resolveFlag(design.id);
       if (response.success) {
-        refetch();
-        if (design.id === designDetail?.data?.id) {
-          refetchDesignDetail();
-        }
+        toast.success(`Flag resolved for design "${design.title}"`);
+        
+        // Invalidate and refetch all related queries
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['designs'] }),
+          queryClient.refetchQueries({ queryKey: ['design', design.id] }),
+        ]);
+        
+        setIsResolvingFlag(false);
       } else {
+        toast.error(response.error || 'Failed to resolve flag');
         console.error('Failed to resolve flag:', response.error);
-        // TODO: Show error toast/notification
+        setIsResolvingFlag(false);
       }
     } catch (error) {
+      toast.error('An error occurred while resolving the flag');
       console.error('Error resolving flag:', error);
-      // TODO: Show error toast/notification
-    } finally {
       setIsResolvingFlag(false);
     }
   };
@@ -224,10 +262,11 @@ export default function DesignsPage() {
   ];
 
   const pageSizeOptions = [
-    { value: '12', label: '12' },
-    { value: '24', label: '24' },
-    { value: '48', label: '48' },
-    { value: '96', label: '96' },
+    { value: '20', label: '20' },
+    { value: '50', label: '50' },
+    { value: '100', label: '100' },
+    { value: '200', label: '200' },
+    { value: '500', label: '500' },
   ];
 
   // Show loading while waiting for auth to hydrate
@@ -403,27 +442,30 @@ export default function DesignsPage() {
                         >
                           <ChartBarIcon className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="primary" 
-                          className="flex-1"
-                          onClick={() => handleApproveDesign(design)}
-                          disabled={isUpdatingStatus}
-                          isLoading={isUpdatingStatus && selectedDesign?.id === design.id}
-                          title="Approve"
-                        >
-                          <CheckIcon className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="danger" 
-                          className="flex-1"
-                          onClick={() => handleRejectDesign(design)}
-                          disabled={isUpdatingStatus}
-                          title="Reject"
-                        >
-                          <XCircleIcon className="w-4 h-4" />
-                        </Button>
+                        {design.status !== 'approved' && (
+                          <Button 
+                            size="sm" 
+                            variant="primary" 
+                            className="flex-1"
+                            onClick={() => handleApproveDesign(design)}
+                            isLoading={approvingDesignId === design.id}
+                            disabled={approvingDesignId === design.id}
+                            title="Approve"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {design.status !== 'rejected' && design.status !== 'approved' && (
+                          <Button 
+                            size="sm" 
+                            variant="danger" 
+                            className="flex-1"
+                            onClick={() => handleRejectDesign(design)}
+                            title="Reject"
+                          >
+                            <XCircleIcon className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -461,6 +503,7 @@ export default function DesignsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-medium whitespace-nowrap">SR No</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Design</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Designer</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Category</th>
@@ -474,19 +517,23 @@ export default function DesignsPage() {
                 <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={8} className="text-center py-8">
+                        <td colSpan={9} className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                         </td>
                       </tr>
                     ) : !data?.data || data.data.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="text-center py-8 text-muted">
+                        <td colSpan={9} className="text-center py-8 text-muted">
                           No designs found
                         </td>
                       </tr>
                     ) : (
-                      data.data.map((design) => (
+                      data.data.map((design, index) => {
+                        // Calculate serial number based on current page and index
+                        const serialNumber = ((page - 1) * pageSize) + index + 1;
+                        return (
                     <tr key={design.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                          <td className="py-3 px-4 text-muted whitespace-nowrap">{serialNumber}</td>
                           <td className="py-3 px-4 font-medium whitespace-nowrap">{design.title}</td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{design.designerName}</td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{design.category}</td>
@@ -520,29 +567,33 @@ export default function DesignsPage() {
                               >
                                 <ChartBarIcon className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="primary"
-                                onClick={() => handleApproveDesign(design)}
-                                disabled={isUpdatingStatus}
-                                isLoading={isUpdatingStatus && selectedDesign?.id === design.id}
-                                title="Approve"
-                              >
-                                <CheckIcon className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="danger"
-                                onClick={() => handleRejectDesign(design)}
-                                disabled={isUpdatingStatus}
-                                title="Reject"
-                              >
-                                <XCircleIcon className="w-4 h-4" />
-                              </Button>
+                              {design.status !== 'approved' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="primary"
+                                  onClick={() => handleApproveDesign(design)}
+                                  isLoading={approvingDesignId === design.id}
+                                  disabled={approvingDesignId === design.id}
+                                  title="Approve"
+                                >
+                                  <CheckIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {design.status !== 'rejected' && design.status !== 'approved' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="danger"
+                                  onClick={() => handleRejectDesign(design)}
+                                  title="Reject"
+                                >
+                                  <XCircleIcon className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                       </td>
                     </tr>
-                      ))
+                        );
+                      })
                     )}
                 </tbody>
               </table>
@@ -627,84 +678,51 @@ export default function DesignsPage() {
                 )}
               </div>
             </div>
-            {/* Design Previews */}
-            {designDetail.data.previews && designDetail.data.previews.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold border-b border-border pb-2">Design Previews</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {(designDetail.data?.previews || []).map((preview, idx) => {
-                    // Collect all images for navigation
-                    const imageFiles = designDetail.data?.files?.filter(file => 
-                      file.type.toLowerCase().includes('image') || 
-                      file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
-                    ) || [];
-                    const allImages = [...(designDetail.data?.previews || []), ...imageFiles.map(file => file.url)];
-                    const previewIndex = idx;
-                    
-                    return (
-                      <div 
-                        key={idx} 
-                        className="aspect-video rounded-lg overflow-hidden border border-border relative group cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAllDesignImages(allImages);
-                          setCurrentPreviewIndex(previewIndex);
-                          setFullPreviewImage(preview);
-                        }}
-                      >
-                        <img 
-                          src={preview} 
-                          alt={`Preview ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <EyeIcon className="w-8 h-8 text-white" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Uploaded Designs */}
+            {/* Design Previews - Only JPG, PNG, and Mockup files */}
             {(() => {
-              // Collect all design images from previews and image files
-              const imageFiles = designDetail.data.files?.filter(file => 
-                file.type.toLowerCase().includes('image') || 
-                file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
-              ) || [];
-              const previews = designDetail.data.previews || [];
-              const allImages = [...previews, ...imageFiles.map(file => file.url)];
+              // Get preview files from backend (JPG, PNG, and mockup files only)
+              const previewFiles = (designDetail.data as any)?.preview_files || [];
               
-              if (allImages.length === 0) return null;
+              if (previewFiles.length === 0) return null;
+              
+              // Collect all preview URLs for navigation
+              const allPreviewUrls = previewFiles.map((file: any) => file.url || file.file).filter(Boolean);
               
               return (
-                <div className="space-y-4 border-t border-border pt-4">
-                  <h3 className="text-xl font-semibold border-b border-border pb-2">Uploaded Designs</h3>
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold border-b border-border pb-2">Design Previews</h3>
                   <div className="grid grid-cols-3 gap-4">
-                    {allImages.map((image, idx) => (
-                      <div 
-                        key={idx}
-                        className="aspect-square rounded-lg overflow-hidden border border-border relative group cursor-pointer"
-                        onMouseEnter={() => {}}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAllDesignImages(allImages);
-                          setCurrentPreviewIndex(idx);
-                          setFullPreviewImage(image);
-                        }}
-                      >
-                        <img 
-                          src={image} 
-                          alt={`Design ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <EyeIcon className="w-8 h-8 text-white" />
+                    {previewFiles.map((previewFile: any, idx: number) => {
+                      const previewUrl = previewFile.url || previewFile.file;
+                      if (!previewUrl) return null;
+                      
+                      return (
+                        <div 
+                          key={previewFile.id || idx} 
+                          className="aspect-video rounded-lg overflow-hidden border border-border relative group cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAllDesignImages(allPreviewUrls);
+                            setCurrentPreviewIndex(idx);
+                            setFullPreviewImage(previewUrl);
+                          }}
+                        >
+                          <img 
+                            src={previewUrl} 
+                            alt={previewFile.is_mockup ? 'Mockup' : `Preview ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {previewFile.is_mockup && (
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded">
+                              Mockup
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <EyeIcon className="w-8 h-8 text-white" />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -884,8 +902,7 @@ export default function DesignsPage() {
             <Button 
               variant="danger" 
               onClick={handleSubmitRejection}
-              disabled={!rejectionReason.trim() || isUpdatingStatus}
-              isLoading={isUpdatingStatus}
+              disabled={!rejectionReason.trim()}
               title="Submit Rejection"
             >
               <CheckIcon className="w-4 h-4" />

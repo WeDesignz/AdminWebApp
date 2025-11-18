@@ -633,9 +633,38 @@ export const DesignsAPI = {
     if (response.success && response.data) {
       // Handle both direct data and nested data structure
       const productData = response.data.data || response.data;
+      const transformed = transformProductToDesign(productData);
+      
+      // Include preview_files and sub_products from backend
+      if (productData.preview_files) {
+        transformed.previewFiles = productData.preview_files;
+        // Update previews to use preview_files
+        transformed.previews = productData.preview_files.map((f: any) => f.url || f.file).filter(Boolean);
+      }
+      
+      if (productData.sub_products) {
+        transformed.subProducts = productData.sub_products;
+      }
+      
+      // Include approval history
+      if (productData.approval_history) {
+        transformed.approvalHistory = productData.approval_history.map((h: any) => ({
+          id: String(h.id),
+          action: h.action,
+          performedBy: h.performed_by,
+          remarks: h.remarks,
+          timestamp: h.timestamp,
+        }));
+      }
+      
+      // Include designer details
+      if (productData.designer) {
+        transformed.designer = productData.designer;
+      }
+      
       return {
         success: true,
-        data: transformProductToDesign(productData),
+        data: transformed,
       };
     }
 

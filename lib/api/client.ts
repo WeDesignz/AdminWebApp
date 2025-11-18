@@ -128,24 +128,32 @@ class ApiClient {
   }
 
   /**
-   * Make API request with automatic retry on 401
+   * Make API request with automatic retry on 401 and timeout handling
    */
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    retryOn401 = true
+    retryOn401 = true,
+    timeout = 30000 // 30 seconds default timeout
   ): Promise<ApiResponse<T>> {
     const url = getApiUrl(endpoint);
     const headers = await this.getAuthHeaders();
 
     try {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           ...headers,
           ...(options.headers || {}),
         },
       });
+
+      clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - try to refresh token
       if (response.status === 401 && retryOn401) {
@@ -158,6 +166,7 @@ class ApiClient {
           };
           const retryResponse = await fetch(url, {
             ...options,
+            signal: controller.signal, // Use same signal for timeout
             headers: {
               ...retryHeaders,
               ...(options.headers || {}),
@@ -180,8 +189,26 @@ class ApiClient {
             };
           }
 
-          const data = await retryResponse.json();
-          return transformResponse<T>(data);
+          // Handle retry response body
+          const contentType = retryResponse.headers.get('content-type');
+          let retryData;
+          
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const text = await retryResponse.text();
+              if (text.trim()) {
+                retryData = JSON.parse(text);
+              } else {
+                retryData = { message: 'Success', detail: 'Success' };
+              }
+            } catch (parseError) {
+              retryData = { message: 'Success', detail: 'Success' };
+            }
+          } else {
+            retryData = { message: 'Success', detail: 'Success' };
+          }
+          
+          return transformResponse<T>(retryData);
         } else {
           // Token refresh failed, logout and redirect
           if (isBrowser) {
@@ -204,9 +231,38 @@ class ApiClient {
         };
       }
 
-      const data = await response.json();
+      // Handle response body - check if it's empty or non-JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          const text = await response.text();
+          if (text.trim()) {
+            data = JSON.parse(text);
+          } else {
+            // Empty JSON body, create success response
+            data = { message: 'Success', detail: 'Success' };
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, treat as success with default message
+          data = { message: 'Success', detail: 'Success' };
+        }
+      } else {
+        // Non-JSON response or no content-type, create success response
+        data = { message: 'Success', detail: 'Success' };
+      }
+      
       return transformResponse<T>(data);
     } catch (error) {
+      // Handle timeout and abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'Request timeout. Please try again.',
+        };
+      }
+      
       const apiError = this.handleError(error);
       return {
         success: false,

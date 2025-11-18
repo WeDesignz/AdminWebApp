@@ -537,6 +537,9 @@ class RealAPI {
 // In production, you can switch this to use the real API
 export const MockAPI = RealAPI;
 
+// Export RealAPI directly
+export { RealAPI };
+
 // Also export the structured API
 export { API };
 export default API;

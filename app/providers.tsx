@@ -16,8 +16,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }));
 
   useEffect(() => {
-    const theme = useUIStore.getState().theme;
-    useUIStore.getState().setTheme(theme);
+    // Ensure light theme is set by default and dark class is removed
+    if (typeof window !== 'undefined') {
+      const currentTheme = useUIStore.getState().theme;
+      // Always remove dark class first
+      document.documentElement.classList.remove('dark');
+      // If theme is not set or is dark, set it to light
+      if (!currentTheme || currentTheme === 'dark') {
+        useUIStore.getState().setTheme('light');
+      } else {
+        // Ensure dark class is not present for light theme
+        if (currentTheme === 'light') {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    }
   }, []);
 
   return (

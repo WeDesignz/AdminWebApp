@@ -14,7 +14,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       sidebarCollapsed: false,
-      theme: 'light',
+      theme: 'light', // Default to light theme
 
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
@@ -31,7 +31,11 @@ export const useUIStore = create<UIState>()(
 
       setTheme: (theme) => {
         if (typeof window !== 'undefined') {
-          document.documentElement.classList.toggle('dark', theme === 'dark');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
         }
         set({ theme });
       },

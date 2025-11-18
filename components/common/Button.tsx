@@ -24,8 +24,8 @@ export function Button({
     secondary: 'bg-accent hover:bg-accent-dark text-white hover:shadow-lg hover:-translate-y-0.5',
     outline: 'border border-primary text-primary hover:bg-primary hover:text-white',
     ghost: 'text-primary hover:bg-primary/10',
-    danger: 'bg-error hover:bg-red-600 text-white hover:shadow-lg hover:-translate-y-0.5',
-    warning: 'bg-warning hover:bg-amber-600 text-white hover:shadow-lg hover:-translate-y-0.5',
+    danger: 'bg-red-600 hover:bg-red-700 text-white hover:shadow-lg hover:-translate-y-0.5',
+    warning: 'bg-amber-500 hover:bg-amber-600 text-white hover:shadow-lg hover:-translate-y-0.5',
   };
 
   const sizes = {
