@@ -495,6 +495,15 @@ class RealAPI {
     return API.systemConfig.updateSystemConfig(data);
   }
 
+  static async getBusinessConfig(): Promise<ApiResponse<{
+    commission_rate: number;
+    gst_percentage: number;
+    custom_order_time_slot_hours: number;
+    minimum_required_designs_onboard: number;
+  }>> {
+    return API.systemConfig.getBusinessConfig();
+  }
+
   // Admin Profile methods
   static async getAdminProfile(): Promise<ApiResponse<Admin>> {
     return API.settings.getAdminProfile();

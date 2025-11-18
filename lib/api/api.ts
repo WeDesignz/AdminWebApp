@@ -1191,6 +1191,39 @@ export const SystemConfigAPI = {
     // Note: This endpoint may need to be created in backend
     return apiClient.put<SystemConfig>('api/coreadmin/system-config/', data);
   },
+
+  /**
+   * Get Business Configuration (read-only values from environment)
+   */
+  async getBusinessConfig(): Promise<ApiResponse<{
+    commission_rate: number;
+    gst_percentage: number;
+    custom_order_time_slot_hours: number;
+    minimum_required_designs_onboard: number;
+  }>> {
+    const response = await apiClient.get<{
+      message: string;
+      data: {
+        commission_rate: number;
+        gst_percentage: number;
+        custom_order_time_slot_hours: number;
+        minimum_required_designs_onboard: number;
+      };
+    }>('api/coreadmin/business-config/');
+    
+    // Transform response to match expected format
+    if (response.data?.data) {
+      return {
+        data: response.data.data,
+      };
+    }
+    return response as ApiResponse<{
+      commission_rate: number;
+      gst_percentage: number;
+      custom_order_time_slot_hours: number;
+      minimum_required_designs_onboard: number;
+    }>;
+  },
 };
 
 /**

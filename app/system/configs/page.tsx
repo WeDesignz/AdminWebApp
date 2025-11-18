@@ -2,7 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { MockAPI, API } from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { SystemConfig, Design } from '@/types';
@@ -28,6 +28,12 @@ export default function SystemConfigsPage() {
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['system-config'],
     queryFn: () => MockAPI.getSystemConfig(),
+  });
+
+  // Fetch business config from API (read-only values from environment)
+  const { data: businessConfigData } = useQuery({
+    queryKey: ['business-config'],
+    queryFn: () => API.systemConfig.getBusinessConfig(),
   });
 
   const { data: designsData } = useQuery({
@@ -67,6 +73,19 @@ export default function SystemConfigsPage() {
       });
     }
   }, [configData]);
+
+  // Update business config values from API (these are read-only from environment)
+  useEffect(() => {
+    if (businessConfigData?.data) {
+      setFormData(prev => ({
+        ...prev,
+        commissionRate: businessConfigData.data.commission_rate,
+        gstPercentage: businessConfigData.data.gst_percentage,
+        customOrderTimeSlot: businessConfigData.data.custom_order_time_slot_hours,
+        minimumRequiredDesigns: businessConfigData.data.minimum_required_designs_onboard,
+      }));
+    }
+  }, [businessConfigData]);
 
   const activeDesigns = designsData?.data?.filter((d: Design) => d.status === 'approved') || [];
 
