@@ -278,26 +278,64 @@ class ApiClient {
     try {
       const data = await response.json();
       
-      // Handle Django REST Framework serializer errors (field-level errors)
-      if (data.email || data.password || data.non_field_errors) {
-        const fieldErrors: string[] = [];
-        if (data.email) {
-          fieldErrors.push(Array.isArray(data.email) ? data.email.join(', ') : data.email);
-        }
-        if (data.password) {
-          fieldErrors.push(Array.isArray(data.password) ? data.password.join(', ') : data.password);
-        }
-        if (data.non_field_errors) {
-          fieldErrors.push(Array.isArray(data.non_field_errors) ? data.non_field_errors.join(', ') : data.non_field_errors);
-        }
+      // Handle validation errors from details field (Django REST Framework format)
+      const errorDetails = data.details || data;
+      const fieldErrors: string[] = [];
+      
+      // Collect all field-level errors
+      if (errorDetails && typeof errorDetails === 'object') {
+        Object.keys(errorDetails).forEach((key) => {
+          const value = errorDetails[key];
+          if (Array.isArray(value)) {
+            // Handle array of errors
+            value.forEach((error: string) => {
+              if (key === 'non_field_errors') {
+                // Make error messages more user-friendly
+                let friendlyError = error;
+                // Handle unique constraint errors
+                if (error.includes('must make a unique set')) {
+                  friendlyError = 'A plan with this name and duration already exists. Please choose a different combination.';
+                } else if (error.includes('already exists')) {
+                  friendlyError = error.replace(/already exists/i, 'already exists. Please choose a different value.');
+                }
+                fieldErrors.push(friendlyError);
+              } else {
+                // Format field errors: "Field name: error message"
+                const fieldName = key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+                fieldErrors.push(`${fieldName}: ${error}`);
+              }
+            });
+          } else if (typeof value === 'string') {
+            // Handle single string error
+            if (key === 'non_field_errors') {
+              // Make error messages more user-friendly
+              let friendlyError = value;
+              // Handle unique constraint errors
+              if (value.includes('must make a unique set')) {
+                friendlyError = 'A plan with this name and duration already exists. Please choose a different combination.';
+              } else if (value.includes('already exists')) {
+                friendlyError = value.replace(/already exists/i, 'already exists. Please choose a different value.');
+              }
+              fieldErrors.push(friendlyError);
+            } else {
+              const fieldName = key.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+              fieldErrors.push(`${fieldName}: ${value}`);
+            }
+          }
+        });
+      }
+      
+      // If we found field errors, return them
+      if (fieldErrors.length > 0) {
         return {
-          error: fieldErrors.join(' ') || 'Validation error',
-          message: fieldErrors.join(' ') || 'Validation error',
-          detail: data,
-          errors: data,
+          error: fieldErrors.join('. ') || 'Validation error',
+          message: fieldErrors.join('. ') || 'Validation error',
+          detail: data.detail || data.error,
+          errors: errorDetails,
         };
       }
       
+      // Fallback to standard error fields
       return {
         error: data.error || data.message || data.detail || 'Request failed',
         message: data.message || data.detail || 'Request failed',

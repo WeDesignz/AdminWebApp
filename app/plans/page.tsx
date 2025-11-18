@@ -22,6 +22,40 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
+// Helper function to format price with Rupee symbol and duration
+const formatPlanPrice = (price: number, duration: string | undefined | null): string => {
+  const formattedPrice = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+  
+  if (!duration) {
+    return formattedPrice;
+  }
+  
+  const durationLower = duration.toLowerCase();
+  const durationText = durationLower === 'monthly' ? 'month' : 'year';
+  return `${formattedPrice} / ${durationText}`;
+};
+
+// Helper function to get badge color for plan name
+const getPlanBadgeColor = (planName: string | undefined | null): string => {
+  if (!planName) {
+    return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+  }
+  const name = planName.toLowerCase();
+  if (name === 'basic') {
+    return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+  } else if (name === 'prime') {
+    return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+  } else if (name === 'premium') {
+    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+  }
+  return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+};
+
 export default function PlansPage() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -30,15 +64,15 @@ export default function PlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Form state
   const [formData, setFormData] = useState({
     planName: '',
     description: '',
     price: '',
-    duration: 'Monthly' as 'Monthly' | 'Annually',
-    status: 'Active' as 'Active' | 'Inactive',
+    duration: 'monthly' as 'monthly' | 'annually',
+    status: 'active' as 'active' | 'inactive',
   });
 
   const { data, isLoading } = useQuery({
@@ -51,8 +85,8 @@ export default function PlansPage() {
       planName: '',
       description: '',
       price: '',
-      duration: 'Monthly',
-      status: 'Active',
+      duration: 'monthly',
+      status: 'active',
     });
     setSelectedPlan(null);
     setShowCreateModal(true);
@@ -60,13 +94,13 @@ export default function PlansPage() {
 
   const handleEdit = (plan: Plan) => {
     setFormData({
-      planName: plan.planName,
+      planName: plan.planName ? plan.planName.toLowerCase() : '',
       description: Array.isArray(plan.description) 
         ? plan.description.join('\n') 
         : plan.description,
       price: plan.price.toString(),
-      duration: plan.duration,
-      status: plan.status,
+      duration: plan.duration ? plan.duration.toLowerCase() as 'monthly' | 'annually' : 'monthly',
+      status: plan.status ? plan.status.toLowerCase() as 'active' | 'inactive' : 'active',
     });
     setSelectedPlan(plan);
     setShowEditModal(true);
@@ -127,14 +161,28 @@ export default function PlansPage() {
       });
 
       if (response.success) {
-        toast.success('Plan created successfully');
+        // Show appropriate message based on whether plan was created or reactivated
+        const wasReactivated = response.data?.was_reactivated;
+        toast.success(
+          wasReactivated 
+            ? 'Plan reactivated and updated successfully'
+            : 'Plan created successfully'
+        );
         handleCloseCreateModal();
         queryClient.invalidateQueries({ queryKey: ['plans'] });
       } else {
-        toast.error(response.error || 'Failed to create plan');
+        // Display validation errors properly
+        const errorMessage = response.error || 'Failed to create plan';
+        toast.error(errorMessage, {
+          duration: 5000, // Show for 5 seconds to allow reading
+        });
       }
-    } catch (error) {
-      toast.error('An error occurred while creating plan');
+    } catch (error: any) {
+      // Handle network errors or other exceptions
+      const errorMessage = error?.message || error?.error || 'An error occurred while creating plan';
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -143,19 +191,19 @@ export default function PlansPage() {
   // Dropdown options
   const planNameOptions = [
     { value: '', label: 'Select Plan Name' },
-    { value: 'Basic', label: 'Basic' },
-    { value: 'Prime', label: 'Prime' },
-    { value: 'Premium', label: 'Premium' },
+    { value: 'basic', label: 'Basic' },
+    { value: 'prime', label: 'Prime' },
+    { value: 'premium', label: 'Premium' },
   ];
 
   const durationOptions = [
-    { value: 'Monthly', label: 'Monthly' },
-    { value: 'Annually', label: 'Annually' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'annually', label: 'Annually' },
   ];
 
   const statusOptions = [
-    { value: 'Active', label: 'Active' },
-    { value: 'Inactive', label: 'Inactive' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
   ];
 
   const handleSubmitEdit = async () => {
@@ -184,10 +232,18 @@ export default function PlansPage() {
         handleCloseEditModal();
         queryClient.invalidateQueries({ queryKey: ['plans'] });
       } else {
-        toast.error(response.error || 'Failed to update plan');
+        // Display validation errors properly
+        const errorMessage = response.error || 'Failed to update plan';
+        toast.error(errorMessage, {
+          duration: 5000, // Show for 5 seconds to allow reading
+        });
       }
-    } catch (error) {
-      toast.error('An error occurred while updating plan');
+    } catch (error: any) {
+      // Handle network errors or other exceptions
+      const errorMessage = error?.message || error?.error || 'An error occurred while updating plan';
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -222,19 +278,8 @@ export default function PlansPage() {
             <p className="text-muted mt-1">Manage pricing and plan features</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
+            {/* View Mode Toggle - Grid on left, List on right */}
             <div className="flex items-center gap-1 p-1 bg-muted/20 rounded-lg">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'table'
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-primary'
-                }`}
-                title="Table View"
-              >
-                <TableCellsIcon className="w-5 h-5" />
-              </button>
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-md transition-colors ${
@@ -245,6 +290,17 @@ export default function PlansPage() {
                 title="Grid View"
               >
                 <Squares2X2Icon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'table'
+                    ? 'bg-primary text-white'
+                    : 'text-muted hover:text-primary'
+                }`}
+                title="List View"
+              >
+                <TableCellsIcon className="w-5 h-5" />
               </button>
             </div>
             <Button 
@@ -369,7 +425,7 @@ export default function PlansPage() {
               data.data.map((plan) => (
                 <div key={plan.id} className="card hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">{plan.planName}</h3>
+                    <h3 className="text-2xl font-bold">{plan.planName || 'Unnamed Plan'}</h3>
                     <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                       plan.status === 'Active' 
                         ? 'bg-success/20 text-success' 
@@ -379,15 +435,10 @@ export default function PlansPage() {
                     </span>
                   </div>
 
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
-                    <span className="text-muted">/{plan.duration === 'Monthly' ? 'mo' : 'yr'}</span>
-                  </div>
-
                   <div className="mb-6">
-                    <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
-                      {plan.duration}
-                    </span>
+                    <div className="text-4xl font-bold">
+                      {formatPlanPrice(plan.price, plan.duration)}
+                    </div>
                   </div>
 
                   <div className="space-y-2 mb-6">

@@ -903,6 +903,37 @@ export const CustomOrdersAPI = {
 };
 
 /**
+ * Transform backend plan to frontend plan format
+ */
+function transformBackendPlanToFrontend(backendPlan: any): Plan {
+  // Capitalize first letter of plan_name for display
+  const planName = backendPlan.plan_name 
+    ? backendPlan.plan_name.charAt(0).toUpperCase() + backendPlan.plan_name.slice(1).toLowerCase()
+    : 'Unknown';
+  
+  // Capitalize first letter of plan_duration
+  const duration = backendPlan.plan_duration
+    ? backendPlan.plan_duration.charAt(0).toUpperCase() + backendPlan.plan_duration.slice(1).toLowerCase()
+    : 'Monthly';
+  
+  // Capitalize first letter of status
+  const status = backendPlan.status
+    ? backendPlan.status.charAt(0).toUpperCase() + backendPlan.status.slice(1).toLowerCase()
+    : 'Active';
+  
+  return {
+    id: String(backendPlan.id),
+    planName: planName,
+    description: backendPlan.description || [],
+    price: backendPlan.price ? parseFloat(String(backendPlan.price)) : 0,
+    duration: duration === 'Monthly' ? 'Monthly' : 'Annually',
+    status: status === 'Active' ? 'Active' : 'Inactive',
+    createdAt: backendPlan.created_at,
+    updatedAt: backendPlan.updated_at,
+  };
+}
+
+/**
  * Plans API
  */
 export const PlansAPI = {
@@ -910,8 +941,14 @@ export const PlansAPI = {
    * Get Plans List
    */
   async getPlans(): Promise<ApiResponse<Plan[]>> {
-    const response = await apiClient.get<Plan[]>('api/coreadmin/subscription-plans/');
-    return response;
+    const response = await apiClient.get<any[]>('api/coreadmin/subscription-plans/');
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: response.data.map(transformBackendPlanToFrontend),
+      };
+    }
+    return response as ApiResponse<Plan[]>;
   },
 
   /**
@@ -924,14 +961,49 @@ export const PlansAPI = {
     duration: 'Monthly' | 'Annually';
     status: 'Active' | 'Inactive';
   }): Promise<ApiResponse<Plan>> {
-    return apiClient.post<Plan>('api/coreadmin/subscription-plans/create/', data);
+    // Transform frontend data to backend format
+    const backendData = {
+      plan_name: data.planName.toLowerCase(), // Convert to lowercase: 'Basic' -> 'basic'
+      plan_duration: data.duration.toLowerCase(), // Convert to lowercase: 'Monthly' -> 'monthly'
+      description: data.description, // Can be string or array, backend handles it
+      price: data.price,
+      status: data.status.toLowerCase(), // Convert to lowercase: 'Active' -> 'active'
+    };
+    const response = await apiClient.post<any>('api/coreadmin/subscription-plans/create/', backendData);
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: transformBackendPlanToFrontend(response.data),
+      };
+    }
+    return response as ApiResponse<Plan>;
   },
 
   /**
    * Update Plan
    */
   async updatePlan(planId: string, data: Partial<Plan>): Promise<ApiResponse<Plan>> {
-    return apiClient.put<Plan>(`api/coreadmin/subscription-plans/${planId}/update/`, data);
+    // Transform frontend data to backend format
+    const backendData: any = {};
+    if ((data as any).planName !== undefined) {
+      backendData.plan_name = typeof (data as any).planName === 'string' ? (data as any).planName.toLowerCase() : (data as any).planName;
+    }
+    if ((data as any).duration !== undefined) {
+      backendData.plan_duration = typeof (data as any).duration === 'string' ? (data as any).duration.toLowerCase() : (data as any).duration;
+    }
+    if (data.description !== undefined) backendData.description = data.description;
+    if (data.price !== undefined) backendData.price = data.price;
+    if (data.status !== undefined) {
+      backendData.status = typeof data.status === 'string' ? data.status.toLowerCase() : data.status;
+    }
+    const response = await apiClient.put<any>(`api/coreadmin/subscription-plans/${planId}/update/`, backendData);
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: transformBackendPlanToFrontend(response.data),
+      };
+    }
+    return response as ApiResponse<Plan>;
   },
 
   /**
