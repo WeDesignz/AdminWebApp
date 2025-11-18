@@ -117,8 +117,8 @@ export default function PlansPage() {
       planName: '',
       description: '',
       price: '',
-      duration: 'Monthly',
-      status: 'Active',
+      duration: 'monthly',
+      status: 'active',
     });
   };
 
