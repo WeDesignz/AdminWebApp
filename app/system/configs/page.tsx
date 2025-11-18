@@ -79,10 +79,10 @@ export default function SystemConfigsPage() {
     if (businessConfigData?.data) {
       setFormData(prev => ({
         ...prev,
-        commissionRate: businessConfigData.data.commission_rate,
-        gstPercentage: businessConfigData.data.gst_percentage,
-        customOrderTimeSlot: businessConfigData.data.custom_order_time_slot_hours,
-        minimumRequiredDesigns: businessConfigData.data.minimum_required_designs_onboard,
+        commissionRate: businessConfigData.data!.commission_rate,
+        gstPercentage: businessConfigData.data!.gst_percentage,
+        customOrderTimeSlot: businessConfigData.data!.custom_order_time_slot_hours,
+        minimumRequiredDesigns: businessConfigData.data!.minimum_required_designs_onboard,
       }));
     }
   }, [businessConfigData]);
