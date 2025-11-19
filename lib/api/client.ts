@@ -400,10 +400,10 @@ class ApiClient {
       // Handle timeout and abort errors
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          return {
-            success: false,
-            error: 'Request timeout. Please try again.',
-          };
+        return {
+          success: false,
+          error: 'Request timeout. Please try again.',
+        };
         }
         // Handle network errors (including canceled requests)
         if (error.message.includes('fetch') || error.message.includes('network')) {
