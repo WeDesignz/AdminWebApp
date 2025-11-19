@@ -377,6 +377,27 @@ export interface Bundle {
   thumbnailUrl?: string;
 }
 
+export interface Coupon {
+  id: string;
+  name: string;
+  code: string;
+  appliedToBase: boolean;
+  appliedToPrime: boolean;
+  appliedToPremium: boolean;
+  description?: string | null;
+  couponDiscountType: 'flat' | 'percentage';
+  discountValue: number;
+  maxUsage: number;
+  maxUsagePerUser: number;
+  minOrderValue: number;
+  startDateTime: string;
+  endDateTime: string;
+  status: 'active' | 'inactive' | 'expired' | 'scheduled';
+  usageCount?: number;
+  isValid?: boolean;
+  createdAt?: string;
+}
+
 export interface ActivityLog {
   id: string;
   adminId: string;

@@ -18,6 +18,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Squares2X2Icon,
+  TicketIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils/cn';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Customers', href: '/customers', icon: UsersIcon },
   { name: 'Designs', href: '/designs', icon: PhotoIcon },
   { name: 'Bundles', href: '/bundles', icon: Squares2X2Icon },
+  { name: 'Coupons', href: '/coupons', icon: TicketIcon },
   { name: 'Orders', href: '/orders', icon: ShoppingCartIcon },
   { name: 'Custom Orders', href: '/orders/custom', icon: ShoppingCartIcon },
   { name: 'Transactions', href: '/transactions', icon: CreditCardIcon },

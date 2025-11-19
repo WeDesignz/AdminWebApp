@@ -20,6 +20,7 @@ import type {
   Transaction,
   ActivityLog,
   SystemConfig,
+  Coupon,
 } from '@/types';
 
 /**
@@ -595,6 +596,29 @@ function transformProductToDesign(product: any): Design {
   };
 }
 
+function transformBackendCoupon(coupon: any): Coupon {
+  return {
+    id: String(coupon.id),
+    name: coupon.name,
+    code: coupon.code,
+    appliedToBase: Boolean(coupon.applied_to_base),
+    appliedToPrime: Boolean(coupon.applied_to_prime),
+    appliedToPremium: Boolean(coupon.applied_to_premium),
+    description: coupon.description,
+    couponDiscountType: coupon.coupon_discount_type || coupon.discount_type || 'flat',
+    discountValue: coupon.discount_value !== undefined ? parseFloat(String(coupon.discount_value)) : 0,
+    maxUsage: coupon.max_usage !== undefined ? Number(coupon.max_usage) : 0,
+    maxUsagePerUser: coupon.max_usage_per_user !== undefined ? Number(coupon.max_usage_per_user) : 1,
+    minOrderValue: coupon.min_order_value !== undefined ? parseFloat(String(coupon.min_order_value)) : 0,
+    startDateTime: coupon.start_date_time || coupon.startDateTime,
+    endDateTime: coupon.end_date_time || coupon.endDateTime,
+    status: coupon.status || 'active',
+    usageCount: coupon.usage_count ?? coupon.usageCount ?? 0,
+    isValid: coupon.is_valid ?? coupon.isValid ?? false,
+    createdAt: coupon.created_at || coupon.createdAt,
+  };
+}
+
 /**
  * Designs API
  */
@@ -1087,6 +1111,88 @@ export const BundlesAPI = {
   },
 };
 
+type CreateCouponInput = {
+  name: string;
+  code: string;
+  appliedToBase: boolean;
+  appliedToPrime: boolean;
+  appliedToPremium: boolean;
+  description?: string;
+  couponDiscountType: 'flat' | 'percentage';
+  discountValue: number;
+  maxUsage: number;
+  maxUsagePerUser: number;
+  minOrderValue: number;
+  startDateTime: string;
+  endDateTime: string;
+  status: Coupon['status'];
+};
+
+export const CouponsAPI = {
+  /**
+   * Get all coupons for admin dashboard
+   */
+  async getCoupons(): Promise<ApiResponse<Coupon[]>> {
+    const response = await apiClient.get<{ coupons: any[]; total?: number }>('api/coupons/admin/');
+
+    if (response.success && response.data) {
+      const coupons = Array.isArray(response.data.coupons)
+        ? response.data.coupons.map(transformBackendCoupon)
+        : Array.isArray(response.data)
+          ? (response.data as any[]).map(transformBackendCoupon)
+          : [];
+
+      return {
+        success: true,
+        data: coupons,
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch coupons',
+    };
+  },
+
+  /**
+   * Create a new coupon
+   */
+  async createCoupon(data: CreateCouponInput): Promise<ApiResponse<Coupon>> {
+    const payload = {
+      name: data.name,
+      code: data.code,
+      applied_to_base: data.appliedToBase,
+      applied_to_prime: data.appliedToPrime,
+      applied_to_premium: data.appliedToPremium,
+      description: data.description,
+      coupon_discount_type: data.couponDiscountType,
+      discount_value: data.discountValue,
+      max_usage: data.maxUsage,
+      max_usage_per_user: data.maxUsagePerUser,
+      min_order_value: data.minOrderValue,
+      start_date_time: data.startDateTime,
+      end_date_time: data.endDateTime,
+      status: data.status,
+    };
+
+    const response = await apiClient.post<{ coupon: any; message?: string }>('api/coupons/admin/', payload);
+
+    if (response.success && response.data) {
+      const couponData = (response.data as any).coupon || response.data;
+      return {
+        success: true,
+        data: transformBackendCoupon(couponData),
+        message: (response.data as any).message,
+      };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to create coupon',
+    };
+  },
+};
+
 /**
  * Transactions API
  */
@@ -1326,6 +1432,7 @@ export const API = {
   customOrders: CustomOrdersAPI,
   plans: PlansAPI,
   bundles: BundlesAPI,
+  coupons: CouponsAPI,
   transactions: TransactionsAPI,
   systemConfig: SystemConfigAPI,
   activityLogs: ActivityLogsAPI,
