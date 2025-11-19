@@ -49,12 +49,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
   
   // Build payload
   const payload = { action: 'approve' };
-  
-  console.log('[approveDesignXHR] Starting request:', {
-    url,
-    hasToken: !!token,
-    tokenPreview: token.substring(0, 20) + '...',
-  });
 
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
@@ -64,7 +58,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
     
     // Handle timeout
     xhr.ontimeout = () => {
-      console.error('[approveDesignXHR] Request timeout');
       resolve({
         success: false,
         error: 'Request timed out. Please try again.',
@@ -73,7 +66,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
     
     // Handle errors
     xhr.onerror = () => {
-      console.error('[approveDesignXHR] Network error');
       resolve({
         success: false,
         error: 'Network error occurred',
@@ -82,23 +74,16 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
     
     // Handle success
     xhr.onload = () => {
-      console.log('[approveDesignXHR] Response received:', {
-        status: xhr.status,
-        statusText: xhr.statusText,
-      });
-      
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const text = xhr.responseText;
           if (text.trim()) {
             const data = JSON.parse(text);
-            console.log('[approveDesignXHR] Success with data:', data);
             resolve({
               success: true,
               data: data,
             });
           } else {
-            console.log('[approveDesignXHR] Success (empty response)');
             resolve({
               success: true,
             });
@@ -118,11 +103,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
           // Use default error message
         }
         
-        console.error('[approveDesignXHR] API error:', {
-          status: xhr.status,
-          error: errorMessage,
-        });
-        
         resolve({
           success: false,
           error: errorMessage,
@@ -139,12 +119,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
     
     // Set withCredentials for CORS
     xhr.withCredentials = true;
-    
-    // Log headers being set
-    console.log('[approveDesignXHR] Headers set:', {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token.substring(0, 20)}...`,
-    });
     
     // Send request
     xhr.send(JSON.stringify(payload));

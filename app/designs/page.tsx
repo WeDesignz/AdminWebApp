@@ -108,10 +108,12 @@ export default function DesignsPage() {
         // Show success message
         toast.success('Design approved successfully');
         
-        // Refresh the page after a short delay to show the toast
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        // Refresh the data without full page reload using React Query
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['designs'] }),
+          queryClient.refetchQueries({ queryKey: ['designStats'] }),
+          queryClient.refetchQueries({ queryKey: ['design', design.id] }),
+        ]);
       } else {
         // Show error message
         const errorMsg = result.error || 'Failed to approve design';
@@ -168,22 +170,30 @@ export default function DesignsPage() {
       toast.error('Please provide a rejection reason');
       return;
     }
+
     const rejectedDesignId = selectedDesign.id;
     const rejectedDesignTitle = selectedDesign.title;
+
     try {
       const response = await API.approveDesign(selectedDesign.id, { approved: false, reason: rejectionReason });
+
       if (response.success) {
         toast.success(`Design "${rejectedDesignTitle}" rejected successfully`);
         
-        // Close the modal
-        handleCloseRejectModal();
+        // Close the modal immediately - do this first before any async operations
+        setShowRejectModal(false);
+        setRejectionReason('');
+        setSelectedDesign(null);
         
-        // Invalidate and refetch all related queries
-        await Promise.all([
+        // Then invalidate and refetch all related queries (non-blocking)
+        Promise.all([
           queryClient.refetchQueries({ queryKey: ['designs'] }),
           queryClient.refetchQueries({ queryKey: ['designStats'] }),
           queryClient.refetchQueries({ queryKey: ['design', rejectedDesignId] }),
-        ]);
+        ]).catch((error) => {
+          console.error('Error refetching queries:', error);
+          // Don't show error to user - refetch is non-critical
+        });
       } else {
         toast.error(response.error || 'Failed to reject design');
       }
@@ -330,7 +340,7 @@ export default function DesignsPage() {
 
         {/* Statistics Tiles */}
         {statsData?.data && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard
               title="Total Designs"
               value={statsData.data.total}
@@ -345,6 +355,11 @@ export default function DesignsPage() {
               title="Pending Approval"
               value={statsData.data.pending}
               icon={<ClockIcon className="w-6 h-6" />}
+            />
+            <KpiCard
+              title="Rejected Designs"
+              value={statsData.data.rejected}
+              icon={<XCircleIcon className="w-6 h-6" />}
             />
           </div>
         )}
