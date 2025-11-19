@@ -345,7 +345,7 @@ export default function CouponsPage() {
       <Modal
         isOpen={showModal}
         onClose={() => {
-          if (!createCouponMutation.isLoading) {
+          if (!createCouponMutation.isPending) {
             setShowModal(false);
             setFormData(getInitialFormState());
           }
@@ -499,7 +499,7 @@ export default function CouponsPage() {
               type="button"
               variant="ghost"
               onClick={() => {
-                if (!createCouponMutation.isLoading) {
+                if (!createCouponMutation.isPending) {
                   setShowModal(false);
                   setFormData(getInitialFormState());
                 }
@@ -507,7 +507,7 @@ export default function CouponsPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" isLoading={createCouponMutation.isLoading}>
+            <Button type="submit" isLoading={createCouponMutation.isPending}>
               Create Coupon
             </Button>
           </div>
