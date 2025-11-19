@@ -11,6 +11,28 @@ class ApiClient {
   private refreshPromise: Promise<string | null> | null = null;
 
   /**
+   * Get authentication token synchronously from localStorage (Zustand persist)
+   */
+  private getAuthTokenSync(): string | null {
+    if (!isBrowser) return null;
+    
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        const state = parsed?.state;
+        if (state?.accessToken) {
+          return state.accessToken;
+        }
+      }
+    } catch (error) {
+      // Silently fail - will fallback to async method
+    }
+    
+    return null;
+  }
+
+  /**
    * Get authentication headers
    */
   private async getAuthHeaders(): Promise<HeadersInit> {
@@ -19,16 +41,30 @@ class ApiClient {
     };
 
     if (isBrowser) {
+      // First try synchronous method for immediate access (Zustand persist stores in localStorage)
+      const syncToken = this.getAuthTokenSync();
+      if (syncToken) {
+        headers['Authorization'] = `Bearer ${syncToken}`;
+        // DEBUG: Log token presence (remove in production)
+        console.log('[apiClient] Token found (sync):', syncToken.substring(0, 20) + '...');
+        return headers;
+      }
+
+      // Fallback to async store access
       try {
         // Dynamically import to avoid SSR issues
         const { useAuthStore } = await import('@/store/authStore');
         const state = useAuthStore.getState();
         if (state.accessToken) {
           headers['Authorization'] = `Bearer ${state.accessToken}`;
+          // DEBUG: Log token presence (remove in production)
+          console.log('[apiClient] Token found (async):', state.accessToken.substring(0, 20) + '...');
+        } else {
+          // Log warning if no token for authenticated endpoints
+          console.warn('[apiClient] No access token found in auth store. Request may fail with 401.');
         }
-        // Don't warn if no token - this is normal during login/2FA flow
       } catch (error) {
-        console.error('Error getting auth headers:', error);
+        console.error('[apiClient] Error getting auth headers:', error);
       }
     }
 
@@ -73,6 +109,7 @@ class ApiClient {
     try {
       const response = await fetch(getApiUrl('api/coreadmin/token/refresh/'), {
         method: 'POST',
+        credentials: 'include', // Include credentials for CORS
         headers: {
           'Content-Type': 'application/json',
         },
@@ -142,16 +179,72 @@ class ApiClient {
     try {
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeout);
 
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          ...headers,
-          ...(options.headers || {}),
-        },
+      // Merge headers - ensure Authorization is always included if available
+      // Use Headers object to ensure proper header handling
+      const mergedHeaders = new Headers();
+      
+      // Add default headers first
+      Object.entries(headers).forEach(([key, value]) => {
+        if (value) {
+          mergedHeaders.set(key, value as string);
+        }
       });
+      
+      // Add/override with options headers
+      if (options.headers) {
+        if (options.headers instanceof Headers) {
+          options.headers.forEach((value, key) => {
+            mergedHeaders.set(key, value);
+          });
+        } else if (Array.isArray(options.headers)) {
+          options.headers.forEach(([key, value]) => {
+            mergedHeaders.set(key, value);
+          });
+        } else {
+          Object.entries(options.headers).forEach(([key, value]) => {
+            if (value) {
+              mergedHeaders.set(key, value as string);
+            }
+          });
+        }
+      }
+
+      // DEBUG: Log headers being sent (remove in production)
+      const authHeader = mergedHeaders.get('Authorization');
+      console.log(`[apiClient.request] ${options.method || 'GET'} ${endpoint}`, {
+        hasAuthHeader: !!authHeader,
+        authHeaderPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
+        allHeaders: Array.from(mergedHeaders.keys())
+      });
+
+      // Build fetch options - ensure headers are set correctly
+      const fetchOptions: RequestInit = {
+        method: options.method || 'GET',
+        signal: controller.signal,
+        credentials: 'include', // CRITICAL: Include credentials for CORS requests
+        headers: mergedHeaders, // Headers object is compatible with fetch
+      };
+      
+      // Only include body if it exists
+      if (options.body !== undefined) {
+        fetchOptions.body = options.body;
+      }
+      
+      // Don't spread options to avoid overriding our carefully set headers
+      // Only copy non-conflicting properties
+      if (options.cache !== undefined) fetchOptions.cache = options.cache;
+      if (options.redirect !== undefined) fetchOptions.redirect = options.redirect;
+      if (options.referrer !== undefined) fetchOptions.referrer = options.referrer;
+      if (options.referrerPolicy !== undefined) fetchOptions.referrerPolicy = options.referrerPolicy;
+      if (options.integrity !== undefined) fetchOptions.integrity = options.integrity;
+      if (options.keepalive !== undefined) fetchOptions.keepalive = options.keepalive;
+      if (options.mode !== undefined) fetchOptions.mode = options.mode;
+
+      const response = await fetch(url, fetchOptions);
 
       clearTimeout(timeoutId);
 
@@ -159,19 +252,68 @@ class ApiClient {
       if (response.status === 401 && retryOn401) {
         const newToken = await this.refreshToken();
         if (newToken) {
-          // Retry request with new token
-          const retryHeaders = {
-            ...headers,
-            Authorization: `Bearer ${newToken}`,
-          };
-          const retryResponse = await fetch(url, {
-            ...options,
-            signal: controller.signal, // Use same signal for timeout
-            headers: {
-              ...retryHeaders,
-              ...(options.headers || {}),
-            },
+          // Create new abort controller for retry (don't reuse the aborted one)
+          const retryController = new AbortController();
+          const retryTimeoutId = setTimeout(() => {
+            retryController.abort();
+          }, timeout);
+
+          // Retry request with new token - use Headers object
+          const retryHeaders = new Headers();
+          
+          // Add original headers
+          Object.entries(headers).forEach(([key, value]) => {
+            if (value) {
+              retryHeaders.set(key, value as string);
+            }
           });
+          
+          // Override with new token
+          retryHeaders.set('Authorization', `Bearer ${newToken}`);
+          
+          // Add/override with options headers
+          if (options.headers) {
+            if (options.headers instanceof Headers) {
+              options.headers.forEach((value, key) => {
+                retryHeaders.set(key, value);
+              });
+            } else if (Array.isArray(options.headers)) {
+              options.headers.forEach(([key, value]) => {
+                retryHeaders.set(key, value);
+              });
+            } else {
+              Object.entries(options.headers).forEach(([key, value]) => {
+                if (value) {
+                  retryHeaders.set(key, value as string);
+                }
+              });
+            }
+          }
+
+          // Build retry fetch options with proper headers
+          const retryFetchOptions: RequestInit = {
+            method: options.method || 'GET',
+            signal: retryController.signal,
+            credentials: 'include',
+            headers: retryHeaders,
+          };
+          
+          if (options.body !== undefined) {
+            retryFetchOptions.body = options.body;
+          }
+          
+          // Copy other non-conflicting options
+          if (options.cache !== undefined) retryFetchOptions.cache = options.cache;
+          if (options.redirect !== undefined) retryFetchOptions.redirect = options.redirect;
+          if (options.referrer !== undefined) retryFetchOptions.referrer = options.referrer;
+          if (options.referrerPolicy !== undefined) retryFetchOptions.referrerPolicy = options.referrerPolicy;
+          if (options.integrity !== undefined) retryFetchOptions.integrity = options.integrity;
+          if (options.keepalive !== undefined) retryFetchOptions.keepalive = options.keepalive;
+          if (options.mode !== undefined) retryFetchOptions.mode = options.mode;
+
+          const retryResponse = await fetch(url, retryFetchOptions);
+
+          clearTimeout(retryTimeoutId);
 
           if (!retryResponse.ok) {
             const error = await this.parseErrorResponse(retryResponse);
@@ -256,11 +398,20 @@ class ApiClient {
       return transformResponse<T>(data);
     } catch (error) {
       // Handle timeout and abort errors
-      if (error instanceof Error && error.name === 'AbortError') {
-        return {
-          success: false,
-          error: 'Request timeout. Please try again.',
-        };
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          return {
+            success: false,
+            error: 'Request timeout. Please try again.',
+          };
+        }
+        // Handle network errors (including canceled requests)
+        if (error.message.includes('fetch') || error.message.includes('network')) {
+          return {
+            success: false,
+            error: 'Network error. Please check your connection and try again.',
+          };
+        }
       }
       
       const apiError = this.handleError(error);
@@ -374,6 +525,13 @@ class ApiClient {
    * POST request
    */
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    // DEBUG: Log request details (remove in production)
+    const token = this.getAuthTokenSync();
+    console.log(`[apiClient.post] ${endpoint}`, { 
+      hasToken: !!token, 
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'none' 
+    });
+    
     return this.request<T>(endpoint, {
       method: 'POST',
       headers: {
@@ -522,6 +680,7 @@ class ApiClient {
     try {
       const response = await fetch(url, {
         method: 'POST',
+        credentials: 'include', // Include credentials for CORS
         headers,
         body: formData,
       });
@@ -532,6 +691,7 @@ class ApiClient {
           headers['Authorization'] = `Bearer ${newToken}`;
           const retryResponse = await fetch(url, {
             method: 'POST',
+            credentials: 'include', // Include credentials for CORS
             headers,
             body: formData,
           });

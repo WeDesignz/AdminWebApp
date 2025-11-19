@@ -3,6 +3,8 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RealAPI as API } from '@/lib/api';
+import { approveDesignDirect } from '@/lib/api/approveDesign';
+import { approveDesignXHR } from '@/lib/api/approveDesignXHR';
 import { useState, useEffect } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
@@ -72,6 +74,63 @@ export default function DesignsPage() {
     enabled: !!selectedDesign && showDetailModal,
   });
 
+  // Simplified approve design handler - just send request, show toast, and refresh page
+  const handleApproveDesign = async (design: Design) => {
+    // Prevent multiple clicks
+    if (approvingDesignId === design.id) {
+      return;
+    }
+
+    // Set loading state
+    setApprovingDesignId(design.id);
+
+    // Create a timeout promise to ensure we always clear loading state
+    const timeoutPromise = new Promise<{ success: false; error: string }>((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: false,
+          error: 'Request timed out. Please try again or refresh the page.',
+        });
+      }, 15000); // 15 second timeout
+    });
+
+    try {
+      // Try XMLHttpRequest first (more reliable for headers), fallback to fetch
+      const result = await Promise.race([
+        approveDesignXHR(design.id), // Use XHR instead of fetch - more reliable for headers
+        timeoutPromise,
+      ]);
+
+      // Clear loading state immediately (ALWAYS clear, no matter what)
+      setApprovingDesignId(null);
+
+      if (result.success) {
+        // Show success message
+        toast.success('Design approved successfully');
+        
+        // Refresh the page after a short delay to show the toast
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      } else {
+        // Show error message
+        const errorMsg = result.error || 'Failed to approve design';
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      // Clear loading state on error (ALWAYS clear)
+      setApprovingDesignId(null);
+      
+      // Show error message
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while approving the design';
+      toast.error(errorMessage);
+    } finally {
+      // Double-check: ALWAYS clear loading state in finally block
+      // This ensures it's cleared even if something unexpected happens
+      setApprovingDesignId(null);
+    }
+  };
+
   const handleViewDesign = async (design: Design) => {
     setSelectedDesign(design);
     setShowDetailModal(true);
@@ -93,45 +152,6 @@ export default function DesignsPage() {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
-  const handleApproveDesign = async (design: Design) => {
-    // Set loading state - disable button while API call is running
-    setApprovingDesignId(design.id);
-    
-    try {
-      // Call the API with timeout handling (handled by apiClient)
-      const response = await API.approveDesign(design.id, { approved: true });
-      
-      if (response.success) {
-        // Show success toast first - this must always appear
-        toast.success('Approved successfully');
-        
-        // Wait to ensure toast is visible before refetching (700ms as requested)
-        await new Promise(resolve => setTimeout(resolve, 700));
-        
-        // Invalidate and refetch all related queries to update UI
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['designs'] }),
-          queryClient.invalidateQueries({ queryKey: ['designStats'] }),
-          queryClient.invalidateQueries({ queryKey: ['design', design.id] }),
-        ]);
-        
-        // Refetch the designs list to get updated data
-        await queryClient.refetchQueries({ queryKey: ['designs'] });
-      } else {
-        // Show error toast with specific error message
-        toast.error(response.error || 'Failed to approve design');
-      }
-    } catch (error) {
-      // Handle any unexpected errors
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while approving the design';
-      toast.error(errorMessage);
-      console.error('Error approving design:', error);
-    } finally {
-      // CRITICAL: Always reset loading state, regardless of success or failure
-      // This ensures button is never permanently disabled
-      setApprovingDesignId(null);
-    }
-  };
 
   const handleRejectDesign = (design: Design) => {
     setSelectedDesign(design);
