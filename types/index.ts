@@ -277,6 +277,8 @@ export interface Transaction {
 
 export interface Order {
   id: string;
+  orderNumber?: string;
+  order_number?: string; // Support both camelCase and snake_case
   orderType: 'plan' | 'bundle' | 'design' | 'custom';
   customerId: string;
   customerName: string;

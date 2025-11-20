@@ -362,7 +362,7 @@ export default function OrdersAndTransactionsPage() {
                       const razorpayOrderId = order.razorpayOrderId || order.razorpay_order_id || '-';
                       return (
                         <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                          <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.order_number || order.id}</td>
+                          <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.order_number || order.orderNumber || order.id}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
                               {getOrderTypeLabel(order.orderType || order.order_type || order.order_transaction_type)}
@@ -535,7 +535,7 @@ export default function OrdersAndTransactionsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Order Number</p>
-                        <p className="font-mono text-sm font-medium">{selectedOrder.order_number || selectedOrder.id}</p>
+                        <p className="font-mono text-sm font-medium">{selectedOrder.order_number || selectedOrder.orderNumber || selectedOrder.id}</p>
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Order ID (Internal)</p>
