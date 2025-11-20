@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
 
@@ -27,9 +27,9 @@ export function Dropdown({
   buttonClassName = '',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -37,67 +37,134 @@ export function Dropdown({
     setMounted(true);
   }, []);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  // Calculate and update menu position
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target) &&
-        menuRef.current &&
-        !menuRef.current.contains(target)
-      ) {
-        setIsOpen(false);
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const menuWidth = buttonRect.width;
+    const menuHeight = 240; // Approximate max height
+    const gap = 8;
+    const margin = 20;
+
+    // Calculate horizontal position
+    let left = buttonRect.left;
+    if (left + menuWidth > viewportWidth - margin) {
+      left = viewportWidth - menuWidth - margin;
+    }
+    if (left < margin) {
+      left = margin;
+    }
+
+    // Calculate vertical position - prefer below, flip above if needed
+    let top = buttonRect.bottom + gap;
+    const spaceBelow = viewportHeight - buttonRect.bottom - gap;
+    const spaceAbove = buttonRect.top - gap;
+
+    if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+      // Show above button
+      top = buttonRect.top - menuHeight - gap;
+      if (top < margin) {
+        top = margin;
+      }
+    } else {
+      // Show below button
+      if (top + menuHeight > viewportHeight - margin) {
+        top = viewportHeight - menuHeight - margin;
       }
     }
 
+    setPosition({ top, left, width: menuWidth });
+  }, []);
+
+  // Handle opening/closing dropdown
+  useEffect(() => {
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      
-      // Calculate position when opening - using getBoundingClientRect for fixed positioning
-      const updatePosition = () => {
-        if (buttonRef.current) {
-          const rect = buttonRef.current.getBoundingClientRect();
-          setMenuPosition({
-            top: rect.bottom + 8, // 8px gap below button (fixed is relative to viewport)
-            left: rect.left,
-            width: rect.width,
-          });
-        }
-      };
-      
-      // Update position immediately
       updatePosition();
-      
-      // Also update on scroll/resize to keep it aligned
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-      
+
+      // Update position on scroll and resize
+      const handleScroll = () => {
+        updatePosition();
+      };
+
+      const handleResize = () => {
+        updatePosition();
+      };
+
+      // Use capture phase to catch all scroll events
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
       };
     }
+  }, [isOpen, updatePosition]);
+
+  // Handle click outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        buttonRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    // Use capture phase to catch clicks early
+    document.addEventListener('mousedown', handleClickOutside, true);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside, true);
     };
   }, [isOpen]);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  const handleToggle = () => {
+    setIsOpen((prev) => !prev);
+  };
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
   };
 
+  if (!mounted) {
+    return (
+      <div className={`relative ${className}`}>
+        <button
+          type="button"
+          className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50 ${buttonClassName}`}
+        >
+          <span className="text-sm font-medium truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          <ChevronDownIcon className="w-4 h-4 text-muted transition-transform duration-200 flex-shrink-0" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
+    <div className={`relative ${className}`}>
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50 ${buttonClassName}`}
+        onClick={handleToggle}
+        className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50 ${
+          isOpen ? 'ring-2 ring-primary border-transparent' : ''
+        } ${buttonClassName}`}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
         <span className="text-sm font-medium truncate">
           {selectedOption ? selectedOption.label : placeholder}
@@ -109,48 +176,58 @@ export function Dropdown({
         />
       </button>
 
-      {isOpen && mounted && createPortal(
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setIsOpen(false)}
-          />
+      {isOpen &&
+        createPortal(
+          <>
+            {/* Backdrop for mobile/accessibility */}
+            <div
+              className="fixed inset-0 z-[9998]"
+              onClick={() => setIsOpen(false)}
+              aria-hidden="true"
+            />
 
-          {/* Dropdown Menu - Using portal and fixed positioning to escape overflow constraints */}
-          <div
-            ref={menuRef}
-            className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 border border-border shadow-lg overflow-hidden"
-            style={{
-              top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-              width: `${menuPosition.width}px`,
-            }}
-          >
-            <div className="py-1 max-h-60 overflow-y-auto scrollbar-thin">
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => handleSelect(option.value)}
-                  className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between gap-2 ${
-                    value === option.value
-                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                      : 'hover:bg-muted/10'
-                  }`}
-                >
-                  <span>{option.label}</span>
-                  {value === option.value && (
-                    <CheckIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                  )}
-                </button>
-              ))}
+            {/* Dropdown Menu */}
+            <div
+              ref={menuRef}
+              className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 border border-border shadow-lg overflow-hidden"
+              style={{
+                top: `${position.top}px`,
+                left: `${position.left}px`,
+                width: `${position.width}px`,
+              }}
+              role="listbox"
+            >
+              <div className="py-1 max-h-60 overflow-y-auto scrollbar-thin">
+                {options.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-muted text-center">
+                    No options available
+                  </div>
+                ) : (
+                  options.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleSelect(option.value)}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between gap-2 ${
+                        value === option.value
+                          ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                          : 'hover:bg-muted/10'
+                      }`}
+                      role="option"
+                      aria-selected={value === option.value}
+                    >
+                      <span>{option.label}</span>
+                      {value === option.value && (
+                        <CheckIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </>,
+          document.body
+        )}
     </div>
   );
 }
-
