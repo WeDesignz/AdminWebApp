@@ -32,6 +32,7 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   MapPinIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import { Order, Transaction, Designer, Customer } from '@/types';
 import toast from 'react-hot-toast';
@@ -47,6 +48,7 @@ export default function OrdersAndTransactionsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded'>('pending');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -101,6 +103,16 @@ export default function OrdersAndTransactionsPage() {
     setSelectedOrder(null);
   };
 
+  const handleViewOrder = (order: any) => {
+    setSelectedOrder(order);
+    setShowViewModal(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setSelectedOrder(null);
+  };
+
   const handleSubmitStatusUpdate = async () => {
     if (!selectedOrder) return;
     setIsUpdatingStatus(true);
@@ -123,13 +135,17 @@ export default function OrdersAndTransactionsPage() {
 
 
   const getOrderTypeLabel = (type: string) => {
+    if (!type) return '-';
     const labels: Record<string, string> = {
+      cart: 'Cart Order',
+      subscription: 'Subscription',
+      custom: 'Custom Order',
+      // Legacy support
       plan: 'Plan Order',
       bundle: 'Bundle Order',
       design: 'Design Order',
-      custom: 'Custom Order',
     };
-    return labels[type] || type;
+    return labels[type.toLowerCase()] || type;
   };
 
   const getOrderDetails = (order: Order) => {
@@ -349,8 +365,8 @@ export default function OrdersAndTransactionsPage() {
                         <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                           <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.id}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary uppercase">
-                              {getOrderTypeLabel(order.orderType || order.order_type)}
+                            <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
+                              {getOrderTypeLabel(order.orderType || order.order_type || order.order_transaction_type)}
                             </span>
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">{order.customerName || order.user_name || '-'}</td>
@@ -359,13 +375,16 @@ export default function OrdersAndTransactionsPage() {
                           </td>
                           <td className="py-3 px-4 font-bold whitespace-nowrap">{formatCurrency(order.amount || order.total_amount)}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                              order.status === 'success' || order.status === 'completed' ? 'bg-success/20 text-success' :
-                              order.status === 'pending' ? 'bg-warning/20 text-warning' :
-                              order.status === 'failed' ? 'bg-error/20 text-error' :
-                              'bg-muted/20 text-muted'
+                            <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
+                              order.status === 'success' || order.status === 'completed' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              order.status === 'pending' 
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              order.status === 'failed' 
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                             }`}>
-                              {order.status}
+                              {order.status || '-'}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-mono text-sm text-muted whitespace-nowrap">
@@ -376,13 +395,18 @@ export default function OrdersAndTransactionsPage() {
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             {razorpayStatus !== '-' ? (
-                              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                                razorpayStatus === 'captured' ? 'bg-success/20 text-success' :
-                                razorpayStatus === 'authorized' ? 'bg-info/20 text-info' :
-                                razorpayStatus === 'created' ? 'bg-warning/20 text-warning' :
-                                razorpayStatus === 'refunded' ? 'bg-purple/20 text-purple' :
-                                razorpayStatus === 'failed' ? 'bg-error/20 text-error' :
-                                'bg-muted/20 text-muted'
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
+                                razorpayStatus === 'captured' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                razorpayStatus === 'authorized' 
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                razorpayStatus === 'created' 
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                razorpayStatus === 'refunded' 
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                                razorpayStatus === 'failed' 
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                               }`}>
                                 {razorpayStatus}
                               </span>
@@ -392,16 +416,28 @@ export default function OrdersAndTransactionsPage() {
                           </td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{formatDate(order.createdAt || order.created_at)}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleUpdateStatus(order)}
-                              className="flex items-center gap-1"
-                              title="Update Status"
-                            >
-                              <CheckCircleIcon className="w-4 h-4" />
-                              <span className="text-xs">Status</span>
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleViewOrder(order)}
+                                className="flex items-center gap-1"
+                                title="View Details"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                                <span className="text-xs">View</span>
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleUpdateStatus(order)}
+                                className="flex items-center gap-1"
+                                title="Update Status"
+                              >
+                                <CheckCircleIcon className="w-4 h-4" />
+                                <span className="text-xs">Status</span>
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -488,8 +524,215 @@ export default function OrdersAndTransactionsPage() {
               )}
             </Modal>
 
-          </>
-        )}
+            {/* View Order Details Modal */}
+            <Modal
+              isOpen={showViewModal}
+              onClose={handleCloseViewModal}
+              title="Order Details"
+              size="lg"
+            >
+              {selectedOrder && (
+                <div className="space-y-6 max-h-[80vh] overflow-y-auto scrollbar-thin">
+                  {/* Order Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Order Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order ID</p>
+                        <p className="font-mono text-sm font-medium">{selectedOrder.id}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order Type</p>
+                        <p className="text-sm font-medium">
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
+                            {getOrderTypeLabel(selectedOrder.orderType || selectedOrder.order_type || selectedOrder.order_transaction_type)}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order Status</p>
+                        <p className="text-sm font-medium">
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
+                            selectedOrder.status === 'success' || selectedOrder.status === 'completed' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                            selectedOrder.status === 'pending' 
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                            selectedOrder.status === 'failed' 
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                          }`}>
+                            {selectedOrder.status || '-'}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Total Amount</p>
+                        <p className="text-sm font-bold">{formatCurrency(selectedOrder.amount || selectedOrder.total_amount)}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Transaction Number</p>
+                        <p className="font-mono text-sm">{selectedOrder.order_transaction_number || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Transaction Type</p>
+                        <p className="text-sm">{selectedOrder.order_transaction_type || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg md:col-span-2">
+                        <p className="text-xs text-muted mb-1">Product IDs</p>
+                        <p className="font-mono text-sm break-all">{selectedOrder.product_ids || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg md:col-span-2">
+                        <p className="text-xs text-muted mb-1">Order Details</p>
+                        <p className="text-sm">{getOrderDetails(selectedOrder)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Customer Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Customer Name</p>
+                        <p className="text-sm font-medium">{selectedOrder.customerName || selectedOrder.user_name || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Email</p>
+                        <p className="text-sm">{selectedOrder.user_email || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">User ID</p>
+                        <p className="font-mono text-sm">{selectedOrder.created_by?.id || selectedOrder.created_by || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Razorpay Payment Information Section */}
+                  {(selectedOrder.razorpay_payment || selectedOrder.razorpayPaymentId || selectedOrder.razorpay_payment_id || selectedOrder.razorpay_status) && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Razorpay Payment Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3 bg-muted/10 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Razorpay Payment ID</p>
+                          <p className="font-mono text-sm">{selectedOrder.razorpay_payment?.razorpay_payment_id || selectedOrder.razorpayPaymentId || selectedOrder.razorpay_payment_id || selectedOrder.razorpayId || '-'}</p>
+                        </div>
+                        <div className="p-3 bg-muted/10 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Razorpay Order ID</p>
+                          <p className="font-mono text-sm">{selectedOrder.razorpay_payment?.razorpay_order_id || selectedOrder.razorpayOrderId || selectedOrder.razorpay_order_id || '-'}</p>
+                        </div>
+                        <div className="p-3 bg-muted/10 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Payment Status</p>
+                          <p className="text-sm">
+                            {selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus ? (
+                              <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
+                                (selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus) === 'captured' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                (selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus) === 'authorized' 
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                (selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus) === 'created' 
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                (selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus) === 'refunded' 
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                                (selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus) === 'failed' 
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                              }`}>
+                                {selectedOrder.razorpay_payment?.status || selectedOrder.razorpay_status || selectedOrder.razorpayStatus}
+                              </span>
+                            ) : '-'}
+                          </p>
+                        </div>
+                        {selectedOrder.razorpay_payment?.amount && (
+                          <div className="p-3 bg-muted/10 rounded-lg">
+                            <p className="text-xs text-muted mb-1">Payment Amount</p>
+                            <p className="text-sm font-bold">{formatCurrency(selectedOrder.razorpay_payment.amount)}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.method && (
+                          <div className="p-3 bg-muted/10 rounded-lg">
+                            <p className="text-xs text-muted mb-1">Payment Method</p>
+                            <p className="text-sm">{selectedOrder.razorpay_payment.method}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.currency && (
+                          <div className="p-3 bg-muted/10 rounded-lg">
+                            <p className="text-xs text-muted mb-1">Currency</p>
+                            <p className="text-sm">{selectedOrder.razorpay_payment.currency}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.fee && (
+                          <div className="p-3 bg-muted/10 rounded-lg">
+                            <p className="text-xs text-muted mb-1">Fee</p>
+                            <p className="text-sm">{formatCurrency(selectedOrder.razorpay_payment.fee)}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.tax && (
+                          <div className="p-3 bg-muted/10 rounded-lg">
+                            <p className="text-xs text-muted mb-1">Tax</p>
+                            <p className="text-sm">{formatCurrency(selectedOrder.razorpay_payment.tax)}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.description && (
+                          <div className="p-3 bg-muted/10 rounded-lg md:col-span-2">
+                            <p className="text-xs text-muted mb-1">Description</p>
+                            <p className="text-sm">{selectedOrder.razorpay_payment.description}</p>
+                          </div>
+                        )}
+                        {selectedOrder.razorpay_payment?.error_code && (
+                          <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg md:col-span-2">
+                            <p className="text-xs text-red-600 dark:text-red-400 mb-1">Error Code</p>
+                            <p className="text-sm font-mono">{selectedOrder.razorpay_payment.error_code}</p>
+                            {selectedOrder.razorpay_payment.error_description && (
+                              <p className="text-xs text-red-500 dark:text-red-400 mt-1">{selectedOrder.razorpay_payment.error_description}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timestamps Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Timestamps</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order Created At</p>
+                        <p className="text-sm">{formatDate(selectedOrder.createdAt || selectedOrder.created_at)}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order Updated At</p>
+                        <p className="text-sm">{formatDate(selectedOrder.updatedAt || selectedOrder.updated_at)}</p>
+                      </div>
+                      {selectedOrder.razorpay_payment?.created_at && (
+                        <div className="p-3 bg-muted/10 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Payment Created At</p>
+                          <p className="text-sm">{formatDate(selectedOrder.razorpay_payment.created_at)}</p>
+                        </div>
+                      )}
+                      {selectedOrder.razorpay_payment?.updated_at && (
+                        <div className="p-3 bg-muted/10 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Payment Updated At</p>
+                          <p className="text-sm">{formatDate(selectedOrder.razorpay_payment.updated_at)}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <div className="flex justify-end pt-4 border-t border-border">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleCloseViewModal}
+                      className="flex items-center gap-2"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+        </>
       </div>
     </DashboardLayout>
   );
