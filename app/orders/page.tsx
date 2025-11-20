@@ -579,7 +579,13 @@ export default function OrdersAndTransactionsPage() {
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg md:col-span-2">
                         <p className="text-xs text-muted mb-1">Product IDs</p>
-                        <p className="font-mono text-sm break-all">{selectedOrder.product_ids || '-'}</p>
+                        <p className="font-mono text-sm break-all">
+                          {selectedOrder.product_ids 
+                            ? (Array.isArray(selectedOrder.product_ids) 
+                              ? selectedOrder.product_ids.join(', ') 
+                              : selectedOrder.product_ids)
+                            : '-'}
+                        </p>
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg md:col-span-2">
                         <p className="text-xs text-muted mb-1">Order Details</p>

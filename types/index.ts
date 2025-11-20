@@ -286,6 +286,9 @@ export interface Order {
   transactionNumber?: string; // Support camelCase
   customerId: string;
   customerName: string;
+  user_name?: string; // Support snake_case from API
+  user_email?: string; // Support snake_case from API
+  created_by?: string | number | { id: string | number; [key: string]: any }; // Support various formats
   amount: number;
   total_amount?: number; // Support snake_case from API
   status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded';
@@ -293,6 +296,27 @@ export interface Order {
   completedAt?: string;
   razorpayId?: string;
   razorpayOrderId?: string;
+  razorpay_payment_id?: string; // Support snake_case from API
+  razorpay_order_id?: string; // Support snake_case from API
+  razorpay_status?: string; // Support snake_case from API
+  razorpayStatus?: string; // Support camelCase
+  razorpay_payment?: {
+    razorpay_payment_id?: string;
+    razorpay_order_id?: string;
+    status?: string;
+    amount?: number;
+    method?: string;
+    currency?: string;
+    fee?: number;
+    tax?: number;
+    description?: string;
+    error_code?: string;
+    error_description?: string;
+    created_at?: string;
+    updated_at?: string;
+    [key: string]: any;
+  };
+  product_ids?: string | string[]; // Support snake_case from API
   // Plan order specific
   planId?: string;
   planName?: string;
