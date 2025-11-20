@@ -50,6 +50,11 @@ interface FAQTag {
   name: string;
 }
 
+interface Tag {
+  id: number;
+  name: string;
+}
+
 type FAQFormData = {
   question: string;
   answer: string;
@@ -283,7 +288,7 @@ export default function FAQPage() {
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1">
                         {faq.tags && faq.tags.length > 0 ? (
-                          faq.tags.map((tag) => (
+                          faq.tags.map((tag: Tag) => (
                             <Badge key={tag.id} variant="secondary" className="text-xs">
                               {tag.name}
                             </Badge>
