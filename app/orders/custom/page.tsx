@@ -80,9 +80,9 @@ export default function CustomOrdersPage() {
   // };
 
   const getTimeRemainingShort = (deadline: string, status: string, createdAt: string, completedAt?: string) => {
-    // If order is completed or delivered, show total time taken
+    // If order is completed, show total time taken
     // Completion time = 1 hour - time left when completed
-    if (status === 'completed' || status === 'delivered') {
+    if (status === 'completed') {
       const completionTime = completedAt ? new Date(completedAt).getTime() : currentTime;
       const deadlineTime = new Date(deadline).getTime();
       
@@ -358,7 +358,7 @@ export default function CustomOrdersPage() {
                   
                   <div className="text-right">
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 ${
-                      order.status === 'completed' || order.status === 'delivered'
+                      order.status === 'completed'
                         ? 'bg-success/20 text-success'
                         : new Date(order.slaDeadline).getTime() - currentTime < 1800000
                         ? 'bg-error/20 text-error'
