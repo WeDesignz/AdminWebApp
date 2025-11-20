@@ -62,6 +62,8 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
     onSuccess: () => {
       setNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['orderComments', orderId] });
+      // Invalidate unread count query
+      queryClient.invalidateQueries({ queryKey: ['orderComments', orderId, 'unread'] });
       toast.success('Comment added successfully!');
     },
     onError: (err: any) => {
@@ -69,16 +71,65 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
     },
   });
 
+  // Scroll to bottom when modal opens or comments data changes
+  useEffect(() => {
+    if (isOpen) {
+      // Scroll when modal opens, even if comments haven't loaded yet
+      scrollToBottom();
+    }
+  }, [isOpen]);
+
+  // Scroll to bottom when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Scroll when modal opens, even if comments haven't loaded yet
+      // Use a longer delay to ensure modal animation completes
+      setTimeout(() => {
+        scrollToBottom();
+      }, 300);
+    }
+  }, [isOpen]);
+
+  // Scroll to bottom when comments data changes
   useEffect(() => {
     if (isOpen && commentsData?.data?.comments) {
       scrollToBottom();
     }
   }, [isOpen, commentsData]);
 
+  // Mark messages as read when chat modal is opened
+  useEffect(() => {
+    if (isOpen && orderId) {
+      // Call API to mark messages as read on backend (creates read receipts)
+      API.orderComments.markOrderCommentsAsRead(orderId)
+        .then(() => {
+          // Invalidate unread count query to update counters immediately
+          queryClient.invalidateQueries({ queryKey: ['orderComments', orderId, 'unread'] });
+          // Also refetch comments to get updated is_read status
+          queryClient.invalidateQueries({ queryKey: ['orderComments', orderId] });
+        })
+        .catch((error: any) => {
+          // Only log non-404 errors (endpoint may not exist yet)
+          if (error?.statusCode !== 404 && error?.error?.statusCode !== 404) {
+            console.error('Error marking messages as read:', error);
+          }
+        });
+    }
+  }, [isOpen, orderId, queryClient]);
+
   const scrollToBottom = () => {
+    // Use a longer timeout to ensure DOM is fully rendered, especially on initial open
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else {
+        // Fallback: scroll the parent container
+        const container = document.querySelector('[class*="overflow-y-auto"]');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }, 200);
   };
 
   const handleSendMessage = () => {

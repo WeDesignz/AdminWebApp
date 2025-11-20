@@ -1003,6 +1003,13 @@ export const OrderCommentsAPI = {
       media_ids: mediaIds || [],
     });
   },
+
+  /**
+   * Mark Order Comments as Read
+   */
+  async markOrderCommentsAsRead(orderId: string): Promise<ApiResponse<any>> {
+    return apiClient.post(`api/orders/order/${orderId}/comments/mark_read/`);
+  },
 };
 
 /**

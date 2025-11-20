@@ -26,11 +26,155 @@ import { Input } from '@/components/common/Input';
 import { KpiCard } from '@/components/common/KpiCard';
 import { Dropdown } from '@/components/common/Dropdown';
 import { OrderCommentModal } from '@/components/orders/OrderCommentModal';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import toast from 'react-hot-toast';
 
 interface UploadedFile {
   file: File | null;
   preview?: string;
+}
+
+// Custom Order Card with Unread Counter
+function CustomOrderCardWithUnread({
+  order,
+  orderIdForUnread,
+  onOpenChat,
+  onViewDetails,
+  onUploadDeliverable,
+  onRejectOrder,
+  onStatusChange,
+  updatingOrderId,
+  orderStatusOptions,
+  currentTime,
+  getTimeRemainingShort,
+  formatCurrency,
+  formatDate,
+}: {
+  order: CustomOrder;
+  orderIdForUnread: string;
+  onOpenChat: (order: CustomOrder) => void;
+  onViewDetails: (order: CustomOrder) => void;
+  onUploadDeliverable: (order: CustomOrder) => void;
+  onRejectOrder: (order: CustomOrder) => void;
+  onStatusChange: (orderId: string, newStatus: string) => void;
+  updatingOrderId: string | null;
+  orderStatusOptions: Array<{ value: string; label: string }>;
+  currentTime: number;
+  getTimeRemainingShort: (deadline: string, status: string, createdAt: string, completedAt?: string) => string;
+  formatCurrency: (amount: number) => string;
+  formatDate: (date: string) => string;
+}) {
+  const unreadCount = useUnreadMessages(orderIdForUnread, undefined);
+
+  return (
+    <div className="card hover:shadow-lg transition-shadow">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="font-bold text-lg">Order #{order.id}</h3>
+            {order.designTitle && (
+              <span className="text-muted text-sm">• {order.designTitle}</span>
+            )}
+            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+              order.status === 'completed' ? 'bg-success/20 text-success' :
+              order.status === 'in_progress' ? 'bg-primary/20 text-primary' :
+              order.status === 'pending' ? 'bg-warning/20 text-warning' :
+              order.status === 'cancelled' ? 'bg-error/20 text-error' :
+              order.status === 'delayed' ? 'bg-error/20 text-error' :
+              'bg-muted/20 text-muted'
+            }`}>
+              {order.status.replace('_', ' ').toUpperCase()}
+            </span>
+          </div>
+          <p className="text-muted mb-2">{order.description}</p>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-muted">Customer: <span className="font-medium text-primary">{order.customerName}</span></span>
+            {order.designerName && (
+              <span className="text-muted">Designer: <span className="font-medium text-primary">{order.designerName}</span></span>
+            )}
+            <span className="font-bold">{formatCurrency(order.budget)}</span>
+          </div>
+        </div>
+        
+        <div className="text-right ml-4">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 ${
+            order.status === 'completed'
+              ? 'bg-success/20 text-success'
+              : order.status === 'cancelled'
+              ? 'bg-error/20 text-error'
+              : order.status === 'delayed'
+              ? 'bg-error/20 text-error'
+              : new Date(order.slaDeadline).getTime() - currentTime < 1800000
+              ? 'bg-error/20 text-error'
+              : 'bg-warning/20 text-warning'
+          }`}>
+            <ClockIcon className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              {getTimeRemainingShort(order.slaDeadline, order.status, order.createdAt, order.completedAt)}
+            </span>
+          </div>
+          <p className="text-xs text-muted">{formatDate(order.createdAt)}</p>
+        </div>
+      </div>
+      
+      <div className="flex gap-2 items-center flex-wrap">
+        <div className="relative inline-block">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => onOpenChat(order)}
+            title="Reply to Chat"
+            className="flex items-center gap-2 whitespace-nowrap"
+          >
+            <ChatBubbleLeftRightIcon className="w-4 h-4" />
+            Reply to Chat
+          </Button>
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1 z-50 shadow-lg ring-2 ring-white dark:ring-gray-900 pointer-events-none">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </div>
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => onUploadDeliverable(order)}
+          title="Upload Deliverable"
+          className="flex items-center gap-2 whitespace-nowrap"
+        >
+          <PaperClipIcon className="w-4 h-4" />
+          Upload Deliverable
+        </Button>
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => onViewDetails(order)}
+          title="View Details"
+          className="flex items-center gap-2 whitespace-nowrap"
+        >
+          <EyeIcon className="w-4 h-4" />
+          View Details
+        </Button>
+        <div style={{ width: '180px' }}>
+          <Dropdown
+            options={orderStatusOptions}
+            value={order.status}
+            onChange={(value) => onStatusChange(order.id, value)}
+            buttonClassName={updatingOrderId === order.id ? 'opacity-50 cursor-not-allowed' : ''}
+          />
+        </div>
+        <Button 
+          size="sm" 
+          variant="danger"
+          onClick={() => onRejectOrder(order)}
+          title="Reject Order"
+          className="whitespace-nowrap"
+        >
+          Reject Order
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export default function CustomOrdersPage() {
@@ -369,111 +513,29 @@ export default function CustomOrdersPage() {
               )}
             </div>
           ) : (
-            (data.data || []).map((order) => (
-              <div key={order.id} className="card hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-lg">Order #{order.id}</h3>
-                      {order.designTitle && (
-                        <span className="text-muted text-sm">• {order.designTitle}</span>
-                      )}
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        order.status === 'completed' ? 'bg-success/20 text-success' :
-                        order.status === 'in_progress' ? 'bg-primary/20 text-primary' :
-                        order.status === 'pending' ? 'bg-warning/20 text-warning' :
-                        order.status === 'cancelled' ? 'bg-error/20 text-error' :
-                        order.status === 'delayed' ? 'bg-error/20 text-error' :
-                        'bg-muted/20 text-muted'
-                      }`}>
-                        {order.status.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-muted mb-2">{order.description}</p>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted">Customer: <span className="font-medium text-primary">{order.customerName}</span></span>
-                      {order.designerName && (
-                        <span className="text-muted">Designer: <span className="font-medium text-primary">{order.designerName}</span></span>
-                      )}
-                      <span className="font-bold">{formatCurrency(order.budget)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right ml-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 ${
-                      order.status === 'completed'
-                        ? 'bg-success/20 text-success'
-                        : order.status === 'cancelled'
-                        ? 'bg-error/20 text-error'
-                        : order.status === 'delayed'
-                        ? 'bg-error/20 text-error'
-                        : new Date(order.slaDeadline).getTime() - currentTime < 1800000
-                        ? 'bg-error/20 text-error'
-                        : 'bg-warning/20 text-warning'
-                    }`}>
-                      <ClockIcon className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        {getTimeRemainingShort(order.slaDeadline, order.status, order.createdAt, order.completedAt)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted">{formatDate(order.createdAt)}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 items-center flex-wrap">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleOpenChat(order)}
-                    title="Reply to Chat"
-                    className="flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <ChatBubbleLeftRightIcon className="w-4 h-4" />
-                    Reply to Chat
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleUploadDeliverable(order)}
-                    title="Upload Deliverable"
-                    className="flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <PaperClipIcon className="w-4 h-4" />
-                    Upload Deliverable
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleViewDetails(order)}
-                    title="View Details"
-                    className="flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <EyeIcon className="w-4 h-4" />
-                    View Details
-                  </Button>
-                  <div style={{ width: '180px' }}>
-                    <Dropdown
-                      options={orderStatusOptions}
-                      value={order.status}
-                      onChange={(value) => handleStatusChange(order.id, value)}
-                      buttonClassName={updatingOrderId === order.id ? 'opacity-50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="danger"
-                    onClick={() => handleRejectOrder(order)}
-                    title="Reject Order"
-                    className="whitespace-nowrap"
-                  >
-                    Reject Order
-                  </Button>
-                </div>
-              </div>
-            ))
+            (data.data || []).map((order) => {
+              const orderIdForUnread = order.orderId || order.id;
+              return (
+                <CustomOrderCardWithUnread
+                  key={order.id}
+                  order={order}
+                  orderIdForUnread={orderIdForUnread}
+                  onOpenChat={handleOpenChat}
+                  onViewDetails={handleViewDetails}
+                  onUploadDeliverable={handleUploadDeliverable}
+                  onRejectOrder={handleRejectOrder}
+                  onStatusChange={handleStatusChange}
+                  updatingOrderId={updatingOrderId}
+                  orderStatusOptions={orderStatusOptions}
+                  currentTime={currentTime}
+                  getTimeRemainingShort={getTimeRemainingShort}
+                  formatCurrency={formatCurrency}
+                  formatDate={formatDate}
+                />
+              );
+            })
           )}
         </div>
-      </div>
 
       {/* Order Details Modal - Keep existing implementation */}
       <Modal
@@ -487,86 +549,96 @@ export default function CustomOrdersPage() {
             {/* Order Information */}
             <div className="space-y-4">
               <h3 className="text-xl font-semibold border-b border-border pb-2">Order Information</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Order ID</label>
-                  <p className="text-muted">#{selectedOrder.id}</p>
+                  <p className="text-muted">Order ID</p>
+                  <p className="font-medium">{selectedOrder.id}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Status</label>
-                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                    selectedOrder.status === 'completed' ? 'bg-success/20 text-success' :
-                    selectedOrder.status === 'in_progress' ? 'bg-primary/20 text-primary' :
-                    selectedOrder.status === 'pending' ? 'bg-warning/20 text-warning' :
-                    selectedOrder.status === 'cancelled' ? 'bg-error/20 text-error' :
-                    selectedOrder.status === 'delayed' ? 'bg-error/20 text-error' :
-                    'bg-muted/20 text-muted'
-                  }`}>
-                    {selectedOrder.status.replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Customer</label>
-                  <p className="text-muted">{selectedOrder.customerName}</p>
-                </div>
-                {selectedOrder.designerName && (
+                {selectedOrder.designTitle && (
                   <div>
-                    <label className="block text-sm font-medium mb-2">Designer</label>
-                    <p className="text-muted">{selectedOrder.designerName}</p>
+                    <p className="text-muted">Design Title</p>
+                    <p className="font-medium">{selectedOrder.designTitle}</p>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <p className="text-muted">Description</p>
+                  <p className="font-medium">{selectedOrder.description}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Budget</p>
+                  <p className="font-medium">{formatCurrency(selectedOrder.budget)}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Status</p>
+                  <p className="font-medium">{selectedOrder.status.replace('_', ' ')}</p>
+                </div>
+                {selectedOrder.paymentStatus && (
+                  <div>
+                    <p className="text-muted">Payment Status</p>
+                    <p className="font-medium">{selectedOrder.paymentStatus}</p>
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Budget</label>
-                  <p className="text-muted font-semibold">{formatCurrency(selectedOrder.budget)}</p>
+                  <p className="text-muted">Created At</p>
+                  <p className="font-medium">{formatDate(selectedOrder.createdAt)}</p>
                 </div>
+                {selectedOrder.completedAt && (
+                  <div>
+                    <p className="text-muted">Completed At</p>
+                    <p className="font-medium">{formatDate(selectedOrder.completedAt)}</p>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-sm font-medium mb-2">SLA Deadline</label>
-                  <p className="text-muted">{formatDate(selectedOrder.slaDeadline)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Created At</label>
-                  <p className="text-muted">{formatDate(selectedOrder.createdAt)}</p>
+                  <p className="text-muted">SLA Deadline</p>
+                  <p className="font-medium">{formatDate(selectedOrder.slaDeadline)}</p>
                 </div>
               </div>
             </div>
 
-            {/* Design Title */}
-            {selectedOrder.designTitle && (
-              <div className="space-y-4 border-t border-border pt-4">
-                <h3 className="text-xl font-semibold border-b border-border pb-2">Design Title</h3>
-                <p className="text-muted">{selectedOrder.designTitle}</p>
+            {/* Customer Information */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold border-b border-border pb-2">Customer Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted">Customer ID</p>
+                  <p className="font-medium">{selectedOrder.customerId}</p>
+                </div>
+                <div>
+                  <p className="text-muted">Customer Name</p>
+                  <p className="font-medium">{selectedOrder.customerName}</p>
+                </div>
               </div>
-            )}
+            </div>
 
-            {/* Specification */}
-            {selectedOrder.specification && (
-              <div className="space-y-4 border-t border-border pt-4">
-                <h3 className="text-xl font-semibold border-b border-border pb-2">Specification</h3>
-                <p className="text-muted whitespace-pre-wrap">{selectedOrder.specification}</p>
+            {/* Designer Information */}
+            {selectedOrder.designerId && selectedOrder.designerName && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold border-b border-border pb-2">Designer Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted">Designer ID</p>
+                    <p className="font-medium">{selectedOrder.designerId}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted">Designer Name</p>
+                    <p className="font-medium">{selectedOrder.designerName}</p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Reference Files */}
             {selectedOrder.referenceFiles && selectedOrder.referenceFiles.length > 0 && (
-              <div className="space-y-4 border-t border-border pt-4">
+              <div className="space-y-4">
                 <h3 className="text-xl font-semibold border-b border-border pb-2">Reference Files</h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {selectedOrder.referenceFiles.map((file) => (
-                    <div key={file.id} className="p-3 bg-muted/10 rounded-lg flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium">{file.fileName}</p>
-                        <p className="text-sm text-muted">{formatDate(file.uploadedAt)}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        {file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
-                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
-                            View
-                          </a>
-                        )}
-                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
-                          Download
-                        </a>
-                      </div>
+                    <div key={file.id} className="flex items-center gap-2 text-sm">
+                      <PaperClipIcon className="w-4 h-4 text-muted" />
+                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {file.fileName}
+                      </a>
+                      <span className="text-muted text-xs">({formatDate(file.uploadedAt)})</span>
                     </div>
                   ))}
                 </div>
@@ -575,252 +647,230 @@ export default function CustomOrdersPage() {
 
             {/* Deliverables */}
             {selectedOrder.deliverables && selectedOrder.deliverables.length > 0 && (
-              <div className="space-y-4 border-t border-border pt-4">
+              <div className="space-y-4">
                 <h3 className="text-xl font-semibold border-b border-border pb-2">Deliverables</h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {selectedOrder.deliverables.map((file) => (
-                    <div key={file.id} className="p-3 bg-muted/10 rounded-lg flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium">{file.fileName}</p>
-                        <p className="text-sm text-muted">{formatDate(file.uploadedAt)}</p>
-                      </div>
-                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
-                        Download
+                    <div key={file.id} className="flex items-center gap-2 text-sm">
+                      <CheckIcon className="w-4 h-4 text-success" />
+                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {file.fileName}
                       </a>
+                      <span className="text-muted text-xs">({formatDate(file.uploadedAt)})</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Description */}
-            {selectedOrder.description && (
-              <div className="space-y-4 border-t border-border pt-4">
-                <h3 className="text-xl font-semibold border-b border-border pb-2">Description</h3>
-                <p className="text-muted">{selectedOrder.description}</p>
               </div>
             )}
           </div>
         )}
       </Modal>
 
-      {/* OrderComment Modal */}
-      {selectedOrder && (() => {
-        // CRITICAL: Use Order ID, not CustomOrderRequest ID
-        // Comments are stored against Order, not CustomOrderRequest
-        const orderIdForComments = selectedOrder.orderId;
-        
-        if (!orderIdForComments) {
-          console.error('[CustomOrdersPage] No Order ID found for CustomOrderRequest:', selectedOrder.id);
-        }
-        
-        console.log('[CustomOrdersPage] Opening chat modal:', {
-          customOrderId: selectedOrder.id,
-          orderId: selectedOrder.orderId,
-          orderIdForComments,
-          designTitle: selectedOrder.designTitle,
-          hasOrderId: !!orderIdForComments,
-        });
-        
-        return (
-          <OrderCommentModal
-            isOpen={showChatModal}
-            onClose={handleCloseChatModal}
-            orderId={orderIdForComments || ''}
-            orderTitle={selectedOrder.designTitle || `Order #${selectedOrder.id}`}
-            orderType="custom"
-          />
-        );
-      })()}
-
-      {/* Upload Deliverable Modal - Keep existing implementation */}
+      {/* Upload Deliverable Modal */}
       <Modal
         isOpen={showUploadModal}
-        onClose={handleCloseUploadModal}
+        onClose={() => {
+          setShowUploadModal(false);
+          setSelectedOrder(null);
+          setUploadedFiles({
+            jpg: { file: null },
+            mockup: { file: null },
+            eps: { file: null },
+            crd: { file: null },
+          });
+        }}
         title="Upload Deliverable"
         size="xl"
       >
         {selectedOrder && (
           <div className="space-y-6">
-            <div>
-              <p className="text-sm text-muted mb-4">
-                Upload deliverable files for Order #{selectedOrder.id}
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* JPG File Input */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium">JPG File</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
-                    <input
-                      type="file"
-                      accept=".jpg,.jpeg"
-                      onChange={(e) => handleFileSelect('jpg', e)}
-                      className="hidden"
-                      id="file-jpg"
-                    />
-                    <label htmlFor="file-jpg" className="cursor-pointer flex flex-col items-center gap-2">
-                      <PaperClipIcon className="w-8 h-8 text-muted" />
-                      <span className="text-sm text-primary font-medium">Click to upload JPG</span>
-                    </label>
-                  </div>
-                  {uploadedFiles.jpg.file && (
-                    <div className="p-3 bg-muted/10 rounded-lg border border-border">
-                      <div className="flex items-start gap-3">
-                        {uploadedFiles.jpg.preview && (
-                          <img
-                            src={uploadedFiles.jpg.preview}
-                            alt={uploadedFiles.jpg.file.name}
-                            className="w-20 h-20 object-cover rounded-lg border border-border flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm">{uploadedFiles.jpg.file.name}</p>
-                          <p className="text-xs text-muted">{formatFileSize(uploadedFiles.jpg.file.size)}</p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveFile('jpg')}
-                          className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
-                          title="Remove file"
-                        >
-                          <XCircleIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <p className="text-sm text-muted mb-4">
+              Upload deliverable files for Order #{selectedOrder.id}
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* JPG File Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">JPG File</label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg"
+                    onChange={(e) => handleFileSelect('jpg', e)}
+                    className="hidden"
+                    id="file-jpg"
+                  />
+                  <label htmlFor="file-jpg" className="cursor-pointer flex flex-col items-center gap-2">
+                    <PaperClipIcon className="w-8 h-8 text-muted" />
+                    <span className="text-sm text-primary font-medium">Click to upload JPG</span>
+                  </label>
                 </div>
+                {uploadedFiles.jpg.file && (
+                  <div className="p-3 bg-muted/10 rounded-lg border border-border">
+                    <div className="flex items-start gap-3">
+                      {uploadedFiles.jpg.preview && (
+                        <img
+                          src={uploadedFiles.jpg.preview}
+                          alt={uploadedFiles.jpg.file.name}
+                          className="w-20 h-20 object-cover rounded-lg border border-border flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{uploadedFiles.jpg.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.jpg.file.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile('jpg')}
+                        className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
+                        title="Remove file"
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Mockup File Input */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium">Mockup File</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
-                    <input
-                      type="file"
-                      accept=".mockup,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileSelect('mockup', e)}
-                      className="hidden"
-                      id="file-mockup"
-                    />
-                    <label htmlFor="file-mockup" className="cursor-pointer flex flex-col items-center gap-2">
-                      <PaperClipIcon className="w-8 h-8 text-muted" />
-                      <span className="text-sm text-primary font-medium">Click to upload Mockup</span>
-                    </label>
-                  </div>
-                  {uploadedFiles.mockup.file && (
-                    <div className="p-3 bg-muted/10 rounded-lg border border-border">
-                      <div className="flex items-start gap-3">
-                        {uploadedFiles.mockup.preview && (
-                          <img
-                            src={uploadedFiles.mockup.preview}
-                            alt={uploadedFiles.mockup.file.name}
-                            className="w-20 h-20 object-cover rounded-lg border border-border flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm">{uploadedFiles.mockup.file.name}</p>
-                          <p className="text-xs text-muted">{formatFileSize(uploadedFiles.mockup.file.size)}</p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveFile('mockup')}
-                          className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
-                          title="Remove file"
-                        >
-                          <XCircleIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+              {/* Mockup File Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Mockup File</label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept=".mockup,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileSelect('mockup', e)}
+                    className="hidden"
+                    id="file-mockup"
+                  />
+                  <label htmlFor="file-mockup" className="cursor-pointer flex flex-col items-center gap-2">
+                    <PaperClipIcon className="w-8 h-8 text-muted" />
+                    <span className="text-sm text-primary font-medium">Click to upload Mockup</span>
+                  </label>
                 </div>
+                {uploadedFiles.mockup.file && (
+                  <div className="p-3 bg-muted/10 rounded-lg border border-border">
+                    <div className="flex items-start gap-3">
+                      {uploadedFiles.mockup.preview && (
+                        <img
+                          src={uploadedFiles.mockup.preview}
+                          alt={uploadedFiles.mockup.file.name}
+                          className="w-20 h-20 object-cover rounded-lg border border-border flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{uploadedFiles.mockup.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.mockup.file.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile('mockup')}
+                        className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
+                        title="Remove file"
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
-                {/* EPS File Input */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium">EPS File</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
-                    <input
-                      type="file"
-                      accept=".eps"
-                      onChange={(e) => handleFileSelect('eps', e)}
-                      className="hidden"
-                      id="file-eps"
-                    />
-                    <label htmlFor="file-eps" className="cursor-pointer flex flex-col items-center gap-2">
-                      <PaperClipIcon className="w-8 h-8 text-muted" />
-                      <span className="text-sm text-primary font-medium">Click to upload EPS</span>
-                    </label>
-                  </div>
-                  {uploadedFiles.eps.file && (
-                    <div className="p-3 bg-muted/10 rounded-lg border border-border">
-                      <div className="flex items-start gap-3">
-                        <div className="w-20 h-20 bg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <PaperClipIcon className="w-8 h-8 text-muted" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm">{uploadedFiles.eps.file.name}</p>
-                          <p className="text-xs text-muted">{formatFileSize(uploadedFiles.eps.file.size)}</p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveFile('eps')}
-                          className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
-                          title="Remove file"
-                        >
-                          <XCircleIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* EPS File Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">EPS File</label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept=".eps"
+                    onChange={(e) => handleFileSelect('eps', e)}
+                    className="hidden"
+                    id="file-eps"
+                  />
+                  <label htmlFor="file-eps" className="cursor-pointer flex flex-col items-center gap-2">
+                    <PaperClipIcon className="w-8 h-8 text-muted" />
+                    <span className="text-sm text-primary font-medium">Click to upload EPS</span>
+                  </label>
                 </div>
+                {uploadedFiles.eps.file && (
+                  <div className="p-3 bg-muted/10 rounded-lg border border-border">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{uploadedFiles.eps.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.eps.file.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile('eps')}
+                        className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
+                        title="Remove file"
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {/* CRD File Input */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium">CRD File</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
-                    <input
-                      type="file"
-                      accept=".crd"
-                      onChange={(e) => handleFileSelect('crd', e)}
-                      className="hidden"
-                      id="file-crd"
-                    />
-                    <label htmlFor="file-crd" className="cursor-pointer flex flex-col items-center gap-2">
-                      <PaperClipIcon className="w-8 h-8 text-muted" />
-                      <span className="text-sm text-primary font-medium">Click to upload CRD</span>
-                    </label>
-                  </div>
-                  {uploadedFiles.crd.file && (
-                    <div className="p-3 bg-muted/10 rounded-lg border border-border">
-                      <div className="flex items-start gap-3">
-                        <div className="w-20 h-20 bg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <PaperClipIcon className="w-8 h-8 text-muted" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm">{uploadedFiles.crd.file.name}</p>
-                          <p className="text-xs text-muted">{formatFileSize(uploadedFiles.crd.file.size)}</p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveFile('crd')}
-                          className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
-                          title="Remove file"
-                        >
-                          <XCircleIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+              {/* CRD File Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">CRD File</label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept=".crd"
+                    onChange={(e) => handleFileSelect('crd', e)}
+                    className="hidden"
+                    id="file-crd"
+                  />
+                  <label htmlFor="file-crd" className="cursor-pointer flex flex-col items-center gap-2">
+                    <PaperClipIcon className="w-8 h-8 text-muted" />
+                    <span className="text-sm text-primary font-medium">Click to upload CRD</span>
+                  </label>
                 </div>
+                {uploadedFiles.crd.file && (
+                  <div className="p-3 bg-muted/10 rounded-lg border border-border">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{uploadedFiles.crd.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.crd.file.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile('crd')}
+                        className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
+                        title="Remove file"
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={handleCloseUploadModal} disabled={isUploading}>
-                Cancel
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedOrder(null);
+                  setUploadedFiles({
+                    jpg: { file: null },
+                    mockup: { file: null },
+                    eps: { file: null },
+                    crd: { file: null },
+                  });
+                }}
+                disabled={isUploading}
+                title="Cancel"
+              >
+                <XMarkIcon className="w-4 h-4" />
               </Button>
               <Button
-                variant="primary"
                 onClick={handleSubmitUpload}
-                disabled={(!uploadedFiles.jpg.file && !uploadedFiles.mockup.file && !uploadedFiles.eps.file && !uploadedFiles.crd.file) || isUploading}
+                disabled={!Object.values(uploadedFiles).some(f => f.file) || isUploading}
                 isLoading={isUploading}
+                title="Upload"
               >
-                Upload
+                <CheckIcon className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -849,22 +899,39 @@ export default function CustomOrdersPage() {
               />
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={handleCloseRejectModal} disabled={isRejecting}>
-                Cancel
+              <Button
+                variant="outline"
+                onClick={handleCloseRejectModal}
+                disabled={isRejecting}
+                title="Cancel"
+              >
+                <XMarkIcon className="w-4 h-4" />
               </Button>
               <Button
                 variant="danger"
                 onClick={handleSubmitRejection}
                 disabled={!rejectionReason.trim() || isRejecting}
                 isLoading={isRejecting}
+                title="Submit Rejection"
               >
                 <CheckIcon className="w-4 h-4" />
-                Submit Rejection
               </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      {/* OrderComment Modal */}
+      {selectedOrder && selectedOrder.orderId && (
+        <OrderCommentModal
+          isOpen={showChatModal}
+          onClose={handleCloseChatModal}
+          orderId={selectedOrder.orderId}
+          orderTitle={selectedOrder.designTitle || `Order #${selectedOrder.id}`}
+          orderType="custom"
+        />
+      )}
+      </div>
     </DashboardLayout>
   );
 }
