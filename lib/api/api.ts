@@ -967,11 +967,7 @@ export const CustomOrdersAPI = {
    * Upload Deliverables for Custom Order
    */
   async uploadDeliverables(orderId: string, files: FormData): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/custom-orders/${orderId}/upload-files/`, files, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    return apiClient.upload(`api/coreadmin/custom-orders/${orderId}/upload-files/`, files);
   },
 };
 
