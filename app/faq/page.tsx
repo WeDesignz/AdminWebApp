@@ -502,7 +502,7 @@ export default function FAQPage() {
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant="danger"
                 onClick={handleDeleteConfirm}
                 className="flex-1"
                 disabled={isDeleting}
