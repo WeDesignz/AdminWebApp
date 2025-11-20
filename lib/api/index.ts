@@ -354,8 +354,16 @@ class RealAPI {
       const paginatedData = response.data;
       
       // Transform API response (snake_case) to frontend format (camelCase)
-      const transformedData = (paginatedData.data ?? []).map((order: any) => ({
-        id: String(order.id),
+      const transformedData = (paginatedData.data ?? []).map((order: any) => {
+        const orderId = order.order_id ? String(order.order_id) : undefined;
+        console.log('[RealAPI.getCustomOrders] Transforming order:', {
+          customOrderId: order.id,
+          order_id: order.order_id,
+          orderId,
+        });
+        return {
+          id: String(order.id),
+          orderId, // Associated Order ID for comments
         customerId: String(order.created_by?.id || ''),
         customerName: order.created_by?.first_name && order.created_by?.last_name
           ? `${order.created_by.first_name} ${order.created_by.last_name}`.trim()
@@ -374,7 +382,8 @@ class RealAPI {
         specification: order.description || undefined,
         referenceFiles: [], // TODO: Map from media if needed
         deliverables: [], // TODO: Map from media if needed
-      }));
+        };
+      });
       
       // Handle the paginated response structure
       const result = {

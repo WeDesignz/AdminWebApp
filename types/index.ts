@@ -305,13 +305,14 @@ export interface Order {
 
 export interface CustomOrder {
   id: string;
+  orderId?: string; // Associated Order ID for comments
   customerId: string;
   customerName: string;
   designerId?: string;
   designerName?: string;
   description: string;
   budget: number;
-  status: 'pending' | 'assigned' | 'in_progress' | 'delivered' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'delayed';
   slaDeadline: string;
   createdAt: string;
   completedAt?: string;

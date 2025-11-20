@@ -19,34 +19,18 @@ import {
   CheckCircleIcon, 
   ArrowPathIcon,
   ChatBubbleLeftRightIcon,
-  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 import { useState, useEffect, useRef } from 'react';
 import { CustomOrder } from '@/types';
 import { Input } from '@/components/common/Input';
 import { KpiCard } from '@/components/common/KpiCard';
 import { Dropdown } from '@/components/common/Dropdown';
+import { OrderCommentModal } from '@/components/orders/OrderCommentModal';
 import toast from 'react-hot-toast';
 
 interface UploadedFile {
   file: File | null;
   preview?: string;
-}
-
-interface OrderComment {
-  id: string;
-  message: string;
-  comment_type: 'customer' | 'admin' | 'system';
-  created_by: {
-    id: string;
-    username: string;
-    email: string;
-    first_name?: string;
-    last_name?: string;
-  };
-  created_at: string;
-  is_admin_response: boolean;
-  media?: any[];
 }
 
 export default function CustomOrdersPage() {
@@ -73,9 +57,6 @@ export default function CustomOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [chatMessage, setChatMessage] = useState('');
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery({
@@ -88,17 +69,7 @@ export default function CustomOrdersPage() {
     queryFn: () => MockAPI.getCustomOrderStats(),
   });
 
-  // Get order comments when chat modal is open
-  const { data: commentsData, refetch: refetchComments } = useQuery({
-    queryKey: ['order-comments', selectedOrder?.id],
-    queryFn: () => {
-      if (!selectedOrder?.id) return Promise.resolve(null);
-      // For custom orders, we need to get the associated Order ID
-      // For now, using the custom order ID - may need to adjust based on backend
-      return MockAPI.getOrderComments(selectedOrder.id);
-    },
-    enabled: showChatModal && !!selectedOrder?.id,
-  });
+  // Note: OrderCommentModal handles its own data fetching
 
   // Update current time every second for live countdown
   useEffect(() => {
@@ -109,15 +80,9 @@ export default function CustomOrdersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Scroll to bottom of chat when new messages arrive
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [commentsData]);
 
   const getTimeRemainingShort = (deadline: string, status: string, createdAt: string, completedAt?: string) => {
-    if (status === 'completed' || status === 'delivered') {
+    if (status === 'completed') {
       const completionTime = completedAt ? new Date(completedAt).getTime() : currentTime;
       const deadlineTime = new Date(deadline).getTime();
       const timeLeftWhenCompleted = deadlineTime - completionTime;
@@ -172,27 +137,6 @@ export default function CustomOrdersPage() {
   const handleCloseChatModal = () => {
     setShowChatModal(false);
     setSelectedOrder(null);
-    setChatMessage('');
-  };
-
-  const handleSendMessage = async () => {
-    if (!selectedOrder || !chatMessage.trim()) return;
-    
-    setIsSendingMessage(true);
-    try {
-      // For custom orders, we need the associated Order ID
-      // This might need adjustment based on your backend structure
-      const orderId = selectedOrder.id;
-      await MockAPI.addOrderComment(orderId, chatMessage.trim());
-      setChatMessage('');
-      refetchComments();
-      toast.success('Message sent successfully');
-    } catch (error) {
-      toast.error('Failed to send message');
-      console.error('Error sending message:', error);
-    } finally {
-      setIsSendingMessage(false);
-    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -331,20 +275,18 @@ export default function CustomOrdersPage() {
   const statusFilterOptions = [
     { value: '', label: 'All Status' },
     { value: 'pending', label: 'Pending' },
-    { value: 'in_progress', label: 'In-Progress' },
+    { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
-    { value: 'success', label: 'Success' },
     { value: 'cancelled', label: 'Cancelled' },
-    { value: 'failed', label: 'Failed' },
+    { value: 'delayed', label: 'Delayed' },
   ];
 
   const orderStatusOptions = [
     { value: 'pending', label: 'Pending' },
-    { value: 'in_progress', label: 'In-Progress' },
+    { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
-    { value: 'success', label: 'Success' },
     { value: 'cancelled', label: 'Cancelled' },
-    { value: 'failed', label: 'Failed' },
+    { value: 'delayed', label: 'Delayed' },
   ];
 
   return (
@@ -440,7 +382,9 @@ export default function CustomOrdersPage() {
                         order.status === 'completed' ? 'bg-success/20 text-success' :
                         order.status === 'in_progress' ? 'bg-primary/20 text-primary' :
                         order.status === 'pending' ? 'bg-warning/20 text-warning' :
-                        'bg-error/20 text-error'
+                        order.status === 'cancelled' ? 'bg-error/20 text-error' :
+                        order.status === 'delayed' ? 'bg-error/20 text-error' :
+                        'bg-muted/20 text-muted'
                       }`}>
                         {order.status.replace('_', ' ').toUpperCase()}
                       </span>
@@ -457,8 +401,12 @@ export default function CustomOrdersPage() {
                   
                   <div className="text-right ml-4">
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg mb-2 ${
-                      order.status === 'completed' || order.status === 'delivered'
+                      order.status === 'completed'
                         ? 'bg-success/20 text-success'
+                        : order.status === 'cancelled'
+                        ? 'bg-error/20 text-error'
+                        : order.status === 'delayed'
+                        ? 'bg-error/20 text-error'
                         : new Date(order.slaDeadline).getTime() - currentTime < 1800000
                         ? 'bg-error/20 text-error'
                         : 'bg-warning/20 text-warning'
@@ -550,7 +498,9 @@ export default function CustomOrdersPage() {
                     selectedOrder.status === 'completed' ? 'bg-success/20 text-success' :
                     selectedOrder.status === 'in_progress' ? 'bg-primary/20 text-primary' :
                     selectedOrder.status === 'pending' ? 'bg-warning/20 text-warning' :
-                    'bg-error/20 text-error'
+                    selectedOrder.status === 'cancelled' ? 'bg-error/20 text-error' :
+                    selectedOrder.status === 'delayed' ? 'bg-error/20 text-error' :
+                    'bg-muted/20 text-muted'
                   }`}>
                     {selectedOrder.status.replace('_', ' ').toUpperCase()}
                   </span>
@@ -654,98 +604,34 @@ export default function CustomOrdersPage() {
         )}
       </Modal>
 
-      {/* Chat/OrderComment Modal */}
-      <Modal
-        isOpen={showChatModal}
-        onClose={handleCloseChatModal}
-        title={`Chat - Order #${selectedOrder?.id}`}
-        size="lg"
-      >
-        {selectedOrder && (
-          <div className="flex flex-col h-[600px]">
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 scrollbar-thin">
-              {commentsData?.data?.comments && commentsData.data.comments.length > 0 ? (
-                commentsData.data.comments.map((comment: OrderComment) => (
-                  <div
-                    key={comment.id}
-                    className={`flex ${comment.comment_type === 'admin' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        comment.comment_type === 'admin'
-                          ? 'bg-primary text-white'
-                          : comment.comment_type === 'system'
-                          ? 'bg-muted/20 text-muted'
-                          : 'bg-muted/10 text-text-primary'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium">
-                          {comment.created_by.first_name && comment.created_by.last_name
-                            ? `${comment.created_by.first_name} ${comment.created_by.last_name}`
-                            : comment.created_by.username}
-                        </span>
-                        <span className="text-xs opacity-70">
-                          {formatDate(comment.created_at)}
-                        </span>
-                      </div>
-                      <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
-                      {comment.media && comment.media.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {comment.media.map((media: any) => (
-                            <a
-                              key={media.id}
-                              href={media.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs underline block"
-                            >
-                              {media.file_name || 'Attachment'}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted">
-                  <ChatBubbleLeftRightIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No messages yet. Start the conversation!</p>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="border-t border-border pt-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type your message..."
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!chatMessage.trim() || isSendingMessage}
-                  isLoading={isSendingMessage}
-                  title="Send Message"
-                >
-                  <PaperAirplaneIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* OrderComment Modal */}
+      {selectedOrder && (() => {
+        // CRITICAL: Use Order ID, not CustomOrderRequest ID
+        // Comments are stored against Order, not CustomOrderRequest
+        const orderIdForComments = selectedOrder.orderId;
+        
+        if (!orderIdForComments) {
+          console.error('[CustomOrdersPage] No Order ID found for CustomOrderRequest:', selectedOrder.id);
+        }
+        
+        console.log('[CustomOrdersPage] Opening chat modal:', {
+          customOrderId: selectedOrder.id,
+          orderId: selectedOrder.orderId,
+          orderIdForComments,
+          designTitle: selectedOrder.designTitle,
+          hasOrderId: !!orderIdForComments,
+        });
+        
+        return (
+          <OrderCommentModal
+            isOpen={showChatModal}
+            onClose={handleCloseChatModal}
+            orderId={orderIdForComments || ''}
+            orderTitle={selectedOrder.designTitle || `Order #${selectedOrder.id}`}
+            orderType="custom"
+          />
+        );
+      })()}
 
       {/* Upload Deliverable Modal - Keep existing implementation */}
       <Modal

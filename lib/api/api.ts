@@ -909,21 +909,43 @@ export const CustomOrdersAPI = {
       completed: number;
     }>
   > {
+    // Call analytics endpoint with group_by=status to get status counts
     const response = await apiClient.get<{
-      total?: number;
-      pending?: number;
-      in_progress?: number;
-      completed?: number;
-    }>('api/coreadmin/custom-orders/analytics/');
+      data?: {
+        total?: number;
+        total_orders?: number;
+        pending?: number;
+        in_progress?: number;
+        completed?: number;
+        completed_orders?: number;
+        group_data?: Record<string, number>;
+      };
+    }>('api/coreadmin/custom-orders/analytics/?group_by=status');
 
-    if (response.success && response.data) {
+    if (response.success && response.data?.data) {
+      const data = response.data.data;
+      
+      // Extract stats from response - use direct fields or group_data
+      let total = data.total || data.total_orders || 0;
+      let pending = data.pending || 0;
+      let inProgress = data.in_progress || 0;
+      let completed = data.completed || data.completed_orders || 0;
+      
+      // If group_data is available and direct counts are missing, use group_data
+      if (data.group_data && (!pending || !inProgress)) {
+        pending = data.group_data.pending || 0;
+        inProgress = data.group_data.in_progress || 0;
+        completed = data.group_data.completed || completed;
+        total = Object.values(data.group_data).reduce((sum, count) => sum + count, 0) || total;
+      }
+      
       return {
         success: true,
         data: {
-          total: response.data.total || 0,
-          pending: response.data.pending || 0,
-          inProgress: response.data.in_progress || 0,
-          completed: response.data.completed || 0,
+          total,
+          pending,
+          inProgress,
+          completed,
         },
       };
     }
@@ -967,14 +989,14 @@ export const OrderCommentsAPI = {
     comments: any[];
     total_comments: number;
   }>> {
-    return apiClient.get(`api/orders/${orderId}/comments/`);
+    return apiClient.get(`api/orders/order/${orderId}/comments/`);
   },
 
   /**
    * Add Order Comment
    */
   async addOrderComment(orderId: string, message: string, isInternal?: boolean, mediaIds?: number[]): Promise<ApiResponse<any>> {
-    return apiClient.post(`api/orders/${orderId}/comments/`, {
+    return apiClient.post(`api/orders/order/${orderId}/comments/`, {
       message,
       comment_type: 'admin',
       is_internal: isInternal || false,
