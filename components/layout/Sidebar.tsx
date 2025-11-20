@@ -17,7 +17,6 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Squares2X2Icon,
   TicketIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
@@ -29,7 +28,6 @@ const navigation = [
   { name: 'Designers', href: '/designers', icon: UserGroupIcon },
   { name: 'Customers', href: '/customers', icon: UsersIcon },
   { name: 'Designs', href: '/designs', icon: PhotoIcon },
-  { name: 'Bundles', href: '/bundles', icon: Squares2X2Icon },
   { name: 'Coupons', href: '/coupons', icon: TicketIcon },
   { name: 'Orders & Transactions', href: '/orders', icon: ShoppingCartIcon },
   { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },

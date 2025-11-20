@@ -65,7 +65,7 @@ export default function ActivityLogPage() {
 
   // Filter by action type
   if (actionFilter !== 'all') {
-    filteredLogs = filteredLogs.filter((log) => log.action === actionFilter);
+    filteredLogs = filteredLogs.filter((log) => log.action && log.action === actionFilter);
   }
 
   // Filter by time period
@@ -79,9 +79,10 @@ export default function ActivityLogPage() {
   }
 
   // Get unique action types for filter
-  const actionTypes = Array.from(new Set(logs.map((log) => log.action)));
+  const actionTypes = Array.from(new Set(logs.map((log) => log.action).filter((action): action is string => !!action)));
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = (action: string | undefined) => {
+    if (!action) return <ClockIcon className="w-5 h-5 text-muted" />;
     switch (action) {
       case 'APPROVE_DESIGNER':
       case 'APPROVE_DESIGN':
@@ -118,7 +119,8 @@ export default function ActivityLogPage() {
     }
   };
 
-  const getActionColor = (action: string) => {
+  const getActionColor = (action: string | undefined) => {
+    if (!action) return 'bg-muted/10 border-muted/20 text-muted';
     if (action.includes('APPROVE') || action.includes('ACTIVATE') || action.includes('RESOLVE')) {
       return 'bg-success/10 border-success/20 text-success';
     }
@@ -134,7 +136,8 @@ export default function ActivityLogPage() {
     return 'bg-muted/10 border-muted/20 text-muted';
   };
 
-  const getResourceIcon = (resource: string) => {
+  const getResourceIcon = (resource: string | undefined) => {
+    if (!resource) return <ClockIcon className="w-4 h-4" />;
     switch (resource.toLowerCase()) {
       case 'designer':
         return <UserGroupIcon className="w-4 h-4" />;
@@ -158,7 +161,8 @@ export default function ActivityLogPage() {
     }
   };
 
-  const formatAction = (action: string) => {
+  const formatAction = (action: string | undefined) => {
+    if (!action) return 'Unknown Action';
     return action
       .replace(/_/g, ' ')
       .toLowerCase()
@@ -177,10 +181,15 @@ export default function ActivityLogPage() {
   ];
 
   const getActionDescription = (log: ActivityLog) => {
-    const resourceName = log.resource;
-    const resourceId = log.resourceId;
+    const resourceName = log.resource || 'Unknown';
+    const resourceId = log.resourceId || 'N/A';
+    const action = log.action;
     
-    switch (log.action) {
+    if (!action) {
+      return `Unknown action on ${resourceName} #${resourceId}`;
+    }
+    
+    switch (action) {
       case 'APPROVE_DESIGNER':
         return `Approved designer onboarding for ${resourceName} #${resourceId}`;
       case 'REJECT_DESIGNER':
@@ -347,8 +356,8 @@ export default function ActivityLogPage() {
                         <div className="flex items-center gap-4 text-xs text-muted">
                           <div className="flex items-center gap-1">
                             {getResourceIcon(log.resource)}
-                            <span className="font-medium">{log.resource}</span>
-                            <span className="font-mono">#{log.resourceId}</span>
+                            <span className="font-medium">{log.resource || 'Unknown'}</span>
+                            <span className="font-mono">#{log.resourceId || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <ClockIcon className="w-3 h-3" />
