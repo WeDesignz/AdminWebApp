@@ -553,11 +553,11 @@ export default function OrdersAndTransactionsPage() {
                         <p className="text-xs text-muted mb-1">Order Status</p>
                         <p className="text-sm font-medium">
                           <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
-                            selectedOrder.status === 'success' || selectedOrder.status === 'completed' 
+                            selectedOrder.status === 'completed' 
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                            selectedOrder.status === 'pending' 
+                            selectedOrder.status === 'pending' || selectedOrder.status === 'processing'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                            selectedOrder.status === 'failed' 
+                            selectedOrder.status === 'cancelled' || selectedOrder.status === 'refunded'
                               ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
                             'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                           }`}>
