@@ -285,6 +285,7 @@ export interface Order {
   customerId: string;
   customerName: string;
   amount: number;
+  total_amount?: number; // Support snake_case from API
   status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded';
   createdAt: string;
   completedAt?: string;
