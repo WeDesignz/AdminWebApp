@@ -620,13 +620,13 @@ export default function OrdersAndTransactionsPage() {
                   </div>
 
                   {/* Razorpay Payment Information Section */}
-                  {(selectedOrder.razorpay_payment || selectedOrder.razorpayPaymentId || selectedOrder.razorpay_payment_id || selectedOrder.razorpay_status) && (
+                  {(selectedOrder.razorpay_payment || selectedOrder.razorpayId || selectedOrder.razorpay_payment_id || selectedOrder.razorpay_status) && (
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Razorpay Payment Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-3 bg-muted/10 rounded-lg">
                           <p className="text-xs text-muted mb-1">Razorpay Payment ID</p>
-                          <p className="font-mono text-sm">{selectedOrder.razorpay_payment?.razorpay_payment_id || selectedOrder.razorpayPaymentId || selectedOrder.razorpay_payment_id || selectedOrder.razorpayId || '-'}</p>
+                          <p className="font-mono text-sm">{selectedOrder.razorpay_payment?.razorpay_payment_id || selectedOrder.razorpay_payment_id || selectedOrder.razorpayId || '-'}</p>
                         </div>
                         <div className="p-3 bg-muted/10 rounded-lg">
                           <p className="text-xs text-muted mb-1">Razorpay Order ID</p>
