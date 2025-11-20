@@ -293,7 +293,11 @@ export interface Order {
   total_amount?: number; // Support snake_case from API
   status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded';
   createdAt: string;
+  created_at?: string; // Support snake_case from API
+  updatedAt?: string;
+  updated_at?: string; // Support snake_case from API
   completedAt?: string;
+  completed_at?: string; // Support snake_case from API
   razorpayId?: string;
   razorpayOrderId?: string;
   razorpay_payment_id?: string; // Support snake_case from API
