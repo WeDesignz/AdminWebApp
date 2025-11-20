@@ -796,10 +796,12 @@ export const OrdersAPI = {
     limit?: number;
     status?: string;
     type?: string;
+    razorpay_status?: string;
   }): Promise<ApiResponse<PaginatedResponse<Order>>> {
     const queryParams: Record<string, string | number> = {};
     if (params.status) queryParams.status = params.status;
     if (params.type) queryParams.order_type = params.type;
+    if (params.razorpay_status) queryParams.razorpay_status = params.razorpay_status;
 
     return apiClient.getPaginated<Order>('api/coreadmin/orders/', params.page || 1, params.limit || 10, queryParams);
   },
