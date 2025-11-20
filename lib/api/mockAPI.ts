@@ -691,7 +691,7 @@ class MockAPI {
             : undefined,
         description: `Custom design request ${i + 1}`,
         budget: 500 + i * 100,
-        status: (['pending', 'assigned', 'in_progress', 'delivered', 'completed'] as const)[
+        status: (['pending', 'in_progress', 'completed', 'cancelled', 'delayed'] as const)[
           i % 5
         ],
         slaDeadline: new Date(
