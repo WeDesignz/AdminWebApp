@@ -375,6 +375,7 @@ class RealAPI {
         description: order.description || '',
         budget: parseFloat(order.budget || 0),
         status: order.status || 'pending',
+        paymentStatus: order.payment_status || undefined,
         slaDeadline: order.sla_deadline || order.slaDeadline || '',
         createdAt: order.created_at || order.createdAt || '',
         completedAt: order.completed_at || order.completedAt || undefined,

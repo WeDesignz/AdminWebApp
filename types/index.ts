@@ -313,6 +313,7 @@ export interface CustomOrder {
   description: string;
   budget: number;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'delayed';
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded'; // Payment status separate from workflow status
   slaDeadline: string;
   createdAt: string;
   completedAt?: string;
