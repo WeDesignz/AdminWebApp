@@ -571,7 +571,7 @@ export default function OrdersAndTransactionsPage() {
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Transaction Number</p>
-                        <p className="font-mono text-sm">{selectedOrder.order_transaction_number || '-'}</p>
+                        <p className="font-mono text-sm">{selectedOrder.order_transaction_number || selectedOrder.transactionNumber || '-'}</p>
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Transaction Type</p>
