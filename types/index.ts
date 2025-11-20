@@ -280,6 +280,8 @@ export interface Order {
   orderNumber?: string;
   order_number?: string; // Support both camelCase and snake_case
   orderType: 'plan' | 'bundle' | 'design' | 'custom';
+  order_type?: 'plan' | 'bundle' | 'design' | 'custom' | 'cart' | 'subscription'; // Support snake_case from API
+  order_transaction_type?: string; // Support legacy field name
   customerId: string;
   customerName: string;
   amount: number;
