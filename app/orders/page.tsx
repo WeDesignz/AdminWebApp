@@ -567,7 +567,7 @@ export default function OrdersAndTransactionsPage() {
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Total Amount</p>
-                        <p className="text-sm font-bold">{formatCurrency(selectedOrder.amount || selectedOrder.total_amount)}</p>
+                        <p className="text-sm font-bold">{formatCurrency(selectedOrder.amount || selectedOrder.total_amount || 0)}</p>
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Transaction Number</p>
