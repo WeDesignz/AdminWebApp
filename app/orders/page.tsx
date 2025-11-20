@@ -254,7 +254,7 @@ export default function OrdersAndTransactionsPage() {
                   <div className="flex-1 relative">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                     <Input
-                      placeholder="Search by order ID, customer name, Razorpay ID..."
+                      placeholder="Search by order number, Razorpay Payment ID, Razorpay Order ID, or customer name..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="pl-10"
@@ -329,10 +329,9 @@ export default function OrdersAndTransactionsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order ID</th>
+                    <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order Number</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order Type</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Customer</th>
-                    <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Details</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Amount</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order Status</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Razorpay Payment ID</th>
@@ -345,13 +344,13 @@ export default function OrdersAndTransactionsPage() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-8">
+                      <td colSpan={10} className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                       </td>
                     </tr>
                   ) : !data?.data || data.data.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-8 text-muted">
+                      <td colSpan={10} className="text-center py-8 text-muted">
                         No orders found
                       </td>
                     </tr>
@@ -363,16 +362,13 @@ export default function OrdersAndTransactionsPage() {
                       const razorpayOrderId = order.razorpayOrderId || order.razorpay_order_id || '-';
                       return (
                         <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                          <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.id}</td>
+                          <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.order_number || order.id}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
                               {getOrderTypeLabel(order.orderType || order.order_type || order.order_transaction_type)}
                             </span>
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">{order.customerName || order.user_name || '-'}</td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <p className="text-sm">{getOrderDetails(order)}</p>
-                          </td>
                           <td className="py-3 px-4 font-bold whitespace-nowrap">{formatCurrency(order.amount || order.total_amount)}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
@@ -538,8 +534,12 @@ export default function OrdersAndTransactionsPage() {
                     <h3 className="text-lg font-semibold text-primary border-b border-border pb-2">Order Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-3 bg-muted/10 rounded-lg">
-                        <p className="text-xs text-muted mb-1">Order ID</p>
-                        <p className="font-mono text-sm font-medium">{selectedOrder.id}</p>
+                        <p className="text-xs text-muted mb-1">Order Number</p>
+                        <p className="font-mono text-sm font-medium">{selectedOrder.order_number || selectedOrder.id}</p>
+                      </div>
+                      <div className="p-3 bg-muted/10 rounded-lg">
+                        <p className="text-xs text-muted mb-1">Order ID (Internal)</p>
+                        <p className="font-mono text-sm">{selectedOrder.id}</p>
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">Order Type</p>
