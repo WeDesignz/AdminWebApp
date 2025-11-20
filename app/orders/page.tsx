@@ -608,7 +608,13 @@ export default function OrdersAndTransactionsPage() {
                       </div>
                       <div className="p-3 bg-muted/10 rounded-lg">
                         <p className="text-xs text-muted mb-1">User ID</p>
-                        <p className="font-mono text-sm">{selectedOrder.created_by?.id || selectedOrder.created_by || '-'}</p>
+                        <p className="font-mono text-sm">
+                          {selectedOrder.created_by 
+                            ? (typeof selectedOrder.created_by === 'object' && 'id' in selectedOrder.created_by
+                              ? selectedOrder.created_by.id
+                              : selectedOrder.created_by)
+                            : '-'}
+                        </p>
                       </div>
                     </div>
                   </div>
