@@ -83,20 +83,20 @@ export function Dropdown({
   useEffect(() => {
     if (isOpen) {
       updatePosition();
-
+      
       // Update position on scroll and resize
       const handleScroll = () => {
         updatePosition();
       };
 
       const handleResize = () => {
-        updatePosition();
+      updatePosition();
       };
-
+      
       // Use capture phase to catch all scroll events
       window.addEventListener('scroll', handleScroll, true);
       window.addEventListener('resize', handleResize);
-
+      
       return () => {
         window.removeEventListener('scroll', handleScroll, true);
         window.removeEventListener('resize', handleResize);
@@ -178,56 +178,56 @@ export function Dropdown({
 
       {isOpen &&
         createPortal(
-          <>
+        <>
             {/* Backdrop for mobile/accessibility */}
-            <div
-              className="fixed inset-0 z-[9998]"
-              onClick={() => setIsOpen(false)}
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setIsOpen(false)}
               aria-hidden="true"
-            />
+          />
 
             {/* Dropdown Menu */}
-            <div
-              ref={menuRef}
-              className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 border border-border shadow-lg overflow-hidden"
-              style={{
+          <div
+            ref={menuRef}
+            className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 border border-border shadow-lg overflow-hidden"
+            style={{
                 top: `${position.top}px`,
                 left: `${position.left}px`,
                 width: `${position.width}px`,
-              }}
+            }}
               role="listbox"
-            >
-              <div className="py-1 max-h-60 overflow-y-auto scrollbar-thin">
+          >
+            <div className="py-1 max-h-60 overflow-y-auto scrollbar-thin">
                 {options.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-muted text-center">
                     No options available
                   </div>
                 ) : (
                   options.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleSelect(option.value)}
-                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between gap-2 ${
-                        value === option.value
-                          ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                          : 'hover:bg-muted/10'
-                      }`}
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSelect(option.value)}
+                  className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between gap-2 ${
+                    value === option.value
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                      : 'hover:bg-muted/10'
+                  }`}
                       role="option"
                       aria-selected={value === option.value}
-                    >
-                      <span>{option.label}</span>
-                      {value === option.value && (
-                        <CheckIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                      )}
-                    </button>
+                >
+                  <span>{option.label}</span>
+                  {value === option.value && (
+                    <CheckIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                  )}
+                </button>
                   ))
                 )}
-              </div>
             </div>
-          </>,
-          document.body
-        )}
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

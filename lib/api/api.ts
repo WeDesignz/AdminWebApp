@@ -1491,6 +1491,77 @@ export const SettingsAPI = {
 };
 
 /**
+ * FAQ API
+ */
+export const FAQAPI = {
+  /**
+   * Get FAQs List
+   */
+  async getFAQs(): Promise<ApiResponse<any[]>> {
+    const response = await apiClient.get<any[]>('api/feedback/faqs/');
+    return response as ApiResponse<any[]>;
+  },
+
+  /**
+   * Get FAQ Tags
+   */
+  async getFAQTags(): Promise<ApiResponse<any[]>> {
+    const response = await apiClient.get<any[]>('api/feedback/faq-tags/');
+    return response as ApiResponse<any[]>;
+  },
+
+  /**
+   * Create FAQ
+   */
+  async createFAQ(data: {
+    question: string;
+    answer: string;
+    is_active: boolean;
+    sort_order: number;
+    tag_ids: number[];
+  }): Promise<ApiResponse<any>> {
+    const payload = {
+      question: data.question,
+      answer: data.answer,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      tag_ids: data.tag_ids,
+    };
+    const response = await apiClient.post<any>('api/feedback/faqs/', payload);
+    return response as ApiResponse<any>;
+  },
+
+  /**
+   * Update FAQ
+   */
+  async updateFAQ(id: number, data: {
+    question: string;
+    answer: string;
+    is_active: boolean;
+    sort_order: number;
+    tag_ids: number[];
+  }): Promise<ApiResponse<any>> {
+    const payload = {
+      question: data.question,
+      answer: data.answer,
+      is_active: data.is_active,
+      sort_order: data.sort_order,
+      tag_ids: data.tag_ids,
+    };
+    const response = await apiClient.put<any>(`api/feedback/faqs/${id}/`, payload);
+    return response as ApiResponse<any>;
+  },
+
+  /**
+   * Delete FAQ
+   */
+  async deleteFAQ(id: number): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete(`api/feedback/faqs/${id}/`);
+    return response as ApiResponse<void>;
+  },
+};
+
+/**
  * Export all APIs as a single object for easy import
  */
 export const API = {
@@ -1510,6 +1581,7 @@ export const API = {
   systemConfig: SystemConfigAPI,
   activityLogs: ActivityLogsAPI,
   settings: SettingsAPI,
+  faq: FAQAPI,
 };
 
 // For backward compatibility, export as default
