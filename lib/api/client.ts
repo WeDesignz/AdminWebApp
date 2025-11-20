@@ -597,45 +597,55 @@ class ApiClient {
     const fullEndpoint = queryString ? `${endpoint}?${queryString}` : endpoint;
 
     try {
-      // Use request method directly to ensure auth headers are included
-      const response = await this.request<any>(fullEndpoint, {
+      // Make the raw request to get the unprocessed response
+      const url = getApiUrl(fullEndpoint);
+      const headers = await this.getAuthHeaders();
+      
+      const fetchResponse = await fetch(url, {
         method: 'GET',
+        credentials: 'include',
+        headers,
       });
 
-      if (!response.success || !response.data) {
+      if (!fetchResponse.ok) {
+        const error = await this.parseErrorResponse(fetchResponse);
         return {
           success: false,
-          error: response.error || 'Failed to fetch paginated data',
+          error: error.error || error.message || `HTTP ${fetchResponse.status}`,
         } as ApiResponse<PaginatedResponse<T>>;
       }
 
-      // Handle custom backend format: { message, data, pagination }
-      if (response.data.data && response.data.pagination) {
+      // Parse the raw JSON response
+      const rawData = await fetchResponse.json();
+      console.log('[getPaginated] Raw backend response:', rawData);
+
+      // Handle custom backend format: { message, data: [...], pagination: {...} }
+      if (rawData.data && rawData.pagination) {
         return {
           success: true,
           data: {
-            data: response.data.data as T[],
+            data: Array.isArray(rawData.data) ? rawData.data as T[] : [],
             pagination: {
-              page: response.data.pagination.page || page,
-              limit: response.data.pagination.page_size || response.data.pagination.limit || limit,
-              total: response.data.pagination.total_count || response.data.pagination.total || 0,
-              totalPages: response.data.pagination.total_pages || Math.ceil((response.data.pagination.total_count || response.data.pagination.total || 0) / (response.data.pagination.page_size || response.data.pagination.limit || limit)),
+              page: rawData.pagination.page || page,
+              limit: rawData.pagination.page_size || rawData.pagination.limit || limit,
+              total: rawData.pagination.total_count || rawData.pagination.total || 0,
+              totalPages: rawData.pagination.total_pages || Math.ceil((rawData.pagination.total_count || rawData.pagination.total || 0) / (rawData.pagination.page_size || rawData.pagination.limit || limit)),
             },
           },
         };
       }
 
       // Handle Django REST Framework format: { count, next, previous, results }
-      if (response.data.results && typeof response.data.count === 'number') {
+      if (rawData.results && typeof rawData.count === 'number') {
         return {
           success: true,
           data: {
-            data: response.data.results as T[],
+            data: rawData.results as T[],
             pagination: {
               page,
               limit,
-              total: response.data.count,
-              totalPages: Math.ceil(response.data.count / limit),
+              total: rawData.count,
+              totalPages: Math.ceil(rawData.count / limit),
             },
           },
         };
@@ -645,12 +655,42 @@ class ApiClient {
       return {
         success: true,
         data: {
-          data: Array.isArray(response.data) ? response.data as T[] : [],
+          data: Array.isArray(rawData) ? rawData as T[] : [],
           pagination: {
             page,
             limit,
-            total: Array.isArray(response.data) ? response.data.length : 0,
-            totalPages: Math.ceil((Array.isArray(response.data) ? response.data.length : 0) / limit),
+            total: Array.isArray(rawData) ? rawData.length : 0,
+            totalPages: Math.ceil((Array.isArray(rawData) ? rawData.length : 0) / limit),
+          },
+        },
+      };
+
+      // Handle Django REST Framework format: { count, next, previous, results }
+      if (rawData.results && typeof rawData.count === 'number') {
+        return {
+          success: true,
+          data: {
+            data: rawData.results as T[],
+            pagination: {
+              page,
+              limit,
+              total: rawData.count,
+              totalPages: Math.ceil(rawData.count / limit),
+            },
+          },
+        };
+      }
+
+      // Fallback: assume the data itself is the array
+      return {
+        success: true,
+        data: {
+          data: Array.isArray(rawData) ? rawData as T[] : [],
+          pagination: {
+            page,
+            limit,
+            total: Array.isArray(rawData) ? rawData.length : 0,
+            totalPages: Math.ceil((Array.isArray(rawData) ? rawData.length : 0) / limit),
           },
         },
       };

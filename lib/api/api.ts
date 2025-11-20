@@ -940,6 +940,47 @@ export const CustomOrdersAPI = {
   async updateCustomOrderStatus(orderId: string, status: CustomOrder['status']): Promise<ApiResponse<void>> {
     return apiClient.post(`api/coreadmin/custom-orders/${orderId}/action/`, { status });
   },
+
+  /**
+   * Upload Deliverables for Custom Order
+   */
+  async uploadDeliverables(orderId: string, files: FormData): Promise<ApiResponse<void>> {
+    return apiClient.post(`api/coreadmin/custom-orders/${orderId}/upload-files/`, files, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+
+/**
+ * Order Comments API
+ */
+export const OrderCommentsAPI = {
+  /**
+   * Get Order Comments
+   */
+  async getOrderComments(orderId: string): Promise<ApiResponse<{
+    order_id: number;
+    order_type: string;
+    order_title: string;
+    comments: any[];
+    total_comments: number;
+  }>> {
+    return apiClient.get(`api/orders/${orderId}/comments/`);
+  },
+
+  /**
+   * Add Order Comment
+   */
+  async addOrderComment(orderId: string, message: string, isInternal?: boolean, mediaIds?: number[]): Promise<ApiResponse<any>> {
+    return apiClient.post(`api/orders/${orderId}/comments/`, {
+      message,
+      comment_type: 'admin',
+      is_internal: isInternal || false,
+      media_ids: mediaIds || [],
+    });
+  },
 };
 
 /**
@@ -1432,6 +1473,7 @@ export const API = {
   designs: DesignsAPI,
   orders: OrdersAPI,
   customOrders: CustomOrdersAPI,
+  orderComments: OrderCommentsAPI,
   plans: PlansAPI,
   bundles: BundlesAPI,
   coupons: CouponsAPI,

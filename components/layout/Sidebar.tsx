@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
   Squares2X2Icon,
   TicketIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils/cn';
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Bundles', href: '/bundles', icon: Squares2X2Icon },
   { name: 'Coupons', href: '/coupons', icon: TicketIcon },
   { name: 'Orders & Transactions', href: '/orders', icon: ShoppingCartIcon },
+  { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
   { name: 'Plans', href: '/plans', icon: CubeIcon },
   { name: 'Reports', href: '/reports', icon: ClipboardDocumentListIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },

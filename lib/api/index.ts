@@ -347,14 +347,47 @@ class RealAPI {
     search?: string;
   }): Promise<ListApiResponse<CustomOrder>> {
     const response = await API.customOrders.getCustomOrders(params);
+    console.log('[RealAPI.getCustomOrders] Full Response:', JSON.stringify(response, null, 2));
     if (response.success && response.data) {
-      return {
+      // The getPaginated method already returns { data: { data: [...], pagination: {...} } }
+      // So response.data is already the PaginatedResponse structure
+      const paginatedData = response.data;
+      
+      // Transform API response (snake_case) to frontend format (camelCase)
+      const transformedData = (paginatedData.data ?? []).map((order: any) => ({
+        id: String(order.id),
+        customerId: String(order.created_by?.id || ''),
+        customerName: order.created_by?.first_name && order.created_by?.last_name
+          ? `${order.created_by.first_name} ${order.created_by.last_name}`.trim()
+          : order.created_by?.username || order.created_by?.email || 'Unknown',
+        designerId: order.assigned_to?.id ? String(order.assigned_to.id) : undefined,
+        designerName: order.assigned_to?.first_name && order.assigned_to?.last_name
+          ? `${order.assigned_to.first_name} ${order.assigned_to.last_name}`.trim()
+          : order.assigned_to?.username || order.assigned_to?.email || undefined,
+        description: order.description || '',
+        budget: parseFloat(order.budget || 0),
+        status: order.status || 'pending',
+        slaDeadline: order.sla_deadline || order.slaDeadline || '',
+        createdAt: order.created_at || order.createdAt || '',
+        completedAt: order.completed_at || order.completedAt || undefined,
+        designTitle: order.title || undefined,
+        specification: order.description || undefined,
+        referenceFiles: [], // TODO: Map from media if needed
+        deliverables: [], // TODO: Map from media if needed
+      }));
+      
+      // Handle the paginated response structure
+      const result = {
         success: true,
-        data: response.data.data ?? [],
-        pagination: response.data.pagination,
+        data: transformedData,
+        pagination: paginatedData.pagination,
       };
+      console.log('[RealAPI.getCustomOrders] Result:', result);
+      console.log('[RealAPI.getCustomOrders] Data length:', result.data.length);
+      return result;
     }
 
+    console.error('[RealAPI.getCustomOrders] Error:', response.error);
     return {
       success: false,
       data: [],
@@ -375,6 +408,21 @@ class RealAPI {
 
   static async updateCustomOrderStatus(orderId: string, status: CustomOrder['status']): Promise<ApiResponse<void>> {
     return API.customOrders.updateCustomOrderStatus(orderId, status);
+  }
+
+  // Order Comments methods
+  static async getOrderComments(orderId: string): Promise<ApiResponse<{
+    order_id: number;
+    order_type: string;
+    order_title: string;
+    comments: any[];
+    total_comments: number;
+  }>> {
+    return API.orderComments.getOrderComments(orderId);
+  }
+
+  static async addOrderComment(orderId: string, message: string, isInternal?: boolean, mediaIds?: number[]): Promise<ApiResponse<any>> {
+    return API.orderComments.addOrderComment(orderId, message, isInternal, mediaIds);
   }
 
   // Plan methods

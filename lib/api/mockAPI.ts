@@ -1155,6 +1155,86 @@ class MockAPI {
     return { success: true };
   }
 
+  // Order Comments methods
+  static async getOrderComments(orderId: string): Promise<ApiResponse<{
+    order_id: number;
+    order_type: string;
+    order_title: string;
+    comments: any[];
+    total_comments: number;
+  }>> {
+    await delay(500);
+
+    const comments = [
+      {
+        id: '1',
+        message: 'Hello, I have a question about my order.',
+        comment_type: 'customer',
+        created_by: {
+          id: '1',
+          username: 'customer1',
+          email: 'customer1@example.com',
+          first_name: 'John',
+          last_name: 'Doe',
+        },
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+        is_admin_response: false,
+        media: [],
+      },
+      {
+        id: '2',
+        message: 'Sure! How can I help you?',
+        comment_type: 'admin',
+        created_by: {
+          id: '2',
+          username: 'admin',
+          email: 'admin@wedesignz.com',
+          first_name: 'Admin',
+          last_name: 'User',
+        },
+        created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        is_admin_response: true,
+        media: [],
+      },
+    ];
+
+    return {
+      success: true,
+      data: {
+        order_id: parseInt(orderId),
+        order_type: 'custom',
+        order_title: `Order #${orderId}`,
+        comments,
+        total_comments: comments.length,
+      },
+    };
+  }
+
+  static async addOrderComment(orderId: string, message: string, isInternal?: boolean, mediaIds?: number[]): Promise<ApiResponse<any>> {
+    await delay(500);
+
+    const comment = {
+      id: String(Date.now()),
+      message,
+      comment_type: 'admin',
+      created_by: {
+        id: '2',
+        username: 'admin',
+        email: 'admin@wedesignz.com',
+        first_name: 'Admin',
+        last_name: 'User',
+      },
+      created_at: new Date().toISOString(),
+      is_admin_response: true,
+      media: [],
+    };
+
+    return {
+      success: true,
+      data: comment,
+    };
+  }
+
   // Activity Log methods
   static async getActivityLogs(params: {
     page?: number;
