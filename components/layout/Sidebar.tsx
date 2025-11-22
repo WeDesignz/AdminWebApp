@@ -20,6 +20,7 @@ import {
   TicketIcon,
   WrenchScrewdriverIcon,
   QuestionMarkCircleIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils/cn';
@@ -28,11 +29,13 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Designers', href: '/designers', icon: UserGroupIcon },
   { name: 'Customers', href: '/customers', icon: UsersIcon },
+  { name: 'Contract Workers', href: '/contract-workers', icon: UsersIcon },
   { name: 'Designs', href: '/designs', icon: PhotoIcon },
   { name: 'Coupons', href: '/coupons', icon: TicketIcon },
   { name: 'Orders & Transactions', href: '/orders', icon: ShoppingCartIcon },
   { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
   { name: 'Plans', href: '/plans', icon: CubeIcon },
+  { name: 'Support', href: '/support', icon: ChatBubbleLeftRightIcon },
   { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
   { name: 'Reports', href: '/reports', icon: ClipboardDocumentListIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },

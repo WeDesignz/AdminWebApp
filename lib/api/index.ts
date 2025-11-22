@@ -445,6 +445,10 @@ class RealAPI {
     return API.orderComments.addOrderComment(orderId, message, isInternal, mediaIds);
   }
 
+  static async markOrderCommentsAsRead(orderId: string): Promise<ApiResponse<any>> {
+    return API.orderComments.markOrderCommentsAsRead(orderId);
+  }
+
   // Plan methods
   static async getPlans(): Promise<ApiResponse<Plan[]>> {
     return API.plans.getPlans();

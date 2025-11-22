@@ -530,3 +530,33 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+export interface ContractWorker {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fatherName?: string;
+  fullName?: string;
+  email: string;
+  phone?: string;
+  employeeId?: string;
+  esiNumber?: string;
+  status: 'active' | 'inactive' | 'terminated';
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankAccountHolderName?: string;
+  dateOfJoining?: string;
+  dateOfBirth?: string;
+  notes?: string;
+  createdBy?: string;
+  createdByName?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
