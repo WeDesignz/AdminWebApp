@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'WeDesignz Admin Panel',
   description: 'Admin panel for WeDesignz platform',
+  icons: {
+    icon: "/Logos/ONLY LOGO.png",
+    shortcut: "/Logos/ONLY LOGO.png",
+    apple: "/Logos/ONLY LOGO.png",
+  },
 };
 
 export default function RootLayout({

@@ -56,23 +56,19 @@ export function Sidebar() {
     >
       <div className="p-6 flex items-center justify-between">
         {!sidebarCollapsed ? (
-          <motion.h1
+          <motion.img
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-2xl font-bold text-primary"
-            style={{
-              background: 'linear-gradient(135deg, #6C5CE7 0%, #8B7FE8 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            WeDesignz
-          </motion.h1>
+            src="/Logos/WD LOGO.svg"
+            alt="WeDesignz"
+            className="h-8 w-auto"
+          />
         ) : (
-          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">W</span>
-          </div>
+          <img
+            src="/Logos/ONLY LOGO.svg"
+            alt="WeDesignz"
+            className="w-10 h-10 object-contain"
+          />
         )}
         <button
           onClick={toggleSidebar}
