@@ -272,8 +272,9 @@ function CustomOrderCardWithUnread({
           size="sm" 
           variant="danger"
           onClick={() => onRejectOrder(order)}
-          title="Reject Order"
+          title={order.status === 'cancelled' ? 'Order already rejected' : 'Reject Order'}
           className="whitespace-nowrap"
+          disabled={order.status === 'cancelled'}
         >
           Reject Order
         </Button>
@@ -686,7 +687,7 @@ export default function CustomOrdersPage() {
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'cancelled', label: 'Rejected' },
     { value: 'delayed', label: 'Delayed' },
   ];
 
@@ -700,7 +701,7 @@ export default function CustomOrdersPage() {
       disabled: !deliveryFilesUploaded,
       tooltip: !deliveryFilesUploaded ? 'Deliverables must be uploaded before marking as completed. Please use the "Upload Deliverable" button to upload files first.' : undefined
     },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'cancelled', label: 'Rejected' },
     { value: 'delayed', label: 'Delayed' },
   ];
 

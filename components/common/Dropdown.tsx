@@ -66,8 +66,8 @@ export function Dropdown({
     const spaceAbove = buttonRect.top - gap;
 
     if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
-      // Show above button
-      top = buttonRect.top - menuHeight - gap;
+      // Show above button - align bottom of menu with top of button
+      top = buttonRect.top - menuHeight;
       if (top < margin) {
         top = margin;
       }
