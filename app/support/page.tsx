@@ -110,7 +110,7 @@ export default function SupportPage() {
                   return {
                     id: String(order.id),
                     order_number: order.order_number || order.orderNumber || `#${order.id}`,
-                    order_type: 'cart' as const,
+                    order_type: 'cart' as 'cart' | 'subscription',
                     customer_name: order.customerName || order.user_name || 'Unknown',
                     customer_email: order.user_email || '',
                     total_amount: order.amount || order.total_amount || 0,
@@ -119,7 +119,7 @@ export default function SupportPage() {
                     unread_count: unreadCount,
                     last_message: lastComment?.message || '',
                     last_message_at: lastComment?.created_at || order.createdAt || order.created_at,
-                  };
+                  } as OrderChat;
                 }
               }
             } catch (error) {
@@ -157,7 +157,7 @@ export default function SupportPage() {
                   return {
                     id: String(order.id),
                     order_number: order.order_number || order.orderNumber || `#${order.id}`,
-                    order_type: 'subscription' as const,
+                    order_type: 'subscription' as 'cart' | 'subscription',
                     customer_name: order.customerName || order.user_name || 'Unknown',
                     customer_email: order.user_email || '',
                     total_amount: order.amount || order.total_amount || 0,
@@ -166,7 +166,7 @@ export default function SupportPage() {
                     unread_count: unreadCount,
                     last_message: lastComment?.message || '',
                     last_message_at: lastComment?.created_at || order.createdAt || order.created_at,
-                  };
+                  } as OrderChat;
                 }
               }
             } catch (error) {
