@@ -382,7 +382,13 @@ class RealAPI {
         designTitle: order.title || undefined,
         specification: order.description || undefined,
         referenceFiles: [], // TODO: Map from media if needed
-        deliverables: [], // TODO: Map from media if needed
+        deliverables: (order.deliverables || []).map((d: any) => ({
+          id: String(d.id),
+          fileName: d.fileName || d.file_name || 'file',
+          url: d.url || d.file_url || '',
+          uploadedAt: d.uploadedAt || d.uploaded_at || new Date().toISOString(),
+        })),
+        deliveryFilesUploaded: order.delivery_files_uploaded || false,
         };
       });
       
@@ -418,6 +424,10 @@ class RealAPI {
 
   static async updateCustomOrderStatus(orderId: string, status: CustomOrder['status']): Promise<ApiResponse<void>> {
     return API.customOrders.updateCustomOrderStatus(orderId, status);
+  }
+
+  static async uploadDeliverables(orderId: string, files: FormData): Promise<ApiResponse<void>> {
+    return API.customOrders.uploadDeliverables(orderId, files);
   }
 
   // Order Comments methods

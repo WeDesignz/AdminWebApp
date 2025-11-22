@@ -19,6 +19,11 @@ import {
   CheckCircleIcon, 
   ArrowPathIcon,
   ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ArrowDownTrayIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { useState, useEffect, useRef } from 'react';
 import { CustomOrder } from '@/types';
@@ -49,6 +54,10 @@ function CustomOrderCardWithUnread({
   getTimeRemainingShort,
   formatCurrency,
   formatDate,
+  isExpanded,
+  onToggleExpand,
+  onPreviewImage,
+  onDownloadFile,
 }: {
   order: CustomOrder;
   orderIdForUnread: string;
@@ -58,11 +67,15 @@ function CustomOrderCardWithUnread({
   onRejectOrder: (order: CustomOrder) => void;
   onStatusChange: (orderId: string, newStatus: string) => void;
   updatingOrderId: string | null;
-  orderStatusOptions: Array<{ value: string; label: string }>;
+  orderStatusOptions: Array<{ value: string; label: string; disabled?: boolean; tooltip?: string }>;
   currentTime: number;
   getTimeRemainingShort: (deadline: string, status: string, createdAt: string, completedAt?: string) => string;
   formatCurrency: (amount: number) => string;
   formatDate: (date: string) => string;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onPreviewImage: (url: string, fileName: string, allImages: Array<{ url: string; fileName: string }>, index: number) => void;
+  onDownloadFile?: (url: string, fileName: string) => void;
 }) {
   const unreadCount = useUnreadMessages(orderIdForUnread, undefined);
 
@@ -94,6 +107,98 @@ function CustomOrderCardWithUnread({
             )}
             <span className="font-bold">{formatCurrency(order.budget)}</span>
           </div>
+          
+          {/* Deliverables Section */}
+          {order.deliverables && order.deliverables.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckIcon className="w-4 h-4 text-success" />
+                <span className="text-sm font-medium text-success">Deliverables Uploaded ({order.deliverables.length})</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(isExpanded ? order.deliverables : order.deliverables.slice(0, 3)).map((file) => {
+                  const fileNameLower = file.fileName?.toLowerCase() || '';
+                  const isImage = fileNameLower.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
+                                  fileNameLower.includes('mockup');
+                  const isCDR = fileNameLower.endsWith('.cdr');
+                  const isEPS = fileNameLower.endsWith('.eps');
+                  
+                  if (isImage) {
+                    return (
+                      <button
+                        key={file.id}
+                        onClick={() => {
+                          const imageFiles = order.deliverables?.filter(f => {
+                            const fNameLower = f.fileName?.toLowerCase() || '';
+                            return fNameLower.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
+                                   fNameLower.includes('mockup');
+                          }) || [];
+                          const imageIndex = imageFiles.findIndex(f => f.id === file.id);
+                          onPreviewImage(file.url, file.fileName || 'file', imageFiles.map(f => ({ url: f.url, fileName: f.fileName || 'file' })), imageIndex >= 0 ? imageIndex : 0);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-success/10 hover:bg-success/20 text-success rounded-lg text-xs font-medium transition-colors border border-success/20 cursor-pointer"
+                        title={`Preview ${file.fileName}`}
+                      >
+                        <EyeIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[120px]">{file.fileName}</span>
+                      </button>
+                    );
+                  } else if (isCDR || isEPS) {
+                    return (
+                      <button
+                        key={file.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (onDownloadFile) {
+                            onDownloadFile(file.url, file.fileName || 'file');
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-success/10 hover:bg-success/20 text-success rounded-lg text-xs font-medium transition-colors border border-success/20 cursor-pointer"
+                        title={`Download ${file.fileName}`}
+                      >
+                        <ArrowDownTrayIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[120px]">{file.fileName}</span>
+                      </button>
+                    );
+                  } else {
+                    return (
+                      <a
+                        key={file.id}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-success/10 hover:bg-success/20 text-success rounded-lg text-xs font-medium transition-colors border border-success/20"
+                        title={file.fileName}
+                      >
+                        <PaperClipIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[120px]">{file.fileName}</span>
+                      </a>
+                    );
+                  }
+                })}
+                {order.deliverables.length > 3 && (
+                  <button
+                    onClick={onToggleExpand}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/10 hover:bg-muted/20 text-muted rounded-lg text-xs font-medium transition-colors border border-border cursor-pointer"
+                    title={isExpanded ? 'Show less' : 'Show all'}
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUpIcon className="w-3.5 h-3.5" />
+                        <span>Show less</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDownIcon className="w-3.5 h-3.5" />
+                        <span>+{order.deliverables.length - 3} more</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="text-right ml-4">
@@ -184,14 +289,16 @@ export default function CustomOrdersPage() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{
     jpg: UploadedFile;
+    png: UploadedFile;
     mockup: UploadedFile;
     eps: UploadedFile;
-    crd: UploadedFile;
+    cdr: UploadedFile;
   }>({
     jpg: { file: null },
+    png: { file: null },
     mockup: { file: null },
     eps: { file: null },
-    crd: { file: null },
+    cdr: { file: null },
   });
   const [isUploading, setIsUploading] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -201,6 +308,10 @@ export default function CustomOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [expandedDeliverables, setExpandedDeliverables] = useState<Set<string>>(new Set());
+  const [previewImage, setPreviewImage] = useState<{ url: string; fileName: string } | null>(null);
+  const [previewImagesList, setPreviewImagesList] = useState<Array<{ url: string; fileName: string }>>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery({
@@ -294,9 +405,10 @@ export default function CustomOrdersPage() {
     setShowUploadModal(true);
     setUploadedFiles({
       jpg: { file: null },
+      png: { file: null },
       mockup: { file: null },
       eps: { file: null },
-      crd: { file: null },
+      cdr: { file: null },
     });
   };
 
@@ -305,19 +417,21 @@ export default function CustomOrdersPage() {
     setSelectedOrder(null);
     setUploadedFiles({
       jpg: { file: null },
+      png: { file: null },
       mockup: { file: null },
       eps: { file: null },
-      crd: { file: null },
+      cdr: { file: null },
     });
   };
 
-  const handleFileSelect = (type: 'jpg' | 'mockup' | 'eps' | 'crd', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (type: 'jpg' | 'png' | 'mockup' | 'eps' | 'cdr', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const newFile: UploadedFile = { file };
 
-    if (type === 'jpg' || type === 'mockup') {
+    // Create preview for jpg, png and mockup files
+    if (type === 'jpg' || type === 'png' || type === 'mockup') {
       const reader = new FileReader();
       reader.onloadend = () => {
         setUploadedFiles((prev) => ({
@@ -336,7 +450,7 @@ export default function CustomOrdersPage() {
     e.target.value = '';
   };
 
-  const handleRemoveFile = (type: 'jpg' | 'mockup' | 'eps' | 'crd') => {
+  const handleRemoveFile = (type: 'jpg' | 'png' | 'mockup' | 'eps' | 'cdr') => {
     setUploadedFiles((prev) => ({
       ...prev,
       [type]: { file: null },
@@ -345,7 +459,7 @@ export default function CustomOrdersPage() {
 
   const handleSubmitUpload = async () => {
     if (!selectedOrder) return;
-    const hasFiles = uploadedFiles.jpg.file || uploadedFiles.mockup.file || uploadedFiles.eps.file || uploadedFiles.crd.file;
+    const hasFiles = uploadedFiles.jpg?.file || uploadedFiles.png?.file || uploadedFiles.mockup?.file || uploadedFiles.eps?.file || uploadedFiles.cdr?.file;
     if (!hasFiles) {
       toast.error('Please select at least one file to upload');
       return;
@@ -354,19 +468,40 @@ export default function CustomOrdersPage() {
     setIsUploading(true);
     try {
       const formData = new FormData();
-      if (uploadedFiles.jpg.file) formData.append('jpg', uploadedFiles.jpg.file);
-      if (uploadedFiles.mockup.file) formData.append('mockup', uploadedFiles.mockup.file);
-      if (uploadedFiles.eps.file) formData.append('eps', uploadedFiles.eps.file);
-      if (uploadedFiles.crd.file) formData.append('crd', uploadedFiles.crd.file);
+      const files: File[] = [];
+      if (uploadedFiles.jpg?.file) {
+        files.push(uploadedFiles.jpg.file);
+        formData.append('files', uploadedFiles.jpg.file);
+      }
+      if (uploadedFiles.png?.file) {
+        files.push(uploadedFiles.png.file);
+        formData.append('files', uploadedFiles.png.file);
+      }
+      if (uploadedFiles.mockup?.file) {
+        files.push(uploadedFiles.mockup.file);
+        formData.append('files', uploadedFiles.mockup.file);
+      }
+      if (uploadedFiles.eps?.file) {
+        files.push(uploadedFiles.eps.file);
+        formData.append('files', uploadedFiles.eps.file);
+      }
+      if (uploadedFiles.cdr?.file) {
+        files.push(uploadedFiles.cdr.file);
+        formData.append('files', uploadedFiles.cdr.file);
+      }
 
-      // TODO: Implement actual upload API call
-      // await API.customOrders.uploadDeliverables(selectedOrder.id, formData);
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate upload
-      toast.success('Deliverables uploaded successfully');
-      handleCloseUploadModal();
-      refetch();
-    } catch (error) {
-      toast.error('Failed to upload deliverables');
+      // Upload files using API
+      const response = await MockAPI.uploadDeliverables(selectedOrder.id, formData);
+      if (response.success) {
+        toast.success('Deliverables uploaded successfully');
+        handleCloseUploadModal();
+        refetch();
+        refetchStats(); // Refetch stats to update deliveryFilesUploaded flag
+      } else {
+        toast.error(response.error || 'Failed to upload deliverables');
+      }
+    } catch (error: any) {
+      toast.error(error?.error || error?.message || 'Failed to upload deliverables');
       console.error('Error uploading files:', error);
     } finally {
       setIsUploading(false);
@@ -408,11 +543,141 @@ export default function CustomOrdersPage() {
       toast.success('Status updated successfully');
       refetch();
       refetchStats();
-    } catch (error) {
-      toast.error('Failed to update status');
+    } catch (error: any) {
+      // Show more specific error message if deliverables are not uploaded
+      const errorMessage = error?.error || error?.details || error?.message || 'Failed to update status';
+      if (errorMessage.includes('deliverables') || errorMessage.includes('Deliverables')) {
+        toast.error(errorMessage, { duration: 5000 });
+      } else {
+        toast.error(errorMessage || 'Failed to update status');
+      }
       console.error('Error updating status:', error);
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  const handleToggleExpandDeliverables = (orderId: string) => {
+    setExpandedDeliverables(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper function to get auth token for file access
+  const getAuthToken = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        return parsed?.state?.accessToken || null;
+      }
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+    }
+    return null;
+  };
+
+  // Helper function to fetch image as blob URL with authentication
+  const getAuthenticatedImageUrl = async (url: string): Promise<string> => {
+    if (!url) return url;
+    const token = getAuthToken();
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`,
+        } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error('Error fetching authenticated image:', error);
+      // Fallback to original URL
+      return url;
+    }
+  };
+
+  // Helper function to download file with authentication
+  const downloadFile = async (url: string, fileName: string) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`,
+        } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file. Please try again.');
+    }
+  };
+
+  const handlePreviewImage = async (url: string, fileName: string, allImages: Array<{ url: string; fileName: string }>, index: number) => {
+    try {
+      // Fetch the main image with authentication
+      const authUrl = await getAuthenticatedImageUrl(url);
+      setPreviewImage({ url: authUrl, fileName });
+      
+      // Fetch all images with authentication
+      const authImagePromises = allImages.map(async (img) => {
+        const imgUrl = await getAuthenticatedImageUrl(img.url);
+        return { ...img, url: imgUrl };
+      });
+      const authImages = await Promise.all(authImagePromises);
+      setPreviewImagesList(authImages);
+      setCurrentImageIndex(index);
+    } catch (error) {
+      console.error('Error loading preview image:', error);
+      toast.error('Failed to load image. Please try again.');
+    }
+  };
+
+  const handleCloseImagePreview = () => {
+    setPreviewImage(null);
+    setPreviewImagesList([]);
+    setCurrentImageIndex(0);
+  };
+
+  const handlePreviousImage = () => {
+    if (previewImagesList.length > 0 && currentImageIndex > 0) {
+      const newIndex = currentImageIndex - 1;
+      setCurrentImageIndex(newIndex);
+      setPreviewImage(previewImagesList[newIndex]);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (previewImagesList.length > 0 && currentImageIndex < previewImagesList.length - 1) {
+      const newIndex = currentImageIndex + 1;
+      setCurrentImageIndex(newIndex);
+      setPreviewImage(previewImagesList[newIndex]);
     }
   };
 
@@ -425,13 +690,21 @@ export default function CustomOrdersPage() {
     { value: 'delayed', label: 'Delayed' },
   ];
 
-  const orderStatusOptions = [
+  // Generate status options with disabled state for 'completed' if deliverables not uploaded
+  const getOrderStatusOptions = (deliveryFilesUploaded: boolean = false) => [
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
+    { 
+      value: 'completed', 
+      label: 'Completed',
+      disabled: !deliveryFilesUploaded,
+      tooltip: !deliveryFilesUploaded ? 'Deliverables must be uploaded before marking as completed. Please use the "Upload Deliverable" button to upload files first.' : undefined
+    },
     { value: 'cancelled', label: 'Cancelled' },
     { value: 'delayed', label: 'Delayed' },
   ];
+
+  const orderStatusOptions = getOrderStatusOptions(false); // Default for filter dropdown
 
   return (
     <DashboardLayout>
@@ -515,6 +788,9 @@ export default function CustomOrdersPage() {
           ) : (
             (data.data || []).map((order) => {
               const orderIdForUnread = order.orderId || order.id;
+              // Generate status options specific to this order, disabling "completed" if deliverables not uploaded
+              const orderSpecificStatusOptions = getOrderStatusOptions(order.deliveryFilesUploaded || false);
+              const isExpanded = expandedDeliverables.has(order.id);
               return (
                 <CustomOrderCardWithUnread
                   key={order.id}
@@ -526,11 +802,15 @@ export default function CustomOrdersPage() {
                   onRejectOrder={handleRejectOrder}
                   onStatusChange={handleStatusChange}
                   updatingOrderId={updatingOrderId}
-                  orderStatusOptions={orderStatusOptions}
+                  orderStatusOptions={orderSpecificStatusOptions}
                   currentTime={currentTime}
                   getTimeRemainingShort={getTimeRemainingShort}
                   formatCurrency={formatCurrency}
                   formatDate={formatDate}
+                  isExpanded={isExpanded}
+                  onToggleExpand={() => handleToggleExpandDeliverables(order.id)}
+                  onPreviewImage={(url, fileName, allImages, index) => handlePreviewImage(url, fileName, allImages, index)}
+                  onDownloadFile={downloadFile}
                 />
               );
             })
@@ -674,9 +954,10 @@ export default function CustomOrdersPage() {
           setSelectedOrder(null);
           setUploadedFiles({
             jpg: { file: null },
+            png: { file: null },
             mockup: { file: null },
             eps: { file: null },
-            crd: { file: null },
+            cdr: { file: null },
           });
         }}
         title="Upload Deliverable"
@@ -695,7 +976,7 @@ export default function CustomOrdersPage() {
                 <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
                   <input
                     type="file"
-                    accept=".jpg,.jpeg"
+                    accept=".jpg,.jpeg,.JPG,.JPEG"
                     onChange={(e) => handleFileSelect('jpg', e)}
                     className="hidden"
                     id="file-jpg"
@@ -705,7 +986,7 @@ export default function CustomOrdersPage() {
                     <span className="text-sm text-primary font-medium">Click to upload JPG</span>
                   </label>
                 </div>
-                {uploadedFiles.jpg.file && (
+                {uploadedFiles.jpg?.file && (
                   <div className="p-3 bg-muted/10 rounded-lg border border-border">
                     <div className="flex items-start gap-3">
                       {uploadedFiles.jpg.preview && (
@@ -731,13 +1012,57 @@ export default function CustomOrdersPage() {
                 )}
               </div>
 
+              {/* PNG File Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">PNG File</label>
+                <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
+                  <input
+                    type="file"
+                    accept=".png,.PNG"
+                    onChange={(e) => handleFileSelect('png', e)}
+                    className="hidden"
+                    id="file-png"
+                  />
+                  <label htmlFor="file-png" className="cursor-pointer flex flex-col items-center gap-2">
+                    <PaperClipIcon className="w-8 h-8 text-muted" />
+                    <span className="text-sm text-primary font-medium">Click to upload PNG</span>
+                  </label>
+                </div>
+                {uploadedFiles.png?.file && (
+                  <div className="p-3 bg-muted/10 rounded-lg border border-border">
+                    <div className="flex items-start gap-3">
+                      {uploadedFiles.png?.preview && (
+                        <img
+                          src={uploadedFiles.png.preview}
+                          alt={uploadedFiles.png.file.name}
+                          className="w-20 h-20 object-cover rounded-lg border border-border flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-sm">{uploadedFiles.png.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.png.file.size)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile('png')}
+                        className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
+                        title="Remove file"
+                      >
+                        <XCircleIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Mockup File Input */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium">Mockup File</label>
                 <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
                   <input
                     type="file"
-                    accept=".mockup,.jpg,.jpeg,.png"
+                    accept=".mockup,.jpg,.jpeg,.png,.JPG,.JPEG,.PNG"
                     onChange={(e) => handleFileSelect('mockup', e)}
                     className="hidden"
                     id="file-mockup"
@@ -747,7 +1072,7 @@ export default function CustomOrdersPage() {
                     <span className="text-sm text-primary font-medium">Click to upload Mockup</span>
                   </label>
                 </div>
-                {uploadedFiles.mockup.file && (
+                {uploadedFiles.mockup?.file && (
                   <div className="p-3 bg-muted/10 rounded-lg border border-border">
                     <div className="flex items-start gap-3">
                       {uploadedFiles.mockup.preview && (
@@ -772,16 +1097,14 @@ export default function CustomOrdersPage() {
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* EPS File Input */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium">EPS File</label>
                 <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
                   <input
                     type="file"
-                    accept=".eps"
+                    accept=".eps,.EPS"
                     onChange={(e) => handleFileSelect('eps', e)}
                     className="hidden"
                     id="file-eps"
@@ -791,7 +1114,7 @@ export default function CustomOrdersPage() {
                     <span className="text-sm text-primary font-medium">Click to upload EPS</span>
                   </label>
                 </div>
-                {uploadedFiles.eps.file && (
+                {uploadedFiles.eps?.file && (
                   <div className="p-3 bg-muted/10 rounded-lg border border-border">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -809,32 +1132,34 @@ export default function CustomOrdersPage() {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* CRD File Input */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* CDR File Input */}
               <div className="space-y-2">
-                <label className="block text-sm font-medium">CRD File</label>
+                <label className="block text-sm font-medium">CDR File</label>
                 <div className="border-2 border-dashed border-border rounded-lg p-4 hover:border-primary transition-colors">
                   <input
                     type="file"
-                    accept=".crd"
-                    onChange={(e) => handleFileSelect('crd', e)}
+                    accept=".cdr,.CDR"
+                    onChange={(e) => handleFileSelect('cdr', e)}
                     className="hidden"
-                    id="file-crd"
+                    id="file-cdr"
                   />
-                  <label htmlFor="file-crd" className="cursor-pointer flex flex-col items-center gap-2">
+                  <label htmlFor="file-cdr" className="cursor-pointer flex flex-col items-center gap-2">
                     <PaperClipIcon className="w-8 h-8 text-muted" />
-                    <span className="text-sm text-primary font-medium">Click to upload CRD</span>
+                    <span className="text-sm text-primary font-medium">Click to upload CDR</span>
                   </label>
                 </div>
-                {uploadedFiles.crd.file && (
+                {uploadedFiles.cdr?.file && (
                   <div className="p-3 bg-muted/10 rounded-lg border border-border">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate text-sm">{uploadedFiles.crd.file.name}</p>
-                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.crd.file.size)}</p>
+                        <p className="font-medium truncate text-sm">{uploadedFiles.cdr.file.name}</p>
+                        <p className="text-xs text-muted">{formatFileSize(uploadedFiles.cdr.file.size)}</p>
                       </div>
                       <button
-                        onClick={() => handleRemoveFile('crd')}
+                        onClick={() => handleRemoveFile('cdr')}
                         className="flex-shrink-0 p-1 rounded-lg hover:bg-error/20 text-error transition-colors"
                         title="Remove file"
                       >
@@ -854,9 +1179,10 @@ export default function CustomOrdersPage() {
                   setSelectedOrder(null);
                   setUploadedFiles({
                     jpg: { file: null },
+                    png: { file: null },
                     mockup: { file: null },
                     eps: { file: null },
-                    crd: { file: null },
+                    cdr: { file: null },
                   });
                 }}
                 disabled={isUploading}
@@ -866,7 +1192,7 @@ export default function CustomOrdersPage() {
               </Button>
               <Button
                 onClick={handleSubmitUpload}
-                disabled={!Object.values(uploadedFiles).some(f => f.file) || isUploading}
+                disabled={!Object.values(uploadedFiles).some(f => f?.file) || isUploading}
                 isLoading={isUploading}
                 title="Upload"
               >
@@ -931,6 +1257,168 @@ export default function CustomOrdersPage() {
           orderType="custom"
         />
       )}
+
+      {/* Image Preview Modal */}
+      <Modal
+        isOpen={!!previewImage}
+        onClose={handleCloseImagePreview}
+        title={previewImage?.fileName || 'Image Preview'}
+        size="lg"
+        zIndex={60}
+        static={true}
+      >
+        {previewImage && previewImagesList.length > 0 && (
+          <div className="space-y-4">
+            <div className="relative w-full flex items-center justify-center bg-muted/10 rounded-lg p-4 min-h-[400px]">
+              {/* Previous Button */}
+              {previewImagesList.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreviousImage();
+                  }}
+                  disabled={currentImageIndex === 0}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full p-2 transition-colors"
+                  title="Previous Image"
+                >
+                  <ChevronLeftIcon className="w-6 h-6" />
+                </button>
+              )}
+              
+              {/* Image */}
+              <img
+                src={previewImage.url}
+                alt={previewImage.fileName}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                crossOrigin="anonymous"
+                onError={async (e) => {
+                  const img = e.target as HTMLImageElement;
+                  // If the image failed to load and it's not already a blob URL, try fetching with auth
+                  if (img.src && !img.src.startsWith('blob:') && !img.src.startsWith('data:')) {
+                    try {
+                      const token = getAuthToken();
+                      const response = await fetch(img.src, {
+                        method: 'GET',
+                        headers: token ? {
+                          'Authorization': `Bearer ${token}`,
+                        } : {},
+                      });
+
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        img.src = blobUrl;
+                        return;
+                      }
+                    } catch (fetchError) {
+                      console.error('Error fetching image with auth:', fetchError);
+                    }
+                  }
+                  
+                  // If still fails, show error message
+                  img.style.display = 'none';
+                  const parent = img.parentElement;
+                  if (parent && !parent.querySelector('.error-message')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message w-full h-full flex items-center justify-center text-muted';
+                    errorDiv.textContent = 'Image not available';
+                    parent.appendChild(errorDiv);
+                  }
+                }}
+              />
+              
+              {/* Next Button */}
+              {previewImagesList.length > 1 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextImage();
+                  }}
+                  disabled={currentImageIndex === previewImagesList.length - 1}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full p-2 transition-colors"
+                  title="Next Image"
+                >
+                  <ChevronRightIcon className="w-6 h-6" />
+                </button>
+              )}
+            </div>
+            
+            {/* Image Info */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted">Image {currentImageIndex + 1} of {previewImagesList.length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const token = getAuthToken();
+                    try {
+                      const response = await fetch(previewImage.url, {
+                        method: 'GET',
+                        headers: token ? {
+                          'Authorization': `Bearer ${token}`,
+                        } : {},
+                      });
+
+                      if (!response.ok) {
+                        throw new Error('Failed to download image');
+                      }
+
+                      const blob = await response.blob();
+                      const blobUrl = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = blobUrl;
+                      link.download = previewImage.fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(blobUrl);
+                    } catch (error) {
+                      console.error('Error downloading image:', error);
+                      toast.error('Failed to download image. Please try again.');
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-medium transition-colors"
+                  title="Download Image"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
+            </div>
+
+            {/* Thumbnail Navigation */}
+            {previewImagesList.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                {previewImagesList.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setCurrentImageIndex(index);
+                      setPreviewImage(img);
+                    }}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                      index === currentImageIndex
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    title={img.fileName}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.fileName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
       </div>
     </DashboardLayout>
   );

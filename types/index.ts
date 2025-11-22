@@ -366,6 +366,7 @@ export interface CustomOrder {
     url: string;
     uploadedAt: string;
   }[];
+  deliveryFilesUploaded?: boolean; // Whether deliverables have been uploaded
 }
 
 export interface Plan {

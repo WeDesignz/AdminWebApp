@@ -7,6 +7,8 @@ import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
 export interface DropdownOption {
   value: string;
   label: string;
+  disabled?: boolean;
+  tooltip?: string;
 }
 
 interface DropdownProps {
@@ -207,14 +209,19 @@ export function Dropdown({
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => handleSelect(option.value)}
+                  onClick={() => !option.disabled && handleSelect(option.value)}
+                  disabled={option.disabled}
+                  title={option.tooltip || (option.disabled ? `${option.label} is disabled` : undefined)}
                   className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 flex items-center justify-between gap-2 ${
-                    value === option.value
+                    option.disabled
+                      ? 'opacity-50 cursor-not-allowed text-muted'
+                      : value === option.value
                       ? 'bg-primary/10 text-primary dark:bg-primary/20'
                       : 'hover:bg-muted/10'
                   }`}
                       role="option"
                       aria-selected={value === option.value}
+                      aria-disabled={option.disabled}
                 >
                   <span>{option.label}</span>
                   {value === option.value && (
