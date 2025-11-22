@@ -15,12 +15,7 @@ import {
   ShoppingCartIcon,
   CubeIcon,
   MagnifyingGlassIcon,
-  XMarkIcon,
-  PaperClipIcon,
-  SendIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
+  PaperAirplaneIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -690,7 +685,7 @@ export default function SupportPage() {
                   disabled={!newMessage.trim() || sendTicketMessageMutation.isPending}
                   isLoading={sendTicketMessageMutation.isPending}
                 >
-                  <SendIcon className="w-4 h-4" />
+                  <PaperAirplaneIcon className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -780,7 +775,7 @@ export default function SupportPage() {
                   disabled={!newMessage.trim() || sendOrderChatMessageMutation.isPending}
                   isLoading={sendOrderChatMessageMutation.isPending}
                 >
-                  <SendIcon className="w-4 h-4" />
+                  <PaperAirplaneIcon className="w-4 h-4" />
                 </Button>
               </div>
             </div>
