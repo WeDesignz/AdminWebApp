@@ -960,7 +960,7 @@ export const CustomOrdersAPI = {
    * Update Custom Order Status
    */
   async updateCustomOrderStatus(orderId: string, status: CustomOrder['status']): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/custom-orders/${orderId}/action/`, { status });
+    return apiClient.post(`api/coreadmin/custom-orders/${orderId}/update-status/`, { status });
   },
 
   /**
