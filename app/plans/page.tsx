@@ -101,18 +101,24 @@ export default function PlansPage() {
   };
 
   const handleEdit = (plan: Plan) => {
+    // Helper function to safely convert number to string, handling 0 values
+    const numToString = (value: number | undefined | null): string => {
+      if (value === undefined || value === null) return '';
+      return value.toString();
+    };
+
     setFormData({
       planName: plan.planName ? plan.planName.toLowerCase() : '',
       description: Array.isArray(plan.description) 
         ? plan.description.join('\n') 
-        : plan.description,
-      price: plan.price.toString(),
+        : (plan.description || ''),
+      price: plan.price !== undefined && plan.price !== null ? plan.price.toString() : '',
       duration: plan.duration ? plan.duration.toLowerCase() as 'monthly' | 'annually' : 'monthly',
       status: plan.status ? plan.status.toLowerCase() as 'active' | 'inactive' : 'active',
-      discount: plan.discount?.toString() || '',
-      customDesignHour: plan.customDesignHour?.toString() || '',
-      mockPdfCount: plan.mockPdfCount?.toString() || '',
-      noOfFreeDownloads: plan.noOfFreeDownloads?.toString() || '',
+      discount: numToString(plan.discount),
+      customDesignHour: numToString(plan.customDesignHour),
+      mockPdfCount: numToString(plan.mockPdfCount),
+      noOfFreeDownloads: numToString(plan.noOfFreeDownloads),
     });
     setSelectedPlan(plan);
     setShowEditModal(true);
@@ -249,10 +255,10 @@ export default function PlansPage() {
         price: parseFloat(formData.price),
         duration: formData.duration.charAt(0).toUpperCase() + formData.duration.slice(1) as 'Monthly' | 'Annually',
         status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1) as 'Active' | 'Inactive',
-        discount: formData.discount ? parseFloat(formData.discount) : 0,
-        customDesignHour: formData.customDesignHour ? parseInt(formData.customDesignHour) : 2,
-        mockPdfCount: formData.mockPdfCount ? parseInt(formData.mockPdfCount) : 0,
-        noOfFreeDownloads: formData.noOfFreeDownloads ? parseInt(formData.noOfFreeDownloads) : 0,
+        discount: formData.discount && formData.discount.trim() !== '' ? parseFloat(formData.discount) : (selectedPlan.discount ?? 0),
+        customDesignHour: formData.customDesignHour && formData.customDesignHour.trim() !== '' ? parseInt(formData.customDesignHour) : (selectedPlan.customDesignHour ?? 2),
+        mockPdfCount: formData.mockPdfCount && formData.mockPdfCount.trim() !== '' ? parseInt(formData.mockPdfCount) : (selectedPlan.mockPdfCount ?? 0),
+        noOfFreeDownloads: formData.noOfFreeDownloads && formData.noOfFreeDownloads.trim() !== '' ? parseInt(formData.noOfFreeDownloads) : (selectedPlan.noOfFreeDownloads ?? 0),
       });
 
       if (response.success) {
@@ -708,6 +714,7 @@ export default function PlansPage() {
                 value={formData.planName}
                 onChange={(value) => setFormData({ ...formData, planName: value })}
                 placeholder="Select Plan Name"
+                disabled={true}
               />
             </div>
 
@@ -720,6 +727,7 @@ export default function PlansPage() {
                 value={formData.duration}
                 onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
                 placeholder="Select Duration"
+                disabled={true}
               />
             </div>
           </div>

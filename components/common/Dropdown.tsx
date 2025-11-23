@@ -18,6 +18,7 @@ interface DropdownProps {
   placeholder?: string;
   className?: string;
   buttonClassName?: string;
+  disabled?: boolean;
 }
 
 export function Dropdown({
@@ -27,6 +28,7 @@ export function Dropdown({
   placeholder = 'Select...',
   className = '',
   buttonClassName = '',
+  disabled = false,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -132,6 +134,7 @@ export function Dropdown({
   const selectedOption = options.find((opt) => opt.value === value);
 
   const handleToggle = () => {
+    if (disabled) return;
     setIsOpen((prev) => !prev);
   };
 
@@ -145,7 +148,12 @@ export function Dropdown({
       <div className={`relative ${className}`}>
         <button
           type="button"
-          className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50 ${buttonClassName}`}
+          disabled={disabled}
+          className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+            disabled 
+              ? 'opacity-60 cursor-not-allowed bg-muted/30' 
+              : 'hover:border-primary/50'
+          } ${buttonClassName}`}
         >
           <span className="text-sm font-medium truncate">
             {selectedOption ? selectedOption.label : placeholder}
@@ -162,11 +170,17 @@ export function Dropdown({
         ref={buttonRef}
         type="button"
         onClick={handleToggle}
-        className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 hover:border-primary/50 ${
+        disabled={disabled}
+        className={`input-field flex items-center justify-between gap-2 w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+          disabled 
+            ? 'opacity-60 cursor-not-allowed bg-muted/30' 
+            : 'hover:border-primary/50'
+        } ${
           isOpen ? 'ring-2 ring-primary border-transparent' : ''
         } ${buttonClassName}`}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
+        aria-disabled={disabled}
       >
         <span className="text-sm font-medium truncate">
           {selectedOption ? selectedOption.label : placeholder}
