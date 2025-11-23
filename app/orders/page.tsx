@@ -1,8 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useQuery } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MockAPI, API } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -10,7 +10,7 @@ import { KpiCard } from '@/components/common/KpiCard';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { DatePicker } from '@/components/common/DatePicker';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   MagnifyingGlassIcon, 
   ArrowUpIcon, 
@@ -33,6 +33,8 @@ import {
   PhoneIcon,
   MapPinIcon,
   EyeIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 import { Order, Transaction, Designer, Customer } from '@/types';
 import toast from 'react-hot-toast';
@@ -52,6 +54,13 @@ export default function OrdersAndTransactionsPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded'>('pending');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  
+  // Chat modal state
+  const [selectedOrderForChat, setSelectedOrderForChat] = useState<any | null>(null);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const queryClient = useQueryClient();
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Unified query for Orders with RazorpayPayment data
   // Using transactions endpoint which includes RazorpayPayment data via TransactionListSerializer
@@ -81,6 +90,50 @@ export default function OrdersAndTransactionsPage() {
     queryFn: () => MockAPI.getOrderStats(),
   });
 
+  // Fetch chat data for all orders (batch)
+  const { data: ordersChatData } = useQuery({
+    queryKey: ['ordersChatData', data?.data?.map((o: any) => o.id).join(',')],
+    queryFn: async () => {
+      if (!data?.data || data.data.length === 0) return {};
+      const chatDataMap: Record<string, { hasChat: boolean; unreadCount: number }> = {};
+      
+      await Promise.all(
+        data.data.map(async (order: any) => {
+          try {
+            const response = await API.orderComments.getOrderComments(String(order.id));
+            if (response.success && response.data?.comments) {
+              const comments = response.data.comments;
+              const hasChat = comments.length > 0;
+              const unreadCount = comments.filter(
+                (c: any) => c.comment_type === 'customer' && !c.is_read
+              ).length;
+              chatDataMap[order.id] = { hasChat, unreadCount };
+            }
+          } catch (error) {
+            console.error(`Error fetching chat for order ${order.id}:`, error);
+          }
+        })
+      );
+      return chatDataMap;
+    },
+    enabled: !!data?.data && data.data.length > 0,
+    staleTime: 30 * 1000, // Cache for 30 seconds
+  });
+
+  // Fetch chat messages for selected order
+  const { data: orderChatMessages, refetch: refetchOrderChatMessages } = useQuery({
+    queryKey: ['orderChatMessages', selectedOrderForChat?.id],
+    queryFn: async () => {
+      if (!selectedOrderForChat) return null;
+      const response = await API.orderComments.getOrderComments(String(selectedOrderForChat.id));
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return null;
+    },
+    enabled: !!selectedOrderForChat && isChatModalOpen,
+  });
+
   // Show error toast for stats query
   useEffect(() => {
     if (statsError) {
@@ -97,6 +150,48 @@ export default function OrdersAndTransactionsPage() {
     setNewStatus(order.status);
     setShowStatusModal(true);
   };
+
+  // Chat handlers
+  const handleOpenChat = (order: any) => {
+    setSelectedOrderForChat(order);
+    setIsChatModalOpen(true);
+    // Mark messages as read when opening
+    API.orderComments.markOrderCommentsAsRead(String(order.id)).catch(console.error);
+  };
+
+  // Scroll to bottom helper
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 100);
+  };
+
+  // Auto-scroll when chat messages load or modal opens
+  useEffect(() => {
+    if (isChatModalOpen && orderChatMessages) {
+      scrollToBottom();
+    }
+  }, [isChatModalOpen, orderChatMessages]);
+
+  // Send chat message mutation
+  const sendChatMessageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      if (!selectedOrderForChat) throw new Error('No order selected');
+      return API.orderComments.addOrderComment(String(selectedOrderForChat.id), message, false);
+    },
+    onSuccess: () => {
+      setNewChatMessage('');
+      refetchOrderChatMessages();
+      queryClient.invalidateQueries({ queryKey: ['ordersChatData'] });
+      toast.success('Message sent successfully');
+      setTimeout(() => scrollToBottom(), 200);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send message');
+    },
+  });
 
   const handleCloseStatusModal = () => {
     setShowStatusModal(false);
@@ -329,6 +424,7 @@ export default function OrdersAndTransactionsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
+                    <th className="text-left py-3 px-2 font-medium whitespace-nowrap w-4"></th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order Number</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Order Type</th>
                     <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Customer</th>
@@ -344,13 +440,13 @@ export default function OrdersAndTransactionsPage() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={10} className="text-center py-8">
+                      <td colSpan={11} className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                       </td>
                     </tr>
                   ) : !data?.data || data.data.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="text-center py-8 text-muted">
+                      <td colSpan={11} className="text-center py-8 text-muted">
                         No orders found
                       </td>
                     </tr>
@@ -360,8 +456,15 @@ export default function OrdersAndTransactionsPage() {
                       const razorpayStatus = order.razorpay_status || order.razorpayStatus || '-';
                       const razorpayPaymentId = order.razorpayId || order.razorpay_payment_id || '-';
                       const razorpayOrderId = order.razorpayOrderId || order.razorpay_order_id || '-';
+                      const chatData = ordersChatData?.[order.id];
                       return (
-                        <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                        <tr key={order.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer relative">
+                          {/* Red indicator dot - only show if there are unread messages */}
+                          <td className="py-3 px-2 relative">
+                            {chatData && ((chatData.unreadCount ?? 0) > 0) && (
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full"></div>
+                            )}
+                          </td>
                           <td className="py-3 px-4 font-mono text-sm whitespace-nowrap">{order.order_number || order.orderNumber || order.id}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className="px-2 py-1 rounded-lg text-xs font-medium bg-primary/20 text-primary">
@@ -413,6 +516,24 @@ export default function OrdersAndTransactionsPage() {
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{formatDate(order.createdAt || order.created_at)}</td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
+                              {/* Chat button - show for all orders */}
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenChat(order);
+                                }}
+                                className="flex items-center gap-1 relative"
+                                title="Open Chat"
+                              >
+                                <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                                {chatData && ((chatData.unreadCount ?? 0) > 0) && (
+                                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full min-w-[18px] text-center">
+                                    {chatData.unreadCount}
+                                  </span>
+                                )}
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -739,6 +860,117 @@ export default function OrdersAndTransactionsPage() {
                     >
                       <XMarkIcon className="w-4 h-4" />
                       Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+
+            {/* Order Chat Modal */}
+            <Modal
+              isOpen={isChatModalOpen}
+              onClose={() => {
+                setIsChatModalOpen(false);
+                setSelectedOrderForChat(null);
+                setNewChatMessage('');
+              }}
+              title={selectedOrderForChat ? `Order ${selectedOrderForChat.order_number || selectedOrderForChat.orderNumber || selectedOrderForChat.id} - Chat` : 'Order Chat'}
+              size="lg"
+            >
+              {selectedOrderForChat && orderChatMessages && (
+                <div className="flex flex-col h-[600px]">
+                  <div className="mb-4 p-3 bg-muted/10 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-semibold">{selectedOrderForChat.customerName || selectedOrderForChat.user_name || 'Unknown'}</p>
+                        <p className="text-muted">{selectedOrderForChat.user_email || ''}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatCurrency(selectedOrderForChat.amount || selectedOrderForChat.total_amount || 0)}</p>
+                        <p className="text-muted">{getOrderTypeLabel(selectedOrderForChat.orderType || selectedOrderForChat.order_type || '')}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div 
+                    ref={chatScrollRef}
+                    className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border border-border rounded-lg"
+                  >
+                    {orderChatMessages.comments && orderChatMessages.comments.length > 0 ? (
+                      orderChatMessages.comments.map((comment: any) => {
+                        const isAdmin = comment.comment_type === 'admin';
+                        return (
+                          <div
+                            key={comment.id}
+                            className={cn(
+                              'flex gap-3 w-full',
+                              isAdmin ? 'justify-end' : 'justify-start'
+                            )}
+                          >
+                            {!isAdmin && (
+                              <div className="w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center flex-shrink-0">
+                                <UserIcon className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div
+                              className={cn(
+                                'flex flex-col gap-1 max-w-[70%]',
+                                isAdmin ? 'items-end' : 'items-start'
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'rounded-lg px-4 py-2',
+                                  isAdmin
+                                    ? 'bg-primary text-white'
+                                    : 'bg-muted/20 text-foreground'
+                                )}
+                              >
+                                <p className="text-sm">
+                                  {typeof comment.message === 'string' 
+                                    ? comment.message 
+                                    : comment.content || JSON.stringify(comment.message)}
+                                </p>
+                              </div>
+                              <span className={cn(
+                                'text-xs text-muted px-1',
+                                isAdmin ? 'text-right' : 'text-left'
+                              )}>
+                                {formatDate(comment.created_at)}
+                              </span>
+                            </div>
+                            {isAdmin && (
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                <UserIcon className="w-4 h-4 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-12 text-muted">
+                        <p>No messages yet</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type your message..."
+                      value={newChatMessage}
+                      onChange={(e) => setNewChatMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendChatMessageMutation.mutate(newChatMessage.trim());
+                        }
+                      }}
+                      className="text-foreground placeholder:text-muted-foreground"
+                    />
+                    <Button
+                      onClick={() => sendChatMessageMutation.mutate(newChatMessage.trim())}
+                      disabled={!newChatMessage.trim() || sendChatMessageMutation.isPending}
+                      isLoading={sendChatMessageMutation.isPending}
+                    >
+                      <PaperAirplaneIcon className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
