@@ -628,7 +628,7 @@ export default function SettingsPage() {
             onClick={() => setShowBackupCodes(false)}
             className="w-full"
           >
-            I've Saved These Codes
+            I&apos;ve Saved These Codes
           </Button>
         </div>
       </Modal>
@@ -646,7 +646,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="p-4 glass rounded-lg bg-error/10 border border-error/20">
             <p className="text-sm text-muted">
-              <strong>Warning:</strong> Disabling 2FA will make your account less secure. You'll need to enter your password to confirm.
+              <strong>Warning:</strong> Disabling 2FA will make your account less secure. You&apos;ll need to enter your password to confirm.
             </p>
           </div>
           
