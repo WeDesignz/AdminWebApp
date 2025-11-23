@@ -611,8 +611,13 @@ class RealAPI {
   static async updateAdminPassword(data: {
     currentPassword: string;
     newPassword: string;
+    confirmPassword: string;
   }): Promise<ApiResponse<void>> {
     return API.settings.updateAdminPassword(data);
+  }
+
+  static async uploadAdminProfilePhoto(file: File): Promise<ApiResponse<{ profile_photo_url: string }>> {
+    return API.settings.uploadAdminProfilePhoto(file);
   }
 
   // Activity Log methods

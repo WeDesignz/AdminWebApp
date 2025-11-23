@@ -1620,6 +1620,8 @@ export const SettingsAPI = {
         email: string;
         first_name: string;
         last_name: string;
+        mobile_number?: string;
+        profile_photo_url?: string;
       };
       admin_group: string;
       admin_group_display: string;
@@ -1641,6 +1643,8 @@ export const SettingsAPI = {
         name: `${response.data.user.first_name || ''} ${response.data.user.last_name || ''}`.trim(),
         firstName: response.data.user.first_name,
         lastName: response.data.user.last_name,
+        mobileNumber: response.data.user.mobile_number || '',
+        avatar: response.data.user.profile_photo_url || undefined,
         role,
         createdAt: new Date().toISOString(),
         twoFactorEnabled: response.data.is_2fa_enabled || false,
@@ -1663,18 +1667,69 @@ export const SettingsAPI = {
     if (data.firstName) payload.first_name = data.firstName;
     if (data.lastName) payload.last_name = data.lastName;
     if (data.email) payload.email = data.email;
+    if (data.mobileNumber !== undefined) payload.mobile_number = data.mobileNumber || '';
 
-    return apiClient.put<Admin>('api/coreadmin/profile/', payload);
+    const response = await apiClient.put<{
+      id: number;
+      user: {
+        id: number;
+        email: string;
+        first_name: string;
+        last_name: string;
+        mobile_number?: string;
+        profile_photo_url?: string;
+      };
+      admin_group: string;
+      admin_group_display: string;
+      is_2fa_enabled: boolean;
+    }>('api/coreadmin/profile/', payload);
+
+    if (response.success && response.data) {
+      // Ensure role matches UserRole type
+      let role: 'Super Admin' | 'Moderator' = 'Moderator';
+      if (response.data.admin_group_display === 'Super Admin' || response.data.admin_group === 'superadmin') {
+        role = 'Super Admin';
+      } else if (response.data.admin_group_display === 'Moderator') {
+        role = 'Moderator';
+      }
+
+      const admin: Admin = {
+        id: String(response.data.user.id),
+        email: response.data.user.email,
+        name: `${response.data.user.first_name || ''} ${response.data.user.last_name || ''}`.trim(),
+        firstName: response.data.user.first_name,
+        lastName: response.data.user.last_name,
+        mobileNumber: response.data.user.mobile_number || '',
+        avatar: response.data.user.profile_photo_url || undefined,
+        role,
+        createdAt: new Date().toISOString(),
+        twoFactorEnabled: response.data.is_2fa_enabled || false,
+      };
+
+      return { success: true, data: admin };
+    }
+
+    return response;
   },
 
   /**
    * Update Admin Password
    */
-  async updateAdminPassword(data: { currentPassword: string; newPassword: string }): Promise<ApiResponse<void>> {
+  async updateAdminPassword(data: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<ApiResponse<void>> {
     return apiClient.post('api/coreadmin/change-password/', {
       old_password: data.currentPassword,
       new_password: data.newPassword,
+      confirm_password: data.confirmPassword,
     });
+  },
+
+  /**
+   * Upload Admin Profile Photo
+   */
+  async uploadAdminProfilePhoto(file: File): Promise<ApiResponse<{ profile_photo_url: string }>> {
+    const formData = new FormData();
+    formData.append('profile_photo', file);
+    return apiClient.upload<{ profile_photo_url: string }>('api/coreadmin/profile/upload-photo/', formData);
   },
 };
 

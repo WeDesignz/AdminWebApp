@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu } from '@headlessui/react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -21,7 +21,7 @@ import { MockAPI } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils/cn';
 
 export function Navbar() {
-  const { admin, logout } = useAuthStore();
+  const { admin, logout, setAdmin } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
   const { unreadCount } = useNotificationStore();
   const router = useRouter();
@@ -34,6 +34,21 @@ export function Navbar() {
     queryFn: () => MockAPI.getNotifications(),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Refetch admin profile to ensure we have latest data including photo
+  const { data: adminProfileData } = useQuery({
+    queryKey: ['admin-profile'],
+    queryFn: () => MockAPI.getAdminProfile(),
+    refetchInterval: 60000, // Refetch every minute to keep profile data fresh
+    enabled: !!admin, // Only fetch if admin is logged in
+  });
+
+  // Update auth store when admin profile data changes
+  useEffect(() => {
+    if (adminProfileData?.success && adminProfileData?.data) {
+      setAdmin(adminProfileData.data);
+    }
+  }, [adminProfileData, setAdmin]);
 
   const recentNotifications = (notificationsData?.data || []).slice(0, 5);
 
@@ -143,13 +158,13 @@ export function Navbar() {
               <Menu.Button className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/20 transition-colors">
                 <div className="text-right">
                   <p className="text-sm font-medium">{admin?.name}</p>
-                  <p className="text-xs text-muted">{admin?.role}</p>
+                  <p className="text-xs text-muted">{admin?.email}</p>
                 </div>
                 {admin?.avatar ? (
                   <img
                     src={admin.avatar}
                     alt={admin.name}
-                    className="w-8 h-8 rounded-full"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-border"
                   />
                 ) : (
                   <UserCircleIcon className="w-8 h-8" />
