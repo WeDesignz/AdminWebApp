@@ -15,8 +15,6 @@ import {
   CogIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   TicketIcon,
   WrenchScrewdriverIcon,
   QuestionMarkCircleIcon,
@@ -46,7 +44,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar, theme } = useUIStore();
+  const { sidebarCollapsed, theme } = useUIStore();
 
   return (
     <motion.aside
@@ -54,7 +52,7 @@ export function Sidebar() {
       animate={{ width: sidebarCollapsed ? 80 : 256 }}
       className="glass border-r border-border h-screen sticky top-0 flex flex-col"
     >
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-6 flex items-center">
         {!sidebarCollapsed ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -64,31 +62,21 @@ export function Sidebar() {
             <img
               src="/Logos/ONLY LOGO.svg"
               alt="WeDesignz Logo"
-              className={`h-10 w-10 ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-8 w-8 ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
             <img
               src="/Logos/ONLY TEXT.svg"
               alt="WeDesignz"
-              className={`h-6 w-auto ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-5 w-auto ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
           </motion.div>
         ) : (
           <img
             src="/Logos/ONLY LOGO.svg"
             alt="WeDesignz"
-            className={`w-10 h-10 object-contain ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+            className={`w-8 h-8 object-contain ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
           />
         )}
-        <button
-          onClick={toggleSidebar}
-          className="p-2 rounded-lg hover:bg-muted/20 transition-colors ml-auto"
-        >
-          {sidebarCollapsed ? (
-            <ChevronRightIcon className="w-5 h-5" />
-          ) : (
-            <ChevronLeftIcon className="w-5 h-5" />
-          )}
-        </button>
       </div>
 
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-thin">
