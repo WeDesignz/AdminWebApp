@@ -708,7 +708,9 @@ function SupportPageContent() {
               >
                 {ticketMessages.messages && ticketMessages.messages.length > 0 ? (
                   ticketMessages.messages.map((message: any) => {
-                    const isAdmin = message.sender_type === 'admin';
+                    // Check if message is from admin (support) or customer (user)
+                    // sender_type can be 'support' (admin) or 'user' (customer)
+                    const isAdmin = message.sender_type === 'support' || message.sender_type === 'admin';
                     return (
                       <div
                         key={message.id}
