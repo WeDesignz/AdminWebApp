@@ -22,6 +22,38 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Default favicon for light theme */}
+        <link rel="icon" type="image/png" href="/favicon-light.png" id="favicon" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function updateFavicon() {
+                  const favicon = document.getElementById('favicon');
+                  if (!favicon) return;
+                  
+                  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  
+                  if (isDark) {
+                    // Dark theme: use white logo (inverted)
+                    favicon.href = '/Logos/WD LOGO2048 WHITE.png';
+                  } else {
+                    // Light theme: use dark logo
+                    favicon.href = '/favicon-light.png';
+                  }
+                }
+                
+                // Set initial favicon
+                updateFavicon();
+                
+                // Listen for theme changes
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateFavicon);
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
       </body>
