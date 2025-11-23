@@ -495,7 +495,11 @@ export default function SupportPage() {
                             <span>{formatDate(ticket.updated_at)}</span>
                           </div>
                           {ticket.last_message && (
-                            <p className="mt-2 text-sm text-muted line-clamp-1">{ticket.last_message}</p>
+                            <p className="mt-2 text-sm text-muted line-clamp-1">
+                              {typeof ticket.last_message === 'string' 
+                                ? ticket.last_message 
+                                : (ticket.last_message as any)?.content || JSON.stringify(ticket.last_message)}
+                            </p>
                           )}
                         </div>
                         <ChatBubbleLeftRightIcon className="w-5 h-5 text-muted flex-shrink-0 ml-4" />
@@ -548,7 +552,11 @@ export default function SupportPage() {
                             <span>{formatDate(order.last_message_at || order.created_at)}</span>
                           </div>
                           {order.last_message && (
-                            <p className="mt-2 text-sm text-muted line-clamp-1">{order.last_message}</p>
+                            <p className="mt-2 text-sm text-muted line-clamp-1">
+                              {typeof order.last_message === 'string' 
+                                ? order.last_message 
+                                : (order.last_message as any)?.content || JSON.stringify(order.last_message)}
+                            </p>
                           )}
                         </div>
                         <ChatBubbleLeftRightIcon className="w-5 h-5 text-muted flex-shrink-0 ml-4" />
@@ -601,7 +609,11 @@ export default function SupportPage() {
                             <span>{formatDate(order.last_message_at || order.created_at)}</span>
                           </div>
                           {order.last_message && (
-                            <p className="mt-2 text-sm text-muted line-clamp-1">{order.last_message}</p>
+                            <p className="mt-2 text-sm text-muted line-clamp-1">
+                              {typeof order.last_message === 'string' 
+                                ? order.last_message 
+                                : (order.last_message as any)?.content || JSON.stringify(order.last_message)}
+                            </p>
                           )}
                         </div>
                         <ChatBubbleLeftRightIcon className="w-5 h-5 text-muted flex-shrink-0 ml-4" />
@@ -634,7 +646,7 @@ export default function SupportPage() {
                       key={message.id}
                       className={cn(
                         'flex gap-3',
-                        message.sender_type === 'admin' ? 'flex-row-reverse' : ''
+                        message.sender_type === 'admin' ? 'flex-row-reverse justify-end' : 'justify-start'
                       )}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -643,20 +655,27 @@ export default function SupportPage() {
                       <div
                         className={cn(
                           'flex flex-col gap-1 max-w-[70%]',
-                          message.sender_type === 'admin' ? 'items-end' : ''
+                          message.sender_type === 'admin' ? 'items-end' : 'items-start'
                         )}
                       >
                         <div
                           className={cn(
                             'rounded-lg px-4 py-2',
                             message.sender_type === 'admin'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
+                              ? 'bg-primary text-white'
+                              : 'bg-muted/20 text-foreground'
                           )}
                         >
-                          <p className="text-sm">{message.message}</p>
+                          <p className="text-sm">
+                            {typeof message.message === 'string' 
+                              ? message.message 
+                              : message.content || JSON.stringify(message.message)}
+                          </p>
                         </div>
-                        <span className="text-xs text-muted px-1">
+                        <span className={cn(
+                          'text-xs text-muted px-1',
+                          message.sender_type === 'admin' ? 'text-right' : 'text-left'
+                        )}>
                           {formatDate(message.created_at)}
                         </span>
                       </div>
@@ -679,6 +698,7 @@ export default function SupportPage() {
                       handleSendTicketMessage();
                     }
                   }}
+                  className="text-foreground placeholder:text-muted-foreground"
                 />
                 <Button
                   onClick={handleSendTicketMessage}
@@ -724,7 +744,7 @@ export default function SupportPage() {
                       key={comment.id}
                       className={cn(
                         'flex gap-3',
-                        comment.comment_type === 'admin' ? 'flex-row-reverse' : ''
+                        comment.comment_type === 'admin' ? 'flex-row-reverse justify-end' : 'justify-start'
                       )}
                     >
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -733,20 +753,27 @@ export default function SupportPage() {
                       <div
                         className={cn(
                           'flex flex-col gap-1 max-w-[70%]',
-                          comment.comment_type === 'admin' ? 'items-end' : ''
+                          comment.comment_type === 'admin' ? 'items-end' : 'items-start'
                         )}
                       >
                         <div
                           className={cn(
                             'rounded-lg px-4 py-2',
                             comment.comment_type === 'admin'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
+                              ? 'bg-primary text-white'
+                              : 'bg-muted/20 text-foreground'
                           )}
                         >
-                          <p className="text-sm">{comment.message}</p>
+                          <p className="text-sm">
+                            {typeof comment.message === 'string' 
+                              ? comment.message 
+                              : comment.content || JSON.stringify(comment.message)}
+                          </p>
                         </div>
-                        <span className="text-xs text-muted px-1">
+                        <span className={cn(
+                          'text-xs text-muted px-1',
+                          comment.comment_type === 'admin' ? 'text-right' : 'text-left'
+                        )}>
                           {formatDate(comment.created_at)}
                         </span>
                       </div>
@@ -769,6 +796,7 @@ export default function SupportPage() {
                       handleSendOrderChatMessage();
                     }
                   }}
+                  className="text-foreground placeholder:text-muted-foreground"
                 />
                 <Button
                   onClick={handleSendOrderChatMessage}
