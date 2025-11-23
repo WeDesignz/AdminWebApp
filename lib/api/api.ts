@@ -1709,7 +1709,10 @@ export const SettingsAPI = {
       return { success: true, data: admin };
     }
 
-    return response;
+    return {
+      success: false,
+      error: response.error || 'Failed to update admin profile',
+    };
   },
 
   /**
