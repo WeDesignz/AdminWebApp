@@ -1,7 +1,7 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
@@ -63,7 +63,7 @@ interface OrderChat {
   last_message_at?: string;
 }
 
-export default function SupportPage() {
+function SupportPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabFromUrl = searchParams.get('tab') as TabType | null;
@@ -101,7 +101,7 @@ export default function SupportPage() {
     if (tabFromUrl && ['tickets', 'cart-chats', 'subscription-chats'].includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, activeTab]);
 
   // Fetch Support Tickets
   const { data: ticketsData, isLoading: isLoadingTickets } = useQuery({
@@ -900,6 +900,30 @@ export default function SupportPage() {
         </Modal>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function SupportPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Support</h1>
+              <p className="text-muted mt-1">Manage support tickets and customer chats</p>
+            </div>
+          </div>
+          <div className="card">
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    }>
+      <SupportPageContent />
+    </Suspense>
   );
 }
 
