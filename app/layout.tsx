@@ -9,10 +9,15 @@ export const metadata: Metadata = {
   title: 'WeDesignz Admin Panel',
   description: 'Admin panel for WeDesignz platform',
   icons: {
-    icon: "/Logos/ONLY LOGO.png",
-    shortcut: "/Logos/ONLY LOGO.png",
-    apple: "/Logos/ONLY LOGO.png",
+    icon: [
+      { url: "/favicon/favicon.ico", sizes: "any" },
+      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: "/favicon/apple-touch-icon.png",
+    shortcut: "/favicon/favicon.ico",
   },
+  manifest: "/favicon/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -23,24 +28,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Default favicon for light theme */}
-        <link rel="icon" type="image/png" href="/favicon-light.png" id="favicon" />
+        {/* Theme-aware favicon switching */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 function updateFavicon() {
-                  const favicon = document.getElementById('favicon');
-                  if (!favicon) return;
+                  const faviconSvg = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+                  const faviconPng = document.querySelector('link[rel="icon"][sizes="96x96"]');
+                  
+                  if (!faviconSvg || !faviconPng) return;
                   
                   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                   
+                  // SVG favicon supports theme switching via media attribute
                   if (isDark) {
-                    // Dark theme: use white logo (inverted)
-                    favicon.href = '/Logos/WD LOGO2048 WHITE.png';
+                    faviconSvg.setAttribute('media', '(prefers-color-scheme: dark)');
                   } else {
-                    // Light theme: use dark logo
-                    favicon.href = '/favicon-light.png';
+                    faviconSvg.removeAttribute('media');
                   }
                 }
                 
