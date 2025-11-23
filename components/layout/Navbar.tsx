@@ -41,14 +41,16 @@ export function Navbar() {
     setIsLoggingOut(true);
     try {
       await MockAPI.logout();
-      logout();
       toast.success('Logged out successfully');
-      router.push('/login');
     } catch (error) {
-      toast.error('Failed to logout');
+      // Even if API call fails, we should still logout locally
+      console.warn('Logout API call failed, but clearing local auth state:', error);
     } finally {
+      // Always clear auth state and redirect, regardless of API call result
+      logout();
       setIsLoggingOut(false);
       setShowLogoutModal(false);
+      router.push('/login');
     }
   };
 

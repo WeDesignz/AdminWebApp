@@ -118,7 +118,14 @@ export const AuthAPI = {
    * Logout
    */
   async logout(): Promise<ApiResponse<void>> {
-    const response = await apiClient.post<void>('api/coreadmin/logout/');
+    // Get refresh token from store
+    const { useAuthStore } = await import('@/store/authStore');
+    const state = useAuthStore.getState();
+    const refreshToken = state.refreshToken;
+    
+    const response = await apiClient.post<void>('api/coreadmin/logout/', {
+      refresh_token: refreshToken || '',
+    });
     return response;
   },
 };

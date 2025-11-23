@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useUIStore } from '@/store/uiStore';
+import { useTokenRefresh } from '@/lib/hooks/useTokenRefresh';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -14,6 +15,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       },
     },
   }));
+
+  // Proactive token refresh
+  useTokenRefresh();
 
   useEffect(() => {
     // Ensure light theme is set by default and dark class is removed

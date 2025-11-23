@@ -45,8 +45,10 @@ class ApiClient {
       const syncToken = this.getAuthTokenSync();
       if (syncToken) {
         headers['Authorization'] = `Bearer ${syncToken}`;
-        // DEBUG: Log token presence (remove in production)
-        console.log('[apiClient] Token found (sync):', syncToken.substring(0, 20) + '...');
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
+          console.log('[apiClient] Token found (sync):', syncToken.substring(0, 20) + '...');
+        }
         return headers;
       }
 
@@ -57,11 +59,13 @@ class ApiClient {
         const state = useAuthStore.getState();
         if (state.accessToken) {
           headers['Authorization'] = `Bearer ${state.accessToken}`;
-          // DEBUG: Log token presence (remove in production)
-          console.log('[apiClient] Token found (async):', state.accessToken.substring(0, 20) + '...');
+          // Only log in development mode
+          if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
+            console.log('[apiClient] Token found (async):', state.accessToken.substring(0, 20) + '...');
+          }
         } else {
-          // Log warning if no token for authenticated endpoints
-          console.warn('[apiClient] No access token found in auth store. Request may fail with 401.');
+          // No token found - this is expected for public endpoints like login/2FA
+          // Don't log warning here as we can't determine if endpoint is public
         }
       } catch (error) {
         console.error('[apiClient] Error getting auth headers:', error);
@@ -124,10 +128,12 @@ class ApiClient {
 
       const data = await response.json();
       const newAccessToken = data.access || data.access_token;
+      const newRefreshToken = data.refresh || data.refresh_token;
 
       if (newAccessToken) {
-        // Update store with new access token
-        state.setTokens(newAccessToken, state.refreshToken);
+        // Update store with new access token and refresh token (if provided)
+        // If refresh token is rotated, use the new one; otherwise keep the old one
+        state.setTokens(newAccessToken, newRefreshToken || state.refreshToken);
         return newAccessToken;
       }
 
@@ -213,13 +219,15 @@ class ApiClient {
         }
       }
 
-      // DEBUG: Log headers being sent (remove in production)
-      const authHeader = mergedHeaders.get('Authorization');
-      console.log(`[apiClient.request] ${options.method || 'GET'} ${endpoint}`, {
-        hasAuthHeader: !!authHeader,
-        authHeaderPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
-        allHeaders: Array.from(mergedHeaders.keys())
-      });
+      // Only log in development mode for debugging
+      if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
+        const authHeader = mergedHeaders.get('Authorization');
+        console.log(`[apiClient.request] ${options.method || 'GET'} ${endpoint}`, {
+          hasAuthHeader: !!authHeader,
+          authHeaderPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
+          allHeaders: Array.from(mergedHeaders.keys())
+        });
+      }
 
       // Build fetch options - ensure headers are set correctly
       const fetchOptions: RequestInit = {
@@ -525,12 +533,14 @@ class ApiClient {
    * POST request
    */
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
-    // DEBUG: Log request details (remove in production)
-    const token = this.getAuthTokenSync();
-    console.log(`[apiClient.post] ${endpoint}`, { 
-      hasToken: !!token, 
-      tokenPreview: token ? token.substring(0, 20) + '...' : 'none' 
-    });
+    // Only log in development mode for debugging
+    if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
+      const token = this.getAuthTokenSync();
+      console.log(`[apiClient.post] ${endpoint}`, { 
+        hasToken: !!token, 
+        tokenPreview: token ? token.substring(0, 20) + '...' : 'none' 
+      });
+    }
     
     return this.request<T>(endpoint, {
       method: 'POST',
