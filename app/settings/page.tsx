@@ -525,7 +525,7 @@ export default function SettingsPage() {
                 <CheckIcon className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-success mb-1">2FA is enabled</p>
-                  <p className="text-sm text-muted leading-relaxed">Your account is protected with two-factor authentication. You'll need to enter a code from your authenticator app when logging in.</p>
+                  <p className="text-sm text-muted leading-relaxed">Your account is protected with two-factor authentication. You&apos;ll need to enter a code from your authenticator app when logging in.</p>
                 </div>
               </div>
               
@@ -558,7 +558,7 @@ export default function SettingsPage() {
                 <XMarkIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-warning mb-1">2FA is not enabled</p>
-                  <p className="text-sm text-muted leading-relaxed">Add an extra layer of security to your account by enabling two-factor authentication. You'll use an authenticator app to generate verification codes.</p>
+                  <p className="text-sm text-muted leading-relaxed">Add an extra layer of security to your account by enabling two-factor authentication. You&apos;ll use an authenticator app to generate verification codes.</p>
                 </div>
               </div>
               
@@ -591,7 +591,7 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
             <p className="text-sm text-muted">
-              Download an authenticator app like <strong>Google Authenticator</strong> or <strong>Authy</strong> if you don't have one already.
+              Download an authenticator app like <strong>Google Authenticator</strong> or <strong>Authy</strong> if you don&apos;t have one already.
             </p>
           </div>
 
