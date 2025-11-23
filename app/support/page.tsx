@@ -1,7 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { API } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils/cn';
@@ -63,7 +64,17 @@ interface OrderChat {
 }
 
 export default function SupportPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('tickets');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tabFromUrl = searchParams.get('tab') as TabType | null;
+  
+  // Initialize activeTab from URL or default to 'tickets'
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (tabFromUrl && ['tickets', 'cart-chats', 'subscription-chats'].includes(tabFromUrl))
+      ? tabFromUrl
+      : 'tickets'
+  );
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -72,6 +83,25 @@ export default function SupportPage() {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const queryClient = useQueryClient();
+  
+  // Refs for scroll containers
+  const ticketChatScrollRef = useRef<HTMLDivElement>(null);
+  const orderChatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.push(`/support?${params.toString()}`, { scroll: false });
+  };
+
+  // Sync activeTab with URL on mount (in case URL changed externally)
+  useEffect(() => {
+    if (tabFromUrl && ['tickets', 'cart-chats', 'subscription-chats'].includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   // Fetch Support Tickets
   const { data: ticketsData, isLoading: isLoadingTickets } = useQuery({
@@ -209,6 +239,29 @@ export default function SupportPage() {
     enabled: !!selectedOrderChat && isChatModalOpen,
   });
 
+  // Scroll to bottom helper function
+  const scrollToBottom = (ref: React.RefObject<HTMLDivElement>) => {
+    setTimeout(() => {
+      if (ref.current) {
+        ref.current.scrollTop = ref.current.scrollHeight;
+      }
+    }, 100);
+  };
+
+  // Auto-scroll when ticket messages load or modal opens
+  useEffect(() => {
+    if (isTicketModalOpen && ticketMessages) {
+      scrollToBottom(ticketChatScrollRef);
+    }
+  }, [isTicketModalOpen, ticketMessages]);
+
+  // Auto-scroll when order chat messages load or modal opens
+  useEffect(() => {
+    if (isChatModalOpen && orderChatMessages) {
+      scrollToBottom(orderChatScrollRef);
+    }
+  }, [isChatModalOpen, orderChatMessages]);
+
   // Send message to support ticket
   const sendTicketMessageMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -220,6 +273,8 @@ export default function SupportPage() {
       refetchTicketMessages();
       queryClient.invalidateQueries({ queryKey: ['supportTickets'] });
       toast.success('Message sent successfully');
+      // Scroll to bottom after sending message
+      setTimeout(() => scrollToBottom(ticketChatScrollRef), 200);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to send message');
@@ -237,6 +292,8 @@ export default function SupportPage() {
       refetchOrderChatMessages();
       queryClient.invalidateQueries({ queryKey: ['cartOrderChats', 'subscriptionOrderChats'] });
       toast.success('Message sent successfully');
+      // Scroll to bottom after sending message
+      setTimeout(() => scrollToBottom(orderChatScrollRef), 200);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to send message');
@@ -358,7 +415,7 @@ export default function SupportPage() {
         <div className="card">
           <div className="flex gap-2 border-b border-border">
             <button
-              onClick={() => setActiveTab('tickets')}
+              onClick={() => handleTabChange('tickets')}
               className={cn(
                 'px-4 py-3 font-medium transition-colors border-b-2 -mb-px',
                 activeTab === 'tickets'
@@ -377,7 +434,7 @@ export default function SupportPage() {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('cart-chats')}
+              onClick={() => handleTabChange('cart-chats')}
               className={cn(
                 'px-4 py-3 font-medium transition-colors border-b-2 -mb-px',
                 activeTab === 'cart-chats'
@@ -388,15 +445,18 @@ export default function SupportPage() {
               <div className="flex items-center gap-2">
                 <ShoppingCartIcon className="w-5 h-5" />
                 <span>Cart Order Chats</span>
-                {cartOrdersData && cartOrdersData.length > 0 && (
-                  <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
-                    {cartOrdersData.filter((o: OrderChat) => o.unread_count && o.unread_count > 0).length}
-                  </span>
-                )}
+                {(() => {
+                  const unreadCount = cartOrdersData?.filter((o: OrderChat) => o.unread_count && o.unread_count > 0).length || 0;
+                  return unreadCount > 0 ? (
+                    <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
+                      {unreadCount}
+                    </span>
+                  ) : null;
+                })()}
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('subscription-chats')}
+              onClick={() => handleTabChange('subscription-chats')}
               className={cn(
                 'px-4 py-3 font-medium transition-colors border-b-2 -mb-px',
                 activeTab === 'subscription-chats'
@@ -407,11 +467,14 @@ export default function SupportPage() {
               <div className="flex items-center gap-2">
                 <CubeIcon className="w-5 h-5" />
                 <span>Subscription Chats</span>
-                {subscriptionOrdersData && subscriptionOrdersData.length > 0 && (
-                  <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
-                    {subscriptionOrdersData.filter((o: OrderChat) => o.unread_count && o.unread_count > 0).length}
-                  </span>
-                )}
+                {(() => {
+                  const unreadCount = subscriptionOrdersData?.filter((o: OrderChat) => o.unread_count && o.unread_count > 0).length || 0;
+                  return unreadCount > 0 ? (
+                    <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
+                      {unreadCount}
+                    </span>
+                  ) : null;
+                })()}
               </div>
             </button>
           </div>
@@ -478,7 +541,7 @@ export default function SupportPage() {
                             <span className={cn('px-2 py-1 rounded-lg text-xs font-medium capitalize', getPriorityColor(ticket.priority))}>
                               {ticket.priority}
                             </span>
-                            {ticket.unread_count && ticket.unread_count > 0 && (
+                            {((ticket.unread_count ?? 0) > 0) && (
                               <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
                                 {ticket.unread_count} unread
                               </span>
@@ -537,7 +600,7 @@ export default function SupportPage() {
                             <span className={cn('px-2 py-1 rounded-lg text-xs font-medium capitalize', getStatusColor(order.status))}>
                               {order.status}
                             </span>
-                            {order.unread_count && order.unread_count > 0 && (
+                            {((order.unread_count ?? 0) > 0) && (
                               <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
                                 {order.unread_count} unread
                               </span>
@@ -594,7 +657,7 @@ export default function SupportPage() {
                             <span className={cn('px-2 py-1 rounded-lg text-xs font-medium capitalize', getStatusColor(order.status))}>
                               {order.status}
                             </span>
-                            {order.unread_count && order.unread_count > 0 && (
+                            {((order.unread_count ?? 0) > 0) && (
                               <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
                                 {order.unread_count} unread
                               </span>
@@ -639,48 +702,61 @@ export default function SupportPage() {
         >
           {selectedTicket && ticketMessages && (
             <div className="flex flex-col h-[600px]">
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border border-border rounded-lg">
+              <div 
+                ref={ticketChatScrollRef}
+                className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border border-border rounded-lg"
+              >
                 {ticketMessages.messages && ticketMessages.messages.length > 0 ? (
-                  ticketMessages.messages.map((message: any) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        'flex gap-3',
-                        message.sender_type === 'admin' ? 'flex-row-reverse justify-end' : 'justify-start'
-                      )}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <UserIcon className="w-4 h-4 text-primary" />
-                      </div>
+                  ticketMessages.messages.map((message: any) => {
+                    const isAdmin = message.sender_type === 'admin';
+                    return (
                       <div
+                        key={message.id}
                         className={cn(
-                          'flex flex-col gap-1 max-w-[70%]',
-                          message.sender_type === 'admin' ? 'items-end' : 'items-start'
+                          'flex gap-3 w-full',
+                          isAdmin ? 'justify-end' : 'justify-start'
                         )}
                       >
+                        {!isAdmin && (
+                          <div className="w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
                         <div
                           className={cn(
-                            'rounded-lg px-4 py-2',
-                            message.sender_type === 'admin'
-                              ? 'bg-primary text-white'
-                              : 'bg-muted/20 text-foreground'
+                            'flex flex-col gap-1 max-w-[70%]',
+                            isAdmin ? 'items-end' : 'items-start'
                           )}
                         >
-                          <p className="text-sm">
-                            {typeof message.message === 'string' 
-                              ? message.message 
-                              : message.content || JSON.stringify(message.message)}
-                          </p>
+                          <div
+                            className={cn(
+                              'rounded-lg px-4 py-2',
+                              isAdmin
+                                ? 'bg-primary text-white'
+                                : 'bg-muted/20 text-foreground'
+                            )}
+                          >
+                            <p className="text-sm">
+                              {typeof message.message === 'string' 
+                                ? message.message 
+                                : message.content || JSON.stringify(message.message)}
+                            </p>
+                          </div>
+                          <span className={cn(
+                            'text-xs text-muted px-1',
+                            isAdmin ? 'text-right' : 'text-left'
+                          )}>
+                            {formatDate(message.created_at)}
+                          </span>
                         </div>
-                        <span className={cn(
-                          'text-xs text-muted px-1',
-                          message.sender_type === 'admin' ? 'text-right' : 'text-left'
-                        )}>
-                          {formatDate(message.created_at)}
-                        </span>
+                        {isAdmin && (
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-12 text-muted">
                     <p>No messages yet</p>
@@ -737,48 +813,61 @@ export default function SupportPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border border-border rounded-lg">
+              <div 
+                ref={orderChatScrollRef}
+                className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border border-border rounded-lg"
+              >
                 {orderChatMessages.comments && orderChatMessages.comments.length > 0 ? (
-                  orderChatMessages.comments.map((comment: any) => (
-                    <div
-                      key={comment.id}
-                      className={cn(
-                        'flex gap-3',
-                        comment.comment_type === 'admin' ? 'flex-row-reverse justify-end' : 'justify-start'
-                      )}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                        <UserIcon className="w-4 h-4 text-primary" />
-                      </div>
+                  orderChatMessages.comments.map((comment: any) => {
+                    const isAdmin = comment.comment_type === 'admin';
+                    return (
                       <div
+                        key={comment.id}
                         className={cn(
-                          'flex flex-col gap-1 max-w-[70%]',
-                          comment.comment_type === 'admin' ? 'items-end' : 'items-start'
+                          'flex gap-3 w-full',
+                          isAdmin ? 'justify-end' : 'justify-start'
                         )}
                       >
+                        {!isAdmin && (
+                          <div className="w-8 h-8 rounded-full bg-muted/20 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
                         <div
                           className={cn(
-                            'rounded-lg px-4 py-2',
-                            comment.comment_type === 'admin'
-                              ? 'bg-primary text-white'
-                              : 'bg-muted/20 text-foreground'
+                            'flex flex-col gap-1 max-w-[70%]',
+                            isAdmin ? 'items-end' : 'items-start'
                           )}
                         >
-                          <p className="text-sm">
-                            {typeof comment.message === 'string' 
-                              ? comment.message 
-                              : comment.content || JSON.stringify(comment.message)}
-                          </p>
+                          <div
+                            className={cn(
+                              'rounded-lg px-4 py-2',
+                              isAdmin
+                                ? 'bg-primary text-white'
+                                : 'bg-muted/20 text-foreground'
+                            )}
+                          >
+                            <p className="text-sm">
+                              {typeof comment.message === 'string' 
+                                ? comment.message 
+                                : comment.content || JSON.stringify(comment.message)}
+                            </p>
+                          </div>
+                          <span className={cn(
+                            'text-xs text-muted px-1',
+                            isAdmin ? 'text-right' : 'text-left'
+                          )}>
+                            {formatDate(comment.created_at)}
+                          </span>
                         </div>
-                        <span className={cn(
-                          'text-xs text-muted px-1',
-                          comment.comment_type === 'admin' ? 'text-right' : 'text-left'
-                        )}>
-                          {formatDate(comment.created_at)}
-                        </span>
+                        {isAdmin && (
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-12 text-muted">
                     <p>No messages yet</p>
