@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
@@ -14,6 +15,7 @@ import { useEffect } from 'react';
 export default function LoginPage() {
   const router = useRouter();
   const { setAdmin, setTokens, setRequires2FA, requires2FA, tempEmail, isAuthenticated } = useAuthStore();
+  const { theme } = useUIStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -22,6 +24,11 @@ export default function LoginPage() {
   const [userId, setUserId] = useState<number | undefined>(undefined);
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -151,18 +158,18 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5">
         <div className="w-full max-w-md glass rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
-            <h1 
-              className="text-4xl font-bold mb-2"
-              style={{
-                background: 'linear-gradient(135deg, #6C5CE7 0%, #8B7FE8 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                color: '#6C5CE7', // Fallback color
-              }}
-            >
-              WeDesignz
-            </h1>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <img 
+                src="/Logos/ONLY LOGO.svg" 
+                alt="WeDesignz Logo" 
+                className={`h-12 w-12 ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              />
+              <img 
+                src="/Logos/ONLY TEXT.svg" 
+                alt="WeDesignz" 
+                className={`h-8 w-auto ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              />
+            </div>
             <p className="text-xl font-semibold mb-1">Admin Panel</p>
             <p className="text-muted">Sign in to your account</p>
           </div>

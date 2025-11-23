@@ -46,7 +46,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const { sidebarCollapsed, toggleSidebar, theme } = useUIStore();
 
   return (
     <motion.aside
@@ -56,18 +56,27 @@ export function Sidebar() {
     >
       <div className="p-6 flex items-center justify-between">
         {!sidebarCollapsed ? (
-          <motion.img
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            src="/Logos/WD LOGO.svg"
-            alt="WeDesignz"
-            className="h-8 w-auto"
-          />
+            className="flex items-center gap-3"
+          >
+            <img
+              src="/Logos/ONLY LOGO.svg"
+              alt="WeDesignz Logo"
+              className={`h-10 w-10 ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+            />
+            <img
+              src="/Logos/ONLY TEXT.svg"
+              alt="WeDesignz"
+              className={`h-6 w-auto ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+            />
+          </motion.div>
         ) : (
           <img
             src="/Logos/ONLY LOGO.svg"
             alt="WeDesignz"
-            className="w-10 h-10 object-contain"
+            className={`w-10 h-10 object-contain ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
           />
         )}
         <button
