@@ -128,6 +128,59 @@ export const AuthAPI = {
     });
     return response;
   },
+
+  /**
+   * 2FA Setup - Get QR code and secret
+   */
+  async setup2FA(): Promise<ApiResponse<{
+    user_id: number;
+    email: string;
+    secret_key: string;
+    qr_code: string; // base64 data URL
+    backup_codes: string[];
+  }>> {
+    const response = await apiClient.get<{
+      user_id: number;
+      email: string;
+      secret_key: string;
+      qr_code: string;
+      backup_codes: string[];
+    }>('api/coreadmin/2fa/setup/');
+
+    return response;
+  },
+
+  /**
+   * 2FA Enable - Enable 2FA after setup verification
+   */
+  async enable2FA(code: string): Promise<ApiResponse<{
+    message: string;
+    backup_codes: string[];
+  }>> {
+    const response = await apiClient.post<{
+      message: string;
+      backup_codes: string[];
+    }>('api/coreadmin/2fa/enable/', {
+      totp_code: code,
+    });
+
+    return response;
+  },
+
+  /**
+   * 2FA Disable - Disable 2FA
+   */
+  async disable2FA(password: string): Promise<ApiResponse<{
+    message: string;
+  }>> {
+    const response = await apiClient.post<{
+      message: string;
+    }>('api/coreadmin/2fa/disable/', {
+      password: password,
+    });
+
+    return response;
+  },
 };
 
 /**
@@ -1519,22 +1572,27 @@ export const SettingsAPI = {
   async getAdminProfile(): Promise<ApiResponse<Admin>> {
     const response = await apiClient.get<{
       id: number;
-      email: string;
-      first_name: string;
-      last_name: string;
+      user: {
+        id: number;
+        email: string;
+        first_name: string;
+        last_name: string;
+      };
       admin_group: string;
+      admin_group_display: string;
+      is_2fa_enabled: boolean;
     }>('api/coreadmin/profile/');
 
     if (response.success && response.data) {
       const admin: Admin = {
-        id: String(response.data.id),
-        email: response.data.email,
-        name: `${response.data.first_name || ''} ${response.data.last_name || ''}`.trim(),
-        firstName: response.data.first_name,
-        lastName: response.data.last_name,
-        role: response.data.admin_group === 'Super Admin' ? 'Super Admin' : 'Moderator',
+        id: String(response.data.user.id),
+        email: response.data.user.email,
+        name: `${response.data.user.first_name || ''} ${response.data.user.last_name || ''}`.trim(),
+        firstName: response.data.user.first_name,
+        lastName: response.data.user.last_name,
+        role: response.data.admin_group_display || (response.data.admin_group === 'superadmin' ? 'Super Admin' : 'Moderator'),
         createdAt: new Date().toISOString(),
-        twoFactorEnabled: true,
+        twoFactorEnabled: response.data.is_2fa_enabled || false,
       };
 
       return { success: true, data: admin };

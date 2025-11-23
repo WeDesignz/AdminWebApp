@@ -59,6 +59,29 @@ class RealAPI {
     return API.auth.logout();
   }
 
+  static async setup2FA(): Promise<ApiResponse<{
+    user_id: number;
+    email: string;
+    secret_key: string;
+    qr_code: string;
+    backup_codes: string[];
+  }>> {
+    return API.auth.setup2FA();
+  }
+
+  static async enable2FA(code: string): Promise<ApiResponse<{
+    message: string;
+    backup_codes: string[];
+  }>> {
+    return API.auth.enable2FA(code);
+  }
+
+  static async disable2FA(password: string): Promise<ApiResponse<{
+    message: string;
+  }>> {
+    return API.auth.disable2FA(password);
+  }
+
   // Dashboard methods
   static async getKPIData(): Promise<ApiResponse<KPIData>> {
     return API.dashboard.getKPIData();

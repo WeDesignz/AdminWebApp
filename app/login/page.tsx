@@ -121,9 +121,10 @@ export default function LoginPage() {
               label="2FA Code"
               type="text"
               value={twoFactorCode}
-              onChange={(e) => setTwoFactorCode(e.target.value)}
+              onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="123456"
               maxLength={6}
+              className="text-center text-2xl tracking-widest font-mono"
               required
             />
 
