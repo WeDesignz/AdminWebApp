@@ -16,6 +16,7 @@ import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   UserIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils/cn';
@@ -59,7 +60,7 @@ function SupportPageContent() {
   const [activeTab] = useState<TabType>('tickets');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'resolved'>('all');
   const [creatorTypeFilter, setCreatorTypeFilter] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -69,20 +70,11 @@ function SupportPageContent() {
   // Refs for scroll containers
   const ticketChatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Sync activeTab with URL on mount (in case URL changed externally)
-  useEffect(() => {
-    if (tabFromUrl && ['tickets', 'cart-chats', 'subscription-chats'].includes(tabFromUrl) && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl, activeTab]);
-
   // Fetch Support Tickets
   const { data: ticketsData, isLoading: isLoadingTickets } = useQuery({
-    queryKey: ['supportTickets', statusFilter],
+    queryKey: ['supportTickets'],
     queryFn: async () => {
-      const response = await API.supportTickets.getSupportThreads({
-        status: statusFilter || undefined,
-      });
+      const response = await API.supportTickets.getSupportThreads();
       if (response.success && response.data) {
         return response.data;
       }
@@ -139,6 +131,26 @@ function SupportPageContent() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to send message');
+    },
+  });
+
+  // Resolve ticket mutation
+  const resolveTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedTicket) throw new Error('No ticket selected');
+      return API.supportTickets.updateSupportThreadStatus(String(selectedTicket.id), 'resolved');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supportTickets'] });
+      queryClient.invalidateQueries({ queryKey: ['supportTicketMessages', selectedTicket?.id] });
+      // Update local state
+      if (selectedTicket) {
+        setSelectedTicket({ ...selectedTicket, status: 'resolved' });
+      }
+      toast.success('Ticket resolved successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to resolve ticket');
     },
   });
 
@@ -205,6 +217,20 @@ function SupportPageContent() {
       if (!matchesSearch) return false;
     }
     
+    // Filter by status
+    if (statusFilter === 'open') {
+      // Open tickets: status is 'open' or 'in_progress'
+      if (ticket.status !== 'open' && ticket.status !== 'in_progress') {
+        return false;
+      }
+    } else if (statusFilter === 'resolved') {
+      // Resolved tickets: status is 'resolved'
+      if (ticket.status !== 'resolved') {
+        return false;
+      }
+    }
+    // If statusFilter is 'all', show all tickets
+    
     // Filter by creator type (prefer thread_type over creator_type)
     if (creatorTypeFilter) {
       const ticketType = ticket.thread_type || ticket.creator_type;
@@ -232,44 +258,53 @@ function SupportPageContent() {
 
           {/* Search and Filters */}
           <div className="p-4 border-b border-border">
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
-                <Input
-                  placeholder="Search by subject, customer name, email, or order number..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1 relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                  <Input
+                    placeholder="Search by subject, customer name, email, or order number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Dropdown
+                  options={[
+                    { value: '', label: 'All Types' },
+                    { value: 'customer', label: 'Customer' },
+                    { value: 'designer', label: 'Designer' },
+                  ]}
+                  value={creatorTypeFilter}
+                  onChange={setCreatorTypeFilter}
+                  placeholder="Filter by type"
+                  className="w-48"
                 />
               </div>
-              {(
-                <>
-                  <Dropdown
-                    options={[
-                      { value: '', label: 'All Status' },
-                      { value: 'open', label: 'Open' },
-                      { value: 'in_progress', label: 'In Progress' },
-                      { value: 'resolved', label: 'Resolved' },
-                      { value: 'closed', label: 'Closed' },
-                    ]}
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    placeholder="Filter by status"
-                    className="w-48"
-                  />
-                  <Dropdown
-                    options={[
-                      { value: '', label: 'All Types' },
-                      { value: 'customer', label: 'Customer' },
-                      { value: 'designer', label: 'Designer' },
-                    ]}
-                    value={creatorTypeFilter}
-                    onChange={setCreatorTypeFilter}
-                    placeholder="Filter by type"
-                    className="w-48"
-                  />
-                </>
-              )}
+              {/* Status Filter Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant={statusFilter === 'all' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={statusFilter === 'open' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('open')}
+                >
+                  Open Tickets
+                </Button>
+                <Button
+                  variant={statusFilter === 'resolved' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('resolved')}
+                >
+                  Resolved Tickets
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -433,26 +468,43 @@ function SupportPageContent() {
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendTicketMessage();
-                    }
-                  }}
-                  className="text-foreground placeholder:text-muted-foreground"
-                />
-                <Button
-                  onClick={handleSendTicketMessage}
-                  disabled={!newMessage.trim() || sendTicketMessageMutation.isPending}
-                  isLoading={sendTicketMessageMutation.isPending}
-                >
-                  <PaperAirplaneIcon className="w-4 h-4" />
-                </Button>
+              <div className="space-y-3">
+                {/* Resolve button - only show if ticket is not resolved or closed */}
+                {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => resolveTicketMutation.mutate()}
+                      disabled={resolveTicketMutation.isPending}
+                      isLoading={resolveTicketMutation.isPending}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircleIcon className="w-4 h-4" />
+                      <span>Resolve Ticket</span>
+                    </Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Type your message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendTicketMessage();
+                      }
+                    }}
+                    className="text-foreground placeholder:text-muted-foreground"
+                  />
+                  <Button
+                    onClick={handleSendTicketMessage}
+                    disabled={!newMessage.trim() || sendTicketMessageMutation.isPending}
+                    isLoading={sendTicketMessageMutation.isPending}
+                  >
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}

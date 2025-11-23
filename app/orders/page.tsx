@@ -91,7 +91,7 @@ export default function OrdersAndTransactionsPage() {
   });
 
   // Fetch chat data for all orders (batch)
-  const { data: ordersChatData } = useQuery({
+  const { data: ordersChatData, refetch: refetchOrdersChatData } = useQuery({
     queryKey: ['ordersChatData', data?.data?.map((o: any) => o.id).join(',')],
     queryFn: async () => {
       if (!data?.data || data.data.length === 0) return {};
@@ -152,11 +152,17 @@ export default function OrdersAndTransactionsPage() {
   };
 
   // Chat handlers
-  const handleOpenChat = (order: any) => {
+  const handleOpenChat = async (order: any) => {
     setSelectedOrderForChat(order);
     setIsChatModalOpen(true);
     // Mark messages as read when opening
-    API.orderComments.markOrderCommentsAsRead(String(order.id)).catch(console.error);
+    try {
+      await API.orderComments.markOrderCommentsAsRead(String(order.id));
+      // Immediately refetch chat data to update unread count
+      await refetchOrdersChatData();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
   };
 
   // Scroll to bottom helper
