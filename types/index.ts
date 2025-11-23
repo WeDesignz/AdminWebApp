@@ -376,6 +376,10 @@ export interface Plan {
   price: number; // Price
   duration: 'Monthly' | 'Annually'; // Duration: Monthly or Annually
   status: 'Active' | 'Inactive'; // Status: Active / Inactive
+  discount?: number; // Discount percentage (0-100)
+  customDesignHour?: number; // Hours for custom design delivery
+  mockPdfCount?: number; // Number of mock PDFs allowed
+  noOfFreeDownloads?: number; // Number of free downloads allowed
   createdAt?: string;
   updatedAt?: string;
 }

@@ -483,6 +483,10 @@ class RealAPI {
     price: number;
     duration: 'Monthly' | 'Annually';
     status: 'Active' | 'Inactive';
+    discount?: number;
+    customDesignHour?: number;
+    mockPdfCount?: number;
+    noOfFreeDownloads?: number;
   }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     return API.plans.createPlan(data);
   }

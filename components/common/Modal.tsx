@@ -67,11 +67,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', zIndex = 
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel 
-                className={`w-full ${sizes[size]} transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700`}
+                className={`w-full ${sizes[size]} max-h-[90vh] transform overflow-hidden rounded-2xl text-left align-middle shadow-xl transition-all bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 flex flex-col`}
                 onClick={(e) => e.stopPropagation()}
               >
                 {title && (
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 flex-shrink-0 px-6 pt-6">
                     <Dialog.Title as="h3" className="text-2xl font-bold">
                       {title}
                     </Dialog.Title>
@@ -86,7 +86,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', zIndex = 
                     </button>
                   </div>
                 )}
-                {children}
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
+                  {children}
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

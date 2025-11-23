@@ -73,6 +73,10 @@ export default function PlansPage() {
     price: '',
     duration: 'monthly' as 'monthly' | 'annually',
     status: 'active' as 'active' | 'inactive',
+    discount: '',
+    customDesignHour: '',
+    mockPdfCount: '',
+    noOfFreeDownloads: '',
   });
 
   const { data, isLoading } = useQuery({
@@ -87,6 +91,10 @@ export default function PlansPage() {
       price: '',
       duration: 'monthly',
       status: 'active',
+      discount: '',
+      customDesignHour: '',
+      mockPdfCount: '',
+      noOfFreeDownloads: '',
     });
     setSelectedPlan(null);
     setShowCreateModal(true);
@@ -101,6 +109,10 @@ export default function PlansPage() {
       price: plan.price.toString(),
       duration: plan.duration ? plan.duration.toLowerCase() as 'monthly' | 'annually' : 'monthly',
       status: plan.status ? plan.status.toLowerCase() as 'active' | 'inactive' : 'active',
+      discount: plan.discount?.toString() || '',
+      customDesignHour: plan.customDesignHour?.toString() || '',
+      mockPdfCount: plan.mockPdfCount?.toString() || '',
+      noOfFreeDownloads: plan.noOfFreeDownloads?.toString() || '',
     });
     setSelectedPlan(plan);
     setShowEditModal(true);
@@ -119,6 +131,10 @@ export default function PlansPage() {
       price: '',
       duration: 'monthly',
       status: 'active',
+      discount: '',
+      customDesignHour: '',
+      mockPdfCount: '',
+      noOfFreeDownloads: '',
     });
   };
 
@@ -131,6 +147,10 @@ export default function PlansPage() {
       price: '',
       duration: 'monthly',
       status: 'active',
+      discount: '',
+      customDesignHour: '',
+      mockPdfCount: '',
+      noOfFreeDownloads: '',
     });
   };
 
@@ -158,6 +178,10 @@ export default function PlansPage() {
         price: parseFloat(formData.price),
         duration: formData.duration.charAt(0).toUpperCase() + formData.duration.slice(1) as 'Monthly' | 'Annually',
         status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1) as 'Active' | 'Inactive',
+        discount: formData.discount ? parseFloat(formData.discount) : 0,
+        customDesignHour: formData.customDesignHour ? parseInt(formData.customDesignHour) : 2,
+        mockPdfCount: formData.mockPdfCount ? parseInt(formData.mockPdfCount) : 0,
+        noOfFreeDownloads: formData.noOfFreeDownloads ? parseInt(formData.noOfFreeDownloads) : 0,
       });
 
       if (response.success) {
@@ -225,6 +249,10 @@ export default function PlansPage() {
         price: parseFloat(formData.price),
         duration: formData.duration.charAt(0).toUpperCase() + formData.duration.slice(1) as 'Monthly' | 'Annually',
         status: formData.status.charAt(0).toUpperCase() + formData.status.slice(1) as 'Active' | 'Inactive',
+        discount: formData.discount ? parseFloat(formData.discount) : 0,
+        customDesignHour: formData.customDesignHour ? parseInt(formData.customDesignHour) : 2,
+        mockPdfCount: formData.mockPdfCount ? parseInt(formData.mockPdfCount) : 0,
+        noOfFreeDownloads: formData.noOfFreeDownloads ? parseInt(formData.noOfFreeDownloads) : 0,
       });
 
       if (response.success) {
@@ -494,19 +522,33 @@ export default function PlansPage() {
         isOpen={showCreateModal}
         onClose={handleCloseCreateModal}
         title="Create New Plan"
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Plan Name <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={planNameOptions}
-              value={formData.planName}
-              onChange={(value) => setFormData({ ...formData, planName: value })}
-              placeholder="Select Plan Name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Plan Name <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={planNameOptions}
+                value={formData.planName}
+                onChange={(value) => setFormData({ ...formData, planName: value })}
+                placeholder="Select Plan Name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Duration <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={durationOptions}
+                value={formData.duration}
+                onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
+                placeholder="Select Duration"
+              />
+            </div>
           </div>
 
           <div>
@@ -525,43 +567,104 @@ export default function PlansPage() {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Price <span className="text-error">*</span>
-            </label>
-            <Input
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="Enter price"
-              min="0"
-              step="0.01"
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Price <span className="text-error">*</span>
+              </label>
+              <Input
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="Enter price"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Status <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={statusOptions}
+                value={formData.status}
+                onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
+                placeholder="Select Status"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Duration <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={durationOptions}
-              value={formData.duration}
-              onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
-              placeholder="Select Duration"
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Discount (%)
+              </label>
+              <Input
+                type="number"
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder="e.g., 60"
+                min="0"
+                max="100"
+                step="0.01"
+              />
+              <p className="text-xs text-muted mt-1">
+                Discount percentage (0-100)
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Status <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={statusOptions}
-              value={formData.status}
-              onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
-              placeholder="Select Status"
-            />
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Custom Design Hours
+              </label>
+              <Input
+                type="number"
+                value={formData.customDesignHour}
+                onChange={(e) => setFormData({ ...formData, customDesignHour: e.target.value })}
+                placeholder="e.g., 2"
+                min="1"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Hours for custom design delivery
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Mock PDF Count
+              </label>
+              <Input
+                type="number"
+                value={formData.mockPdfCount}
+                onChange={(e) => setFormData({ ...formData, mockPdfCount: e.target.value })}
+                placeholder="e.g., 3"
+                min="0"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Number of mock PDFs allowed
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Free Downloads
+              </label>
+              <Input
+                type="number"
+                value={formData.noOfFreeDownloads}
+                onChange={(e) => setFormData({ ...formData, noOfFreeDownloads: e.target.value })}
+                placeholder="e.g., 40"
+                min="0"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Number of free downloads allowed
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -592,19 +695,33 @@ export default function PlansPage() {
         isOpen={showEditModal}
         onClose={handleCloseEditModal}
         title="Edit Plan"
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Plan Name <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={planNameOptions}
-              value={formData.planName}
-              onChange={(value) => setFormData({ ...formData, planName: value })}
-              placeholder="Select Plan Name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Plan Name <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={planNameOptions}
+                value={formData.planName}
+                onChange={(value) => setFormData({ ...formData, planName: value })}
+                placeholder="Select Plan Name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Duration <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={durationOptions}
+                value={formData.duration}
+                onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
+                placeholder="Select Duration"
+              />
+            </div>
           </div>
 
           <div>
@@ -623,43 +740,104 @@ export default function PlansPage() {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Price <span className="text-error">*</span>
-            </label>
-            <Input
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="Enter price"
-              min="0"
-              step="0.01"
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Price <span className="text-error">*</span>
+              </label>
+              <Input
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="Enter price"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Status <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={statusOptions}
+                value={formData.status}
+                onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
+                placeholder="Select Status"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Duration <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={durationOptions}
-              value={formData.duration}
-              onChange={(value) => setFormData({ ...formData, duration: (value as string).toLowerCase() as 'monthly' | 'annually' })}
-              placeholder="Select Duration"
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Discount (%)
+              </label>
+              <Input
+                type="number"
+                value={formData.discount}
+                onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                placeholder="e.g., 60"
+                min="0"
+                max="100"
+                step="0.01"
+              />
+              <p className="text-xs text-muted mt-1">
+                Discount percentage (0-100)
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Status <span className="text-error">*</span>
-            </label>
-            <Dropdown
-              options={statusOptions}
-              value={formData.status}
-              onChange={(value) => setFormData({ ...formData, status: (value as string).toLowerCase() as 'active' | 'inactive' })}
-              placeholder="Select Status"
-            />
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Custom Design Hours
+              </label>
+              <Input
+                type="number"
+                value={formData.customDesignHour}
+                onChange={(e) => setFormData({ ...formData, customDesignHour: e.target.value })}
+                placeholder="e.g., 2"
+                min="1"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Hours for custom design delivery
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Mock PDF Count
+              </label>
+              <Input
+                type="number"
+                value={formData.mockPdfCount}
+                onChange={(e) => setFormData({ ...formData, mockPdfCount: e.target.value })}
+                placeholder="e.g., 3"
+                min="0"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Number of mock PDFs allowed
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Free Downloads
+              </label>
+              <Input
+                type="number"
+                value={formData.noOfFreeDownloads}
+                onChange={(e) => setFormData({ ...formData, noOfFreeDownloads: e.target.value })}
+                placeholder="e.g., 40"
+                min="0"
+                step="1"
+              />
+              <p className="text-xs text-muted mt-1">
+                Number of free downloads allowed
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">

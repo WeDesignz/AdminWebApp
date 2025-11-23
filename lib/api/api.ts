@@ -1213,6 +1213,10 @@ function transformBackendPlanToFrontend(backendPlan: any): Plan {
     price: backendPlan.price ? parseFloat(String(backendPlan.price)) : 0,
     duration: duration === 'Monthly' ? 'Monthly' : 'Annually',
     status: status === 'Active' ? 'Active' : 'Inactive',
+    discount: backendPlan.discount !== undefined ? parseFloat(String(backendPlan.discount)) : undefined,
+    customDesignHour: backendPlan.custom_design_hour !== undefined ? parseInt(String(backendPlan.custom_design_hour)) : undefined,
+    mockPdfCount: backendPlan.mock_pdf_count !== undefined ? parseInt(String(backendPlan.mock_pdf_count)) : undefined,
+    noOfFreeDownloads: backendPlan.no_of_free_downloads !== undefined ? parseInt(String(backendPlan.no_of_free_downloads)) : undefined,
     createdAt: backendPlan.created_at,
     updatedAt: backendPlan.updated_at,
   };
@@ -1245,15 +1249,25 @@ export const PlansAPI = {
     price: number;
     duration: 'Monthly' | 'Annually';
     status: 'Active' | 'Inactive';
+    discount?: number;
+    customDesignHour?: number;
+    mockPdfCount?: number;
+    noOfFreeDownloads?: number;
   }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     // Transform frontend data to backend format
-    const backendData = {
+    const backendData: any = {
       plan_name: data.planName.toLowerCase(), // Convert to lowercase: 'Basic' -> 'basic'
       plan_duration: data.duration.toLowerCase(), // Convert to lowercase: 'Monthly' -> 'monthly'
       description: data.description, // Can be string or array, backend handles it
       price: data.price,
       status: data.status.toLowerCase(), // Convert to lowercase: 'Active' -> 'active'
     };
+    
+    // Add new fields if provided
+    if (data.discount !== undefined) backendData.discount = data.discount;
+    if (data.customDesignHour !== undefined) backendData.custom_design_hour = data.customDesignHour;
+    if (data.mockPdfCount !== undefined) backendData.mock_pdf_count = data.mockPdfCount;
+    if (data.noOfFreeDownloads !== undefined) backendData.no_of_free_downloads = data.noOfFreeDownloads;
     const response = await apiClient.post<any>('api/coreadmin/subscription-plans/create/', backendData);
     if (response.success && response.data) {
       // Preserve was_reactivated from backend response
@@ -1287,6 +1301,10 @@ export const PlansAPI = {
     if (data.status !== undefined) {
       backendData.status = typeof data.status === 'string' ? data.status.toLowerCase() : data.status;
     }
+    if ((data as any).discount !== undefined) backendData.discount = (data as any).discount;
+    if ((data as any).customDesignHour !== undefined) backendData.custom_design_hour = (data as any).customDesignHour;
+    if ((data as any).mockPdfCount !== undefined) backendData.mock_pdf_count = (data as any).mockPdfCount;
+    if ((data as any).noOfFreeDownloads !== undefined) backendData.no_of_free_downloads = (data as any).noOfFreeDownloads;
     const response = await apiClient.put<any>(`api/coreadmin/subscription-plans/${planId}/update/`, backendData);
     if (response.success && response.data) {
       return {
