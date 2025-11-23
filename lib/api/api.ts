@@ -1584,13 +1584,21 @@ export const SettingsAPI = {
     }>('api/coreadmin/profile/');
 
     if (response.success && response.data) {
+      // Ensure role matches UserRole type
+      let role: 'Super Admin' | 'Moderator' = 'Moderator';
+      if (response.data.admin_group_display === 'Super Admin' || response.data.admin_group === 'superadmin') {
+        role = 'Super Admin';
+      } else if (response.data.admin_group_display === 'Moderator') {
+        role = 'Moderator';
+      }
+
       const admin: Admin = {
         id: String(response.data.user.id),
         email: response.data.user.email,
         name: `${response.data.user.first_name || ''} ${response.data.user.last_name || ''}`.trim(),
         firstName: response.data.user.first_name,
         lastName: response.data.user.last_name,
-        role: response.data.admin_group_display || (response.data.admin_group === 'superadmin' ? 'Super Admin' : 'Moderator'),
+        role,
         createdAt: new Date().toISOString(),
         twoFactorEnabled: response.data.is_2fa_enabled || false,
       };
