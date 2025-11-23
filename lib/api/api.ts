@@ -33,22 +33,65 @@ export const AuthAPI = {
   async login(
     email: string,
     password: string
-  ): Promise<ApiResponse<{ requires2FA: boolean; tempToken?: string; user?: any }>> {
+  ): Promise<ApiResponse<{ 
+    requires2FA: boolean; 
+    tempToken?: string; 
+    user?: any;
+    admin?: any;
+    tokens?: { accessToken: string; refreshToken: string };
+  }>> {
     const response = await apiClient.post<{
       message: string;
       user: any;
-      temp_token: string;
+      temp_token?: string;
       requires_2fa: boolean;
+      tokens?: {
+        access: string;
+        refresh: string;
+      };
     }>('api/coreadmin/login/', { email, password });
 
     if (response.success && response.data) {
+      const result: {
+        requires2FA: boolean;
+        tempToken?: string;
+        user?: any;
+        admin?: any;
+        tokens?: { accessToken: string; refreshToken: string };
+      } = {
+        requires2FA: response.data.requires_2fa,
+        user: response.data.user,
+      };
+
+      if (response.data.requires_2fa) {
+        // 2FA is enabled - return temp token
+        result.tempToken = response.data.temp_token;
+      } else {
+        // 2FA is not enabled - return full tokens and admin data
+        if (response.data.tokens) {
+          result.tokens = {
+            accessToken: response.data.tokens.access,
+            refreshToken: response.data.tokens.refresh,
+          };
+        }
+        // Map user to admin format
+        if (response.data.user) {
+          result.admin = {
+            id: String(response.data.user.id),
+            email: response.data.user.email,
+            name: `${response.data.user.first_name || ''} ${response.data.user.last_name || ''}`.trim(),
+            firstName: response.data.user.first_name,
+            lastName: response.data.user.last_name,
+            role: response.data.user.admin_group === 'Super Admin' ? 'Super Admin' : 'Moderator',
+            createdAt: new Date().toISOString(),
+            twoFactorEnabled: false,
+          };
+        }
+      }
+
       return {
         success: true,
-        data: {
-          requires2FA: response.data.requires_2fa,
-          tempToken: response.data.temp_token,
-          user: response.data.user,
-        },
+        data: result,
       };
     }
 

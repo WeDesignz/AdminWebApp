@@ -32,7 +32,13 @@ class RealAPI {
   static async login(
     email: string,
     password: string
-  ): Promise<ApiResponse<{ requires2FA: boolean; tempToken?: string; user?: any }>> {
+  ): Promise<ApiResponse<{ 
+    requires2FA: boolean; 
+    tempToken?: string; 
+    user?: any;
+    admin?: any;
+    tokens?: { accessToken: string; refreshToken: string };
+  }>> {
     const response = await API.auth.login(email, password);
     if (response.success && response.data) {
       return {
@@ -41,6 +47,8 @@ class RealAPI {
           requires2FA: response.data.requires2FA,
           tempToken: response.data.tempToken,
           user: response.data.user,
+          admin: response.data.admin,
+          tokens: response.data.tokens,
         },
       };
     }
@@ -370,7 +378,6 @@ class RealAPI {
     search?: string;
   }): Promise<ListApiResponse<CustomOrder>> {
     const response = await API.customOrders.getCustomOrders(params);
-    console.log('[RealAPI.getCustomOrders] Full Response:', JSON.stringify(response, null, 2));
     if (response.success && response.data) {
       // The getPaginated method already returns { data: { data: [...], pagination: {...} } }
       // So response.data is already the PaginatedResponse structure
@@ -379,11 +386,6 @@ class RealAPI {
       // Transform API response (snake_case) to frontend format (camelCase)
       const transformedData = (paginatedData.data ?? []).map((order: any) => {
         const orderId = order.order_id ? String(order.order_id) : undefined;
-        console.log('[RealAPI.getCustomOrders] Transforming order:', {
-          customOrderId: order.id,
-          order_id: order.order_id,
-          orderId,
-        });
         return {
           id: String(order.id),
           orderId, // Associated Order ID for comments
@@ -421,8 +423,6 @@ class RealAPI {
         data: transformedData,
         pagination: paginatedData.pagination,
       };
-      console.log('[RealAPI.getCustomOrders] Result:', result);
-      console.log('[RealAPI.getCustomOrders] Data length:', result.data.length);
       return result;
     }
 

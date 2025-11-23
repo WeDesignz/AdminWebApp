@@ -45,7 +45,6 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
   const { data: commentsData, isLoading, error } = useQuery({
     queryKey: ['orderComments', orderId],
     queryFn: () => {
-      console.log('[OrderCommentModal] Fetching comments for orderId:', orderId);
       return API.orderComments.getOrderComments(orderId);
     },
     enabled: isOpen && !!orderId,
@@ -53,7 +52,7 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
   
   useEffect(() => {
     if (isOpen && orderId) {
-      console.log('[OrderCommentModal] Modal opened with orderId:', orderId, 'orderTitle:', orderTitle);
+      // Modal opened
     }
   }, [isOpen, orderId, orderTitle]);
 
@@ -160,16 +159,7 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
   // Debug logging
   useEffect(() => {
     if (commentsData) {
-      console.log('[OrderCommentModal] Comments data received:', {
-        orderId,
-        success: commentsData.success,
-        hasData: !!commentsData.data,
-        dataKeys: commentsData.data ? Object.keys(commentsData.data) : [],
-        comments: commentsData.data?.comments,
-        commentsCount: commentsData.data?.comments?.length || 0,
-        totalComments: commentsData.data?.total_comments,
-        fullData: commentsData.data,
-      });
+      // Comments data loaded
     }
     if (error) {
       console.error('[OrderCommentModal] Error loading comments:', error);

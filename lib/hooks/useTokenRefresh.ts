@@ -44,24 +44,8 @@ export function useTokenRefresh() {
             const currentTime = Date.now();
             const timeUntilExpiry = expirationTime - currentTime;
             
-            // Log token lifetime information
-            const minutesRemaining = Math.floor(timeUntilExpiry / (60 * 1000));
-            const secondsRemaining = Math.floor((timeUntilExpiry % (60 * 1000)) / 1000);
-            const expirationDate = new Date(expirationTime);
-            const issuedAt = payload.iat ? new Date(payload.iat * 1000) : null;
-            const tokenAgeMinutes = payload.iat ? Math.floor((currentTime - (payload.iat * 1000)) / (60 * 1000)) : null;
-            
-            console.log('[TokenRefresh] 🔑 Access Token Status:', {
-              'Expires At': expirationDate.toLocaleString(),
-              'Time Remaining': `${minutesRemaining}m ${secondsRemaining}s`,
-              'Will Refresh Soon': timeUntilExpiry < 5 * 60 * 1000 ? '✅ Yes (within 5 min)' : '❌ No',
-              'Token Age': tokenAgeMinutes !== null ? `${tokenAgeMinutes} minutes` : 'Unknown',
-              'Issued At': issuedAt ? issuedAt.toLocaleString() : 'Unknown'
-            });
-            
             // If token expires in less than 5 minutes, refresh it proactively
             if (timeUntilExpiry > 0 && timeUntilExpiry < 5 * 60 * 1000) {
-              console.log('[TokenRefresh] ⚠️ Token expiring soon, refreshing...');
               isRefreshingRef.current = true;
               
               try {
@@ -84,7 +68,6 @@ export function useTokenRefresh() {
                   if (newAccessToken) {
                     // Update store with new tokens
                     state.setTokens(newAccessToken, newRefreshToken || currentRefreshToken);
-                    console.log('[TokenRefresh] ✅ Token refreshed successfully');
                   }
                 } else {
                   // Silently fail - let normal 401 handling deal with it

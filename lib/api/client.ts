@@ -627,7 +627,6 @@ class ApiClient {
 
       // Parse the raw JSON response
       const rawData = await fetchResponse.json();
-      console.log('[getPaginated] Raw backend response:', rawData);
 
       // Handle custom backend format: { message, data: [...], pagination: {...} }
       if (rawData.data && rawData.pagination) {

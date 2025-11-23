@@ -44,6 +44,7 @@ export default function LoginPage() {
       const response = await MockAPI.login(email, password);
       if (response.success && response.data) {
         if (response.data.requires2FA) {
+          // 2FA is enabled - show 2FA input
           setRequires2FA(true, email);
           setTempToken(response.data.tempToken || '');
           // Store user ID from login response - required for 2FA verification
@@ -55,6 +56,16 @@ export default function LoginPage() {
             return;
           }
           toast.success('Please enter your 2FA code');
+        } else {
+          // 2FA is NOT enabled - direct login
+          if (response.data.admin && response.data.tokens) {
+            setAdmin(response.data.admin);
+            setTokens(response.data.tokens.accessToken, response.data.tokens.refreshToken);
+            toast.success('Login successful!');
+            router.push('/dashboard');
+          } else {
+            toast.error('Login response missing required data');
+          }
         }
       } else {
         toast.error(response.error || 'Login failed');

@@ -64,22 +64,6 @@ export function useUnreadMessages(orderId: string | null, currentUserId?: string
     });
 
     const count = unreadMessages.length;
-    
-    // Debug logging
-    if (count > 0 || commentsData.comments.length > 0) {
-      console.log('[AdminWebApp useUnreadMessages]', {
-        orderId,
-        count,
-        totalComments: commentsData.comments.length,
-        unreadMessages: unreadMessages.map((c: any) => ({
-          id: c.id,
-          comment_type: c.comment_type,
-          is_read: c.is_read,
-          created_by_id: c.created_by?.id
-        }))
-      });
-    }
-
     setUnreadCount(count);
   }, [orderId, commentsData, currentUserId]);
 
