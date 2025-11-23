@@ -47,6 +47,8 @@ interface SupportTicket {
   updated_at: string;
   unread_count?: number;
   last_message?: string;
+  creator_type?: 'customer' | 'designer' | 'admin';
+  thread_type?: 'customer' | 'designer';
 }
 
 interface OrderChat {
@@ -77,6 +79,7 @@ function SupportPageContent() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [creatorTypeFilter, setCreatorTypeFilter] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [selectedOrderChat, setSelectedOrderChat] = useState<OrderChat | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -365,15 +368,26 @@ function SupportPageContent() {
   };
 
   const filteredTickets = ticketsData?.threads?.filter((ticket: SupportTicket) => {
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return (
+      const matchesSearch = (
         ticket.subject.toLowerCase().includes(query) ||
         ticket.created_by.email.toLowerCase().includes(query) ||
         (ticket.created_by.first_name && ticket.created_by.first_name.toLowerCase().includes(query)) ||
         (ticket.created_by.last_name && ticket.created_by.last_name.toLowerCase().includes(query))
       );
+      if (!matchesSearch) return false;
     }
+    
+    // Filter by creator type (prefer thread_type over creator_type)
+    if (creatorTypeFilter) {
+      const ticketType = ticket.thread_type || ticket.creator_type;
+      if (ticketType !== creatorTypeFilter) {
+        return false;
+      }
+    }
+    
     return true;
   }) || [];
 
@@ -492,19 +506,32 @@ function SupportPageContent() {
                 />
               </div>
               {activeTab === 'tickets' && (
-                <Dropdown
-                  options={[
-                    { value: '', label: 'All Status' },
-                    { value: 'open', label: 'Open' },
-                    { value: 'in_progress', label: 'In Progress' },
-                    { value: 'resolved', label: 'Resolved' },
-                    { value: 'closed', label: 'Closed' },
-                  ]}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  placeholder="Filter by status"
-                  className="w-48"
-                />
+                <>
+                  <Dropdown
+                    options={[
+                      { value: '', label: 'All Status' },
+                      { value: 'open', label: 'Open' },
+                      { value: 'in_progress', label: 'In Progress' },
+                      { value: 'resolved', label: 'Resolved' },
+                      { value: 'closed', label: 'Closed' },
+                    ]}
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    placeholder="Filter by status"
+                    className="w-48"
+                  />
+                  <Dropdown
+                    options={[
+                      { value: '', label: 'All Types' },
+                      { value: 'customer', label: 'Customer' },
+                      { value: 'designer', label: 'Designer' },
+                    ]}
+                    value={creatorTypeFilter}
+                    onChange={setCreatorTypeFilter}
+                    placeholder="Filter by type"
+                    className="w-48"
+                  />
+                </>
               )}
             </div>
           </div>
@@ -541,6 +568,23 @@ function SupportPageContent() {
                             <span className={cn('px-2 py-1 rounded-lg text-xs font-medium capitalize', getPriorityColor(ticket.priority))}>
                               {ticket.priority}
                             </span>
+                            {(() => {
+                              // Prefer thread_type over creator_type for accurate display
+                              const displayType = ticket.thread_type || ticket.creator_type;
+                              if (!displayType) return null;
+                              
+                              const isDesigner = displayType === 'designer';
+                              return (
+                                <span className={cn(
+                                  'px-2 py-1 rounded-lg text-xs font-medium capitalize',
+                                  isDesigner
+                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                )}>
+                                  {isDesigner ? 'Designer' : 'Customer'}
+                                </span>
+                              );
+                            })()}
                             {((ticket.unread_count ?? 0) > 0) && (
                               <span className="px-2 py-1 text-xs bg-red-500 text-white rounded-full">
                                 {ticket.unread_count} unread
