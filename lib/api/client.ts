@@ -47,7 +47,7 @@ class ApiClient {
         headers['Authorization'] = `Bearer ${syncToken}`;
         // Only log in development mode
         if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-          console.log('[apiClient] Token found (sync):', syncToken.substring(0, 20) + '...');
+          console.log('[apiClient] Token found (sync):', syncToken!.substring(0, 20) + '...');
         }
         return headers;
       }
@@ -61,7 +61,7 @@ class ApiClient {
           headers['Authorization'] = `Bearer ${state.accessToken}`;
           // Only log in development mode
           if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-            console.log('[apiClient] Token found (async):', state.accessToken.substring(0, 20) + '...');
+            console.log('[apiClient] Token found (async):', state.accessToken!.substring(0, 20) + '...');
           }
         } else {
           // No token found - this is expected for public endpoints like login/2FA
@@ -224,7 +224,7 @@ class ApiClient {
         const authHeader = mergedHeaders.get('Authorization');
         console.log(`[apiClient.request] ${options.method || 'GET'} ${endpoint}`, {
           hasAuthHeader: !!authHeader,
-          authHeaderPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
+          authHeaderPreview: authHeader ? authHeader!.substring(0, 30) + '...' : 'none',
           allHeaders: Array.from(mergedHeaders.keys())
         });
       }
@@ -538,7 +538,7 @@ class ApiClient {
       const token = this.getAuthTokenSync();
       console.log(`[apiClient.post] ${endpoint}`, { 
         hasToken: !!token, 
-        tokenPreview: token ? token.substring(0, 20) + '...' : 'none' 
+        tokenPreview: token ? token!.substring(0, 20) + '...' : 'none' 
       });
     }
     
