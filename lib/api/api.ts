@@ -1230,13 +1230,37 @@ export const PlansAPI = {
    * Get Plans List
    */
   async getPlans(): Promise<ApiResponse<Plan[]>> {
-    const response = await apiClient.get<any[]>('api/coreadmin/subscription-plans/');
+    const response = await apiClient.get<any>('api/coreadmin/subscription-plans/');
+    
     if (response.success && response.data) {
+      // The API returns { data: [...], pagination: {...} }
+      // transformResponse extracts the 'data' field, so response.data should be the array
+      // But if it's still an object with nested data, handle that too
+      let plansArray: any[] = [];
+      
+      if (Array.isArray(response.data)) {
+        // Direct array
+        plansArray = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        // Nested { data: [...] }
+        plansArray = response.data.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // Try to find any array property
+        const keys = Object.keys(response.data);
+        for (const key of keys) {
+          if (Array.isArray(response.data[key])) {
+            plansArray = response.data[key];
+            break;
+          }
+        }
+      }
+      
       return {
         ...response,
-        data: response.data.map(transformBackendPlanToFrontend),
+        data: plansArray.map(transformBackendPlanToFrontend),
       };
     }
+    
     return response as ApiResponse<Plan[]>;
   },
 
