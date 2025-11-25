@@ -2,7 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { RealAPI } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
 import { Notification } from '@/types';
@@ -14,6 +14,12 @@ import {
   CheckCircleIcon,
   PlusIcon,
   XMarkIcon,
+  UserGroupIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  PaperAirplaneIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
@@ -29,6 +35,12 @@ export default function NotificationsPage() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    title?: string;
+    message?: string;
+    recipients?: string;
+    scheduledDateTime?: string;
+  }>({});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -43,9 +55,13 @@ export default function NotificationsPage() {
     scheduledDateTime: '',
   });
 
+  // Character limits
+  const TITLE_MAX_LENGTH = 100;
+  const MESSAGE_MAX_LENGTH = 500;
+
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
-    queryFn: () => MockAPI.getNotifications(),
+    queryFn: () => RealAPI.getNotifications(),
   });
 
   const notifications = data?.data || [];
@@ -72,7 +88,7 @@ export default function NotificationsPage() {
   const handleMarkAsRead = async (notificationId: string) => {
     setProcessingIds((prev) => new Set(prev).add(notificationId));
     try {
-      const response = await MockAPI.markNotificationAsRead(notificationId);
+      const response = await RealAPI.markNotificationAsRead(notificationId);
       if (response.success) {
         toast.success('Notification marked as read');
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -93,7 +109,7 @@ export default function NotificationsPage() {
   const handleDelete = async (notificationId: string) => {
     setProcessingIds((prev) => new Set(prev).add(notificationId));
     try {
-      const response = await MockAPI.deleteNotification(notificationId);
+      const response = await RealAPI.deleteNotification(notificationId);
       if (response.success) {
         toast.success('Notification deleted');
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -114,7 +130,7 @@ export default function NotificationsPage() {
   const handleMarkAllAsRead = async () => {
     setIsMarkingAll(true);
     try {
-      const response = await MockAPI.markAllNotificationsAsRead();
+      const response = await RealAPI.markAllNotificationsAsRead();
       if (response.success) {
         toast.success('All notifications marked as read');
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -156,36 +172,59 @@ export default function NotificationsPage() {
       sendType: 'immediate',
       scheduledDateTime: '',
     });
+    setFormErrors({});
   };
 
-  const handleSubmitCreate = async () => {
-    if (!formData.title || !formData.message) {
-      toast.error('Please fill in title and message');
-      return;
+  const validateForm = () => {
+    const errors: typeof formErrors = {};
+    
+    if (!formData.title.trim()) {
+      errors.title = 'Title is required';
+    } else if (formData.title.length > TITLE_MAX_LENGTH) {
+      errors.title = `Title must be ${TITLE_MAX_LENGTH} characters or less`;
+    }
+
+    if (!formData.message.trim()) {
+      errors.message = 'Message is required';
+    } else if (formData.message.length > MESSAGE_MAX_LENGTH) {
+      errors.message = `Message must be ${MESSAGE_MAX_LENGTH} characters or less`;
     }
 
     if (!formData.recipients.designers && !formData.recipients.customers) {
-      toast.error('Please select at least one recipient type');
-      return;
+      errors.recipients = 'Please select at least one recipient type';
     }
 
     if (formData.sendType === 'scheduled' && !formData.scheduledDateTime) {
-      toast.error('Please select a scheduled date and time');
+      errors.scheduledDateTime = 'Please select a scheduled date and time';
+    } else if (formData.sendType === 'scheduled' && formData.scheduledDateTime) {
+      const scheduledDate = new Date(formData.scheduledDateTime);
+      const now = new Date();
+      if (scheduledDate <= now) {
+        errors.scheduledDateTime = 'Scheduled time must be in the future';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmitCreate = async () => {
+    if (!validateForm()) {
       return;
     }
 
     setIsCreating(true);
     try {
       const notificationData = {
-        title: formData.title,
-        message: formData.message,
+        title: formData.title.trim(),
+        message: formData.message.trim(),
         priority: formData.priority,
         recipients: formData.recipients,
         sendType: formData.sendType,
         scheduledAt: formData.sendType === 'scheduled' ? formData.scheduledDateTime : undefined,
       };
 
-      const response = await MockAPI.createNotification(notificationData);
+      const response = await RealAPI.createNotification(notificationData);
       if (response.success) {
         toast.success(
           formData.sendType === 'immediate'
@@ -214,6 +253,51 @@ export default function NotificationsPage() {
         return 'bg-primary/20 text-primary';
       default:
         return 'bg-muted/20 text-muted';
+    }
+  };
+
+  const getPriorityCardColor = (priority: string, isSelected: boolean) => {
+    const baseClasses = 'border-2 transition-all duration-200 cursor-pointer rounded-xl p-4 hover:shadow-md';
+    const selectedClasses = isSelected ? 'ring-2 ring-offset-2' : '';
+    
+    switch (priority) {
+      case 'critical':
+        return `${baseClasses} ${selectedClasses} ${
+          isSelected 
+            ? 'bg-error/10 border-error ring-error/50' 
+            : 'bg-error/5 border-error/30 hover:border-error/60'
+        }`;
+      case 'high':
+        return `${baseClasses} ${selectedClasses} ${
+          isSelected 
+            ? 'bg-warning/10 border-warning ring-warning/50' 
+            : 'bg-warning/5 border-warning/30 hover:border-warning/60'
+        }`;
+      case 'medium':
+        return `${baseClasses} ${selectedClasses} ${
+          isSelected 
+            ? 'bg-primary/10 border-primary ring-primary/50' 
+            : 'bg-primary/5 border-primary/30 hover:border-primary/60'
+        }`;
+      default:
+        return `${baseClasses} ${selectedClasses} ${
+          isSelected 
+            ? 'bg-muted/20 border-muted ring-muted/50' 
+            : 'bg-muted/10 border-muted/30 hover:border-muted/60'
+        }`;
+    }
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'critical':
+        return <ExclamationTriangleIcon className="w-5 h-5" />;
+      case 'high':
+        return <ExclamationTriangleIcon className="w-5 h-5" />;
+      case 'medium':
+        return <InformationCircleIcon className="w-5 h-5" />;
+      default:
+        return <InformationCircleIcon className="w-5 h-5" />;
     }
   };
 
@@ -363,153 +447,319 @@ export default function NotificationsPage() {
         isOpen={showCreateModal}
         onClose={handleCloseCreateModal}
         title="Create Notification"
-        size="lg"
+        size="xl"
       >
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Title Section */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Title <span className="text-error">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold">
+                Title <span className="text-error">*</span>
+              </label>
+              <span className={`text-xs ${
+                formData.title.length > TITLE_MAX_LENGTH 
+                  ? 'text-error' 
+                  : 'text-muted'
+              }`}>
+                {formData.title.length}/{TITLE_MAX_LENGTH}
+              </span>
+            </div>
             <Input
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Enter notification title"
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                if (formErrors.title) setFormErrors({ ...formErrors, title: undefined });
+              }}
+              onBlur={() => validateForm()}
+              placeholder="e.g., System Maintenance Notice"
+              error={formErrors.title}
+              helperText="A concise title that clearly describes the notification"
+              maxLength={TITLE_MAX_LENGTH}
               required
             />
           </div>
 
+          {/* Message Section */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Message <span className="text-error">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold">
+                Message <span className="text-error">*</span>
+              </label>
+              <span className={`text-xs ${
+                formData.message.length > MESSAGE_MAX_LENGTH 
+                  ? 'text-error' 
+                  : 'text-muted'
+              }`}>
+                {formData.message.length}/{MESSAGE_MAX_LENGTH}
+              </span>
+            </div>
             <textarea
               value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              className="input-field w-full min-h-[100px] resize-none"
-              placeholder="Enter notification message"
+              onChange={(e) => {
+                setFormData({ ...formData, message: e.target.value });
+                if (formErrors.message) setFormErrors({ ...formErrors, message: undefined });
+              }}
+              onBlur={() => validateForm()}
+              className={`input-field w-full min-h-[120px] resize-y ${
+                formErrors.message ? 'ring-2 ring-error' : ''
+              }`}
+              placeholder="Enter the full notification message here..."
+              maxLength={MESSAGE_MAX_LENGTH}
               required
             />
+            {formErrors.message && (
+              <p className="mt-1 text-sm text-error">{formErrors.message}</p>
+            )}
+            {!formErrors.message && (
+              <p className="mt-1 text-xs text-muted">
+                Provide detailed information that recipients need to know
+              </p>
+            )}
           </div>
 
+          {/* Priority Section */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Priority <span className="text-error">*</span>
+            <label className="block text-sm font-semibold mb-3">
+              Priority Level <span className="text-error">*</span>
             </label>
-            <Dropdown
-              options={priorityOptions}
-              value={formData.priority}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  priority: value as 'low' | 'medium' | 'high' | 'critical',
-                })
-              }
-              placeholder="Select Priority"
-            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {priorityOptions.map((option) => {
+                const isSelected = formData.priority === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        priority: option.value as 'low' | 'medium' | 'high' | 'critical',
+                      })
+                    }
+                    className={getPriorityCardColor(option.value, isSelected)}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`${isSelected ? getPriorityColor(option.value as Notification['priority']).split(' ')[1] : 'text-muted'}`}>
+                        {getPriorityIcon(option.value)}
+                      </div>
+                      <span className={`text-sm font-medium ${
+                        isSelected ? 'font-semibold' : ''
+                      }`}>
+                        {option.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              Select the urgency level for this notification
+            </p>
           </div>
 
+          {/* Recipients Section */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-semibold mb-3">
               Recipients <span className="text-error">*</span>
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.recipients.designers}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      recipients: {
-                        ...formData.recipients,
-                        designers: e.target.checked,
-                      },
-                    })
-                  }
-                  className="w-4 h-4 rounded border-border"
-                />
-                <span className="text-sm">Designers</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.recipients.customers}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      recipients: {
-                        ...formData.recipients,
-                        customers: e.target.checked,
-                      },
-                    })
-                  }
-                  className="w-4 h-4 rounded border-border"
-                />
-                <span className="text-sm">Customers</span>
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    recipients: {
+                      ...formData.recipients,
+                      designers: !formData.recipients.designers,
+                    },
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
+                  formData.recipients.designers
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                } ${formErrors.recipients ? 'border-error' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    formData.recipients.designers
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.recipients.designers && (
+                      <CheckIcon className="w-3 h-3 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <UserGroupIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Designers</span>
+                    </div>
+                    <p className="text-xs text-muted mt-1">Send to all designers</p>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    recipients: {
+                      ...formData.recipients,
+                      customers: !formData.recipients.customers,
+                    },
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
+                  formData.recipients.customers
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                } ${formErrors.recipients ? 'border-error' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                    formData.recipients.customers
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.recipients.customers && (
+                      <CheckIcon className="w-3 h-3 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <UserGroupIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Customers</span>
+                    </div>
+                    <p className="text-xs text-muted mt-1">Send to all customers</p>
+                  </div>
+                </div>
+              </button>
             </div>
+            {formErrors.recipients && (
+              <p className="mt-2 text-sm text-error">{formErrors.recipients}</p>
+            )}
+            {!formErrors.recipients && (
+              <p className="mt-2 text-xs text-muted">
+                Select one or more recipient groups
+              </p>
+            )}
           </div>
 
+          {/* Send Type Section */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Send Type <span className="text-error">*</span>
+            <label className="block text-sm font-semibold mb-3">
+              Delivery Option <span className="text-error">*</span>
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="sendType"
-                  value="immediate"
-                  checked={formData.sendType === 'immediate'}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sendType: e.target.value as 'immediate' | 'scheduled',
-                    })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Send Immediately</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="sendType"
-                  value="scheduled"
-                  checked={formData.sendType === 'scheduled'}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sendType: e.target.value as 'immediate' | 'scheduled',
-                    })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Schedule Notification</span>
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    sendType: 'immediate',
+                    scheduledDateTime: '',
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md text-left ${
+                  formData.sendType === 'immediate'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                    formData.sendType === 'immediate'
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.sendType === 'immediate' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <PaperAirplaneIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Send Immediately</span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Notification will be sent right away
+                    </p>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    sendType: 'scheduled',
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md text-left ${
+                  formData.sendType === 'scheduled'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                    formData.sendType === 'scheduled'
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.sendType === 'scheduled' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CalendarDaysIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Schedule Later</span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Send at a specific date and time
+                    </p>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
+          {/* Scheduled Date & Time */}
           {formData.sendType === 'scheduled' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Scheduled Date & Time <span className="text-error">*</span>
+            <div className="animate-in slide-in-from-top-2 duration-200">
+              <label className="block text-sm font-semibold mb-2">
+                <div className="flex items-center gap-2">
+                  <ClockIcon className="w-4 h-4" />
+                  Scheduled Date & Time <span className="text-error">*</span>
+                </div>
               </label>
               <Input
                 type="datetime-local"
                 value={formData.scheduledDateTime}
-                onChange={(e) =>
-                  setFormData({ ...formData, scheduledDateTime: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, scheduledDateTime: e.target.value });
+                  if (formErrors.scheduledDateTime) {
+                    setFormErrors({ ...formErrors, scheduledDateTime: undefined });
+                  }
+                }}
+                onBlur={() => validateForm()}
+                error={formErrors.scheduledDateTime}
+                helperText="Select a future date and time for delivery"
+                min={new Date().toISOString().slice(0, 16)}
                 required
               />
             </div>
           )}
 
+          {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               variant="outline"
               onClick={handleCloseCreateModal}
+              disabled={isCreating}
               className="flex items-center gap-2"
             >
               <XMarkIcon className="w-4 h-4" />
@@ -522,8 +772,17 @@ export default function NotificationsPage() {
               isLoading={isCreating}
               className="flex items-center gap-2"
             >
-              <CheckIcon className="w-4 h-4" />
-              {formData.sendType === 'immediate' ? 'Send Notification' : 'Schedule Notification'}
+              {formData.sendType === 'immediate' ? (
+                <>
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                  Send Now
+                </>
+              ) : (
+                <>
+                  <CalendarDaysIcon className="w-4 h-4" />
+                  Schedule
+                </>
+              )}
             </Button>
           </div>
         </div>

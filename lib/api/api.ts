@@ -362,11 +362,29 @@ export const NotificationsAPI = {
     sendType: 'immediate' | 'scheduled';
     scheduledAt?: string;
   }): Promise<ApiResponse<Notification>> {
-    // Note: This endpoint may need to be created in backend
-    const response = await apiClient.post<Notification>('api/coreadmin/notifications/create/', data);
+    const response = await apiClient.post<{
+      id: string;
+      title: string;
+      message: string;
+      priority: string;
+      createdAt: string;
+      scheduledAt?: string;
+    }>('api/coreadmin/notifications/create/', data);
 
     if (response.success && response.data) {
-      return { success: true, data: response.data };
+      // Map backend response to Notification type
+      const notification: Notification = {
+        id: String(response.data.id || Date.now()),
+        type: 'admin',
+        title: response.data.title,
+        message: response.data.message,
+        priority: (response.data.priority || 'medium') as Notification['priority'],
+        read: false,
+        createdAt: response.data.createdAt || new Date().toISOString(),
+        scheduledAt: response.data.scheduledAt,
+        recipients: data.recipients,
+      };
+      return { success: true, data: notification };
     }
 
     return {
