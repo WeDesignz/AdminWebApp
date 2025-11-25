@@ -361,6 +361,7 @@ export const NotificationsAPI = {
     recipients: { designers?: boolean; customers?: boolean };
     sendType: 'immediate' | 'scheduled';
     scheduledAt?: string;
+    deliveryMethod?: 'in_app' | 'email' | 'both';
   }): Promise<ApiResponse<Notification>> {
     const response = await apiClient.post<{
       id: string;

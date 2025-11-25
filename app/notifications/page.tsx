@@ -20,6 +20,8 @@ import {
   InformationCircleIcon,
   PaperAirplaneIcon,
   CalendarDaysIcon,
+  EnvelopeIcon,
+  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
@@ -53,6 +55,7 @@ export default function NotificationsPage() {
     },
     sendType: 'immediate' as 'immediate' | 'scheduled',
     scheduledDateTime: '',
+    deliveryMethod: 'both' as 'in_app' | 'email' | 'both',
   });
 
   // Character limits
@@ -155,6 +158,7 @@ export default function NotificationsPage() {
       },
       sendType: 'immediate',
       scheduledDateTime: '',
+      deliveryMethod: 'both',
     });
     setShowCreateModal(true);
   };
@@ -171,6 +175,7 @@ export default function NotificationsPage() {
       },
       sendType: 'immediate',
       scheduledDateTime: '',
+      deliveryMethod: 'both',
     });
     setFormErrors({});
   };
@@ -222,6 +227,7 @@ export default function NotificationsPage() {
         recipients: formData.recipients,
         sendType: formData.sendType,
         scheduledAt: formData.sendType === 'scheduled' ? formData.scheduledDateTime : undefined,
+        deliveryMethod: formData.deliveryMethod,
       };
 
       const response = await RealAPI.createNotification(notificationData);
@@ -725,6 +731,125 @@ export default function NotificationsPage() {
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* Delivery Method Section */}
+          <div>
+            <label className="block text-sm font-semibold mb-3">
+              Notification Method <span className="text-error">*</span>
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    deliveryMethod: 'in_app',
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md text-left ${
+                  formData.deliveryMethod === 'in_app'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                    formData.deliveryMethod === 'in_app'
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.deliveryMethod === 'in_app' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BellIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">In-App Only</span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Create in-app notification (visible in dashboard, no email)
+                    </p>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    deliveryMethod: 'email',
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md text-left ${
+                  formData.deliveryMethod === 'email'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                    formData.deliveryMethod === 'email'
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.deliveryMethod === 'email' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <EnvelopeIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Email Only</span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Create in-app notification + send email
+                    </p>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    deliveryMethod: 'both',
+                  })
+                }
+                className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md text-left ${
+                  formData.deliveryMethod === 'both'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
+                    : 'border-border bg-muted/5 hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all mt-0.5 ${
+                    formData.deliveryMethod === 'both'
+                      ? 'bg-primary border-primary'
+                      : 'border-border'
+                  }`}>
+                    {formData.deliveryMethod === 'both' && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <DevicePhoneMobileIcon className="w-5 h-5 text-primary" />
+                      <span className="font-medium">Both</span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Create in-app notification + send email
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              Choose how to deliver the notification to recipients
+            </p>
           </div>
 
           {/* Scheduled Date & Time */}
