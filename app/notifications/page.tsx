@@ -55,7 +55,7 @@ export default function NotificationsPage() {
     },
     sendType: 'immediate' as 'immediate' | 'scheduled',
     scheduledDateTime: '',
-    deliveryMethod: 'both' as 'in_app' | 'email' | 'both',
+    deliveryMethod: 'in_app' as 'in_app' | 'email' | 'both',
   });
 
   // Character limits
@@ -158,7 +158,7 @@ export default function NotificationsPage() {
       },
       sendType: 'immediate',
       scheduledDateTime: '',
-      deliveryMethod: 'both',
+      deliveryMethod: 'in_app',
     });
     setShowCreateModal(true);
   };
@@ -175,7 +175,7 @@ export default function NotificationsPage() {
       },
       sendType: 'immediate',
       scheduledDateTime: '',
-      deliveryMethod: 'both',
+      deliveryMethod: 'in_app',
     });
     setFormErrors({});
   };
