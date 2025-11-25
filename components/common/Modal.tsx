@@ -87,7 +87,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', zIndex = 
                   </div>
                 )}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
-                  {children}
+                {children}
                 </div>
               </Dialog.Panel>
             </Transition.Child>

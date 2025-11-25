@@ -19,6 +19,7 @@ import {
   Squares2X2Icon,
   TableCellsIcon,
   CheckIcon as CheckIconSolid,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -61,6 +62,7 @@ export default function PlansPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -127,6 +129,16 @@ export default function PlansPage() {
   const handleDelete = (plan: Plan) => {
     setSelectedPlan(plan);
     setShowDeleteModal(true);
+  };
+
+  const handleView = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setShowViewModal(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setSelectedPlan(null);
   };
 
   const handleCloseCreateModal = () => {
@@ -421,6 +433,15 @@ export default function PlansPage() {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => handleView(plan)}
+                            className="flex items-center gap-1"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleEdit(plan)}
                             className="flex items-center gap-1"
                           >
@@ -497,6 +518,15 @@ export default function PlansPage() {
                   )}
 
                   <div className="flex gap-2 pt-4 border-t border-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleView(plan)}
+                      className="flex-1 flex items-center justify-center gap-2"
+                    >
+                      <EyeIcon className="w-4 h-4" />
+                      View
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -869,6 +899,144 @@ export default function PlansPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* View Plan Modal */}
+      <Modal
+        isOpen={showViewModal}
+        onClose={handleCloseViewModal}
+        title="Plan Details"
+        size="lg"
+      >
+        {selectedPlan && (
+          <div className="space-y-6">
+            {/* Plan Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div>
+                <h2 className="text-2xl font-bold">{selectedPlan.planName || 'Unnamed Plan'}</h2>
+                <p className="text-sm text-muted mt-1">
+                  {selectedPlan.duration} Plan
+                </p>
+              </div>
+              <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                selectedPlan.status === 'Active' 
+                  ? 'bg-success/20 text-success' 
+                  : 'bg-muted/20 text-muted'
+              }`}>
+                {selectedPlan.status}
+              </span>
+            </div>
+
+            {/* Price Section */}
+            <div className="bg-primary/5 rounded-lg p-4">
+              <div className="text-3xl font-bold text-primary">
+                {formatPlanPrice(selectedPlan.price, selectedPlan.duration)}
+              </div>
+            </div>
+
+            {/* Description Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Description</h3>
+              <div className="space-y-2">
+                {Array.isArray(selectedPlan.description) ? (
+                  selectedPlan.description.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CheckIconSolid className="w-3 h-3 text-success" />
+                      </div>
+                      <span className="text-sm text-foreground flex-1">{item}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-foreground">{selectedPlan.description || 'No description provided'}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Plan Features Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Plan Features</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/10 rounded-lg p-4">
+                  <div className="text-xs text-muted mb-1">Discount</div>
+                  <div className="text-lg font-semibold">
+                    {selectedPlan.discount !== undefined && selectedPlan.discount !== null 
+                      ? `${selectedPlan.discount}%` 
+                      : '0%'}
+                  </div>
+                </div>
+                <div className="bg-muted/10 rounded-lg p-4">
+                  <div className="text-xs text-muted mb-1">Custom Design Hours</div>
+                  <div className="text-lg font-semibold">
+                    {selectedPlan.customDesignHour !== undefined && selectedPlan.customDesignHour !== null 
+                      ? `${selectedPlan.customDesignHour} hour${selectedPlan.customDesignHour !== 1 ? 's' : ''}` 
+                      : '2 hours'}
+                  </div>
+                </div>
+                <div className="bg-muted/10 rounded-lg p-4">
+                  <div className="text-xs text-muted mb-1">Mock PDF Count</div>
+                  <div className="text-lg font-semibold">
+                    {selectedPlan.mockPdfCount !== undefined && selectedPlan.mockPdfCount !== null 
+                      ? selectedPlan.mockPdfCount 
+                      : 0}
+                  </div>
+                </div>
+                <div className="bg-muted/10 rounded-lg p-4">
+                  <div className="text-xs text-muted mb-1">Free Downloads</div>
+                  <div className="text-lg font-semibold">
+                    {selectedPlan.noOfFreeDownloads !== undefined && selectedPlan.noOfFreeDownloads !== null 
+                      ? selectedPlan.noOfFreeDownloads 
+                      : 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Information */}
+            {(selectedPlan.createdAt || selectedPlan.updatedAt) && (
+              <div className="pt-4 border-t border-border">
+                <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Additional Information</h3>
+                <div className="space-y-2 text-sm">
+                  {selectedPlan.createdAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted">Created At:</span>
+                      <span className="font-medium">{formatDate(selectedPlan.createdAt)}</span>
+                    </div>
+                  )}
+                  {selectedPlan.updatedAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted">Last Updated:</span>
+                      <span className="font-medium">{formatDate(selectedPlan.updatedAt)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                onClick={handleCloseViewModal}
+                className="flex items-center gap-2"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  handleCloseViewModal();
+                  handleEdit(selectedPlan);
+                }}
+                className="flex items-center gap-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                Edit Plan
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Delete Confirmation Modal */}
