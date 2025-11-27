@@ -684,6 +684,7 @@ function transformProductToDesign(product: any): Design {
       type: (m.media_type === 'image' ? 'image' : 'other') as 'image' | 'vector' | 'document' | 'other',
       size: 0,
       uploadedAt: m.created_at || new Date().toISOString(),
+      isMockup: m.is_mockup === true || m.is_mockup === 'true' || m.is_mockup === 1,
     };
   });
 
@@ -1599,17 +1600,79 @@ export const SystemConfigAPI = {
    * Get System Config
    */
   async getSystemConfig(): Promise<ApiResponse<SystemConfig>> {
-    // Note: This endpoint may need to be created in backend
-    const response = await apiClient.get<SystemConfig>('api/coreadmin/system-config/');
-    return response;
+    const response = await apiClient.get<any>('api/coreadmin/system-config/');
+    
+    // Transform backend response to frontend format
+    if (response.data) {
+      return {
+        success: true,
+        data: {
+          commissionRate: response.data.commission_rate,
+          gstPercentage: response.data.gst_percentage,
+          customOrderTimeSlot: response.data.custom_order_time_slot_hours,
+          minimumRequiredDesigns: response.data.minimum_required_designs,
+          maintenanceMode: response.data.maintenance_mode,
+          heroSectionDesigns: response.data.hero_section_designs || [],
+          featuredDesigns: response.data.featured_designs || [],
+          trendingDesigns: response.data.trending_designs || [],
+          domeGalleryDesigns: response.data.dome_gallery_designs || [],
+          landingPageStats: response.data.landing_page_stats || {},
+          clientNames: response.data.client_names || [],
+        } as SystemConfig,
+      };
+    }
+    return response as ApiResponse<SystemConfig>;
   },
 
   /**
    * Update System Config
    */
   async updateSystemConfig(data: Partial<SystemConfig>): Promise<ApiResponse<SystemConfig>> {
-    // Note: This endpoint may need to be created in backend
-    return apiClient.put<SystemConfig>('api/coreadmin/system-config/', data);
+    // Helper to convert string IDs to integers for backend (backend expects integers)
+    const convertIdsToInts = (ids: string[] | undefined): number[] | undefined => {
+      if (!ids || !Array.isArray(ids)) return undefined;
+      return ids.map(id => {
+        const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+        return isNaN(numId) ? null : numId;
+      }).filter((id): id is number => id !== null);
+    };
+
+    // Transform frontend format to backend format
+    const backendData: any = {
+      commission_rate: data.commissionRate,
+      gst_percentage: data.gstPercentage,
+      custom_order_time_slot_hours: data.customOrderTimeSlot,
+      minimum_required_designs: data.minimumRequiredDesigns,
+      maintenance_mode: data.maintenanceMode,
+      hero_section_designs: convertIdsToInts(data.heroSectionDesigns),
+      featured_designs: convertIdsToInts(data.featuredDesigns),
+      dome_gallery_designs: convertIdsToInts(data.domeGalleryDesigns),
+      landing_page_stats: data.landingPageStats,
+      client_names: data.clientNames,
+    };
+    
+    const response = await apiClient.put<any>('api/coreadmin/system-config/update/', backendData);
+    
+    // Transform backend response to frontend format
+    if (response.data) {
+      return {
+        success: true,
+        data: {
+          commissionRate: response.data.commission_rate,
+          gstPercentage: response.data.gst_percentage,
+          customOrderTimeSlot: response.data.custom_order_time_slot_hours,
+          minimumRequiredDesigns: response.data.minimum_required_designs,
+          maintenanceMode: response.data.maintenance_mode,
+          heroSectionDesigns: response.data.hero_section_designs || [],
+          featuredDesigns: response.data.featured_designs || [],
+          trendingDesigns: response.data.trending_designs || [],
+          domeGalleryDesigns: response.data.dome_gallery_designs || [],
+          landingPageStats: response.data.landing_page_stats || {},
+          clientNames: response.data.client_names || [],
+        } as SystemConfig,
+      };
+    }
+    return response as ApiResponse<SystemConfig>;
   },
 
   /**

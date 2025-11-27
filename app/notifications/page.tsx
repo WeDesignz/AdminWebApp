@@ -460,8 +460,8 @@ export default function NotificationsPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold">
-                Title <span className="text-error">*</span>
-              </label>
+              Title <span className="text-error">*</span>
+            </label>
               <span className={`text-xs ${
                 formData.title.length > TITLE_MAX_LENGTH 
                   ? 'text-error' 
@@ -489,8 +489,8 @@ export default function NotificationsPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold">
-                Message <span className="text-error">*</span>
-              </label>
+              Message <span className="text-error">*</span>
+            </label>
               <span className={`text-xs ${
                 formData.message.length > MESSAGE_MAX_LENGTH 
                   ? 'text-error' 
@@ -536,11 +536,11 @@ export default function NotificationsPage() {
                     key={option.value}
                     type="button"
                     onClick={() =>
-                      setFormData({
-                        ...formData,
+                setFormData({
+                  ...formData,
                         priority: option.value as 'low' | 'medium' | 'high' | 'critical',
-                      })
-                    }
+                })
+              }
                     className={getPriorityCardColor(option.value, isSelected)}
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -571,14 +571,14 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setFormData({
-                    ...formData,
-                    recipients: {
-                      ...formData.recipients,
+                    setFormData({
+                      ...formData,
+                      recipients: {
+                        ...formData.recipients,
                       designers: !formData.recipients.designers,
-                    },
-                  })
-                }
+                      },
+                    })
+                  }
                 className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
                   formData.recipients.designers
                     ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
@@ -608,14 +608,14 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setFormData({
-                    ...formData,
-                    recipients: {
-                      ...formData.recipients,
+                    setFormData({
+                      ...formData,
+                      recipients: {
+                        ...formData.recipients,
                       customers: !formData.recipients.customers,
-                    },
-                  })
-                }
+                      },
+                    })
+                  }
                 className={`border-2 rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
                   formData.recipients.customers
                     ? 'border-primary bg-primary/10 ring-2 ring-primary/50 ring-offset-2'
@@ -656,7 +656,7 @@ export default function NotificationsPage() {
           <div>
             <label className="block text-sm font-semibold mb-3">
               Delivery Option <span className="text-error">*</span>
-            </label>
+              </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
                 type="button"
@@ -778,8 +778,8 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setFormData({
-                    ...formData,
+                    setFormData({
+                      ...formData,
                     deliveryMethod: 'email',
                   })
                 }
@@ -814,8 +814,8 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setFormData({
-                    ...formData,
+                    setFormData({
+                      ...formData,
                     deliveryMethod: 'both',
                   })
                 }
@@ -858,7 +858,7 @@ export default function NotificationsPage() {
               <label className="block text-sm font-semibold mb-2">
                 <div className="flex items-center gap-2">
                   <ClockIcon className="w-4 h-4" />
-                  Scheduled Date & Time <span className="text-error">*</span>
+                Scheduled Date & Time <span className="text-error">*</span>
                 </div>
               </label>
               <Input

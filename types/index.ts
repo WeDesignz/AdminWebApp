@@ -189,6 +189,7 @@ export interface DesignFile {
   type: 'image' | 'vector' | 'document' | 'other';
   size: number; // in bytes
   uploadedAt: string;
+  isMockup?: boolean; // Whether this file is a mockup image
 }
 
 export interface DesignApprovalHistory {
@@ -460,8 +461,9 @@ export interface SystemConfig {
   minimumRequiredDesigns: number; // Minimum required designs to onboard (default 50)
   maintenanceMode: boolean;
   // Landing Page Controls
-  featuredDesigns: string[]; // Array of design IDs for Featured Designs slider
-  trendingDesigns: string[]; // Array of design IDs for Trending Designs slider
+  heroSectionDesigns: string[];      // Array of design IDs for Hero Section CardSwap
+  featuredDesigns: string[];          // Array of design IDs for Featured Designs slider
+  domeGalleryDesigns: string[];        // Array of design IDs for Dome Gallery
   landingPageStats: {
     totalClients: number;
     totalDesigners: number;
