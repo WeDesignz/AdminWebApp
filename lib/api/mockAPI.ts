@@ -1100,7 +1100,9 @@ class MockAPI {
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
+      heroSectionDesigns: [],
       featuredDesigns: [],
+      domeGalleryDesigns: [],
       landingPageStats: {
         totalClients: 5000,
         totalDesigners: 150,
@@ -1108,6 +1110,10 @@ class MockAPI {
       },
       clientNames: [],
       ...data,
+      // Ensure required fields are always arrays, not undefined
+      heroSectionDesigns: data?.heroSectionDesigns ?? [],
+      featuredDesigns: data?.featuredDesigns ?? [],
+      domeGalleryDesigns: data?.domeGalleryDesigns ?? [],
     };
 
     return { success: true, data: config };
