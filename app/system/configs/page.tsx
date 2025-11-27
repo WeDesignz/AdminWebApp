@@ -561,7 +561,7 @@ export default function SystemConfigsPage() {
                       <PlusIcon className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <p className="text-sm text-muted font-medium">No client names added</p>
-                    <p className="text-xs text-muted mt-1">Click "Add Client Name" to add clients to the slider</p>
+                    <p className="text-xs text-muted mt-1">Click &quot;Add Client Name&quot; to add clients to the slider</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -632,7 +632,7 @@ export default function SystemConfigsPage() {
                   <div className="text-center py-6 border-2 border-dashed border-border rounded-lg">
                     <PhotoIcon className="w-8 h-8 mx-auto text-muted mb-2" />
                     <p className="text-sm text-muted">No designs selected</p>
-                    <p className="text-xs text-muted mt-1">Click "Select Designs" to add designs</p>
+                    <p className="text-xs text-muted mt-1">Click &quot;Select Designs&quot; to add designs</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -733,7 +733,7 @@ export default function SystemConfigsPage() {
                   <div className="text-center py-6 border-2 border-dashed border-border rounded-lg">
                     <PhotoIcon className="w-8 h-8 mx-auto text-muted mb-2" />
                     <p className="text-sm text-muted">No designs selected</p>
-                    <p className="text-xs text-muted mt-1">Click "Select Designs" to add designs</p>
+                    <p className="text-xs text-muted mt-1">Click &quot;Select Designs&quot; to add designs</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -835,7 +835,7 @@ export default function SystemConfigsPage() {
                   <div className="text-center py-6 border-2 border-dashed border-border rounded-lg">
                     <PhotoIcon className="w-8 h-8 mx-auto text-muted mb-2" />
                     <p className="text-sm text-muted">No designs selected</p>
-                    <p className="text-xs text-muted mt-1">Click "Select Designs" to add designs</p>
+                    <p className="text-xs text-muted mt-1">Click &quot;Select Designs&quot; to add designs</p>
                   </div>
                 ) : (
                   <div className="max-h-96 overflow-y-auto border border-border rounded-lg p-3 bg-background">
