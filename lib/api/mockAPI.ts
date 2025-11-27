@@ -1096,7 +1096,7 @@ class MockAPI {
 
     // Destructure array fields from data to avoid duplicate properties
     const { heroSectionDesigns, featuredDesigns, domeGalleryDesigns, ...restData } = data || {};
-    
+
     const config: SystemConfig = {
       commissionRate: 15,
       gstPercentage: 18,
