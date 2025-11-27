@@ -1094,26 +1094,26 @@ class MockAPI {
   ): Promise<ApiResponse<SystemConfig>> {
     await delay(800);
 
+    // Destructure array fields from data to avoid duplicate properties
+    const { heroSectionDesigns, featuredDesigns, domeGalleryDesigns, ...restData } = data || {};
+    
     const config: SystemConfig = {
       commissionRate: 15,
       gstPercentage: 18,
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
-      heroSectionDesigns: [],
-      featuredDesigns: [],
-      domeGalleryDesigns: [],
       landingPageStats: {
         totalClients: 5000,
         totalDesigners: 150,
         totalDesignAssets: 1250,
       },
       clientNames: [],
-      ...data,
+      ...restData,
       // Ensure required fields are always arrays, not undefined
-      heroSectionDesigns: data?.heroSectionDesigns ?? [],
-      featuredDesigns: data?.featuredDesigns ?? [],
-      domeGalleryDesigns: data?.domeGalleryDesigns ?? [],
+      heroSectionDesigns: heroSectionDesigns ?? [],
+      featuredDesigns: featuredDesigns ?? [],
+      domeGalleryDesigns: domeGalleryDesigns ?? [],
     };
 
     return { success: true, data: config };
