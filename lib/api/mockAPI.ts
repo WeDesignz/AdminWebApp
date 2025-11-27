@@ -1075,7 +1075,9 @@ class MockAPI {
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
+      heroSectionDesigns: [],
       featuredDesigns: ['design_1', 'design_2', 'design_3'],
+      domeGalleryDesigns: [],
       landingPageStats: {
         totalClients: 5000,
         totalDesigners: 150,
