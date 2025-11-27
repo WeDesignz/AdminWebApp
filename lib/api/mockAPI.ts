@@ -1076,7 +1076,6 @@ class MockAPI {
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
       featuredDesigns: ['design_1', 'design_2', 'design_3'],
-      trendingDesigns: ['design_4', 'design_5', 'design_6'],
       landingPageStats: {
         totalClients: 5000,
         totalDesigners: 150,
