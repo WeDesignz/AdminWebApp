@@ -393,6 +393,25 @@ export const NotificationsAPI = {
       error: response.error || 'Failed to create notification',
     };
   },
+
+  /**
+   * Get admin notification campaigns (sent and scheduled)
+   */
+  async getNotificationCampaigns(): Promise<ApiResponse<any[]>> {
+    const response = await apiClient.get<{
+      campaigns: any[];
+    }>('api/coreadmin/notifications/campaigns/');
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.campaigns || [] };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch notification campaigns',
+      data: [],
+    };
+  },
 };
 
 /**

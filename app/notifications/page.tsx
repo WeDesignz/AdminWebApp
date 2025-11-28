@@ -26,6 +26,7 @@ import {
 import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { Dropdown } from '@/components/common/Dropdown';
+import { DateTimePicker } from '@/components/common/DateTimePicker';
 import toast from 'react-hot-toast';
 
 type FilterType = 'all' | 'unread' | 'read';
@@ -62,23 +63,23 @@ export default function NotificationsPage() {
   const TITLE_MAX_LENGTH = 100;
   const MESSAGE_MAX_LENGTH = 500;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => RealAPI.getNotifications(),
+  const { data: campaignsData, isLoading } = useQuery({
+    queryKey: ['notification-campaigns'],
+    queryFn: () => RealAPI.getNotificationCampaigns(),
   });
 
-  const notifications = data?.data || [];
+  const campaigns = campaignsData?.data || [];
 
-  // Filter notifications
-  const filteredNotifications = notifications.filter((notification) => {
-    if (filter === 'unread') return !notification.read;
-    if (filter === 'read') return notification.read;
+  // Filter campaigns by status
+  const filteredCampaigns = campaigns.filter((campaign: any) => {
+    if (filter === 'unread') return campaign.status === 'scheduled';
+    if (filter === 'read') return campaign.status === 'sent';
     return true; // 'all'
   });
 
-  // Count unread and read
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const readCount = notifications.filter((n) => n.read).length;
+  // Count scheduled and sent
+  const scheduledCount = campaigns.filter((c: any) => c.status === 'scheduled').length;
+  const sentCount = campaigns.filter((c: any) => c.status === 'sent').length;
 
   // Priority options
   const priorityOptions = [
@@ -220,13 +221,22 @@ export default function NotificationsPage() {
 
     setIsCreating(true);
     try {
+      // Convert datetime-local string to ISO format with timezone
+      let scheduledAtISO: string | undefined = undefined;
+      if (formData.sendType === 'scheduled' && formData.scheduledDateTime) {
+        // datetime-local returns "YYYY-MM-DDTHH:mm" (local time)
+        // Convert to ISO 8601 format with timezone
+        const localDate = new Date(formData.scheduledDateTime);
+        scheduledAtISO = localDate.toISOString();
+      }
+
       const notificationData = {
         title: formData.title.trim(),
         message: formData.message.trim(),
         priority: formData.priority,
         recipients: formData.recipients,
         sendType: formData.sendType,
-        scheduledAt: formData.sendType === 'scheduled' ? formData.scheduledDateTime : undefined,
+        scheduledAt: scheduledAtISO,
         deliveryMethod: formData.deliveryMethod,
       };
 
@@ -238,7 +248,7 @@ export default function NotificationsPage() {
             : 'Notification scheduled successfully'
         );
         handleCloseCreateModal();
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notification-campaigns'] });
       } else {
         toast.error(response.error || 'Failed to create notification');
       }
@@ -323,16 +333,6 @@ export default function NotificationsPage() {
             >
               <PlusIcon className="w-5 h-5" />
               Create Notification
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleMarkAllAsRead}
-              disabled={isMarkingAll || unreadCount === 0}
-              isLoading={isMarkingAll}
-              className="flex items-center gap-2"
-            >
-              <CheckCircleIcon className="w-5 h-5" />
-            Mark All as Read
           </Button>
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function NotificationsPage() {
                 : 'bg-muted/20 text-muted hover:bg-muted/30'
             }`}
           >
-            Unread ({unreadCount})
+            Scheduled ({scheduledCount})
           </button>
           <button
             onClick={() => setFilter('read')}
@@ -367,78 +367,167 @@ export default function NotificationsPage() {
                 : 'bg-muted/20 text-muted hover:bg-muted/30'
             }`}
           >
-            Read ({readCount})
+            Sent ({sentCount})
           </button>
         </div>
 
-        {/* Notifications List */}
+        {/* Notification Campaigns List */}
         <div className="space-y-3">
           {isLoading ? (
             <div className="card text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
             </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : filteredCampaigns.length === 0 ? (
             <div className="card text-center py-12">
               <BellIcon className="w-12 h-12 mx-auto text-muted mb-3" />
               <p className="text-muted">
                 {filter === 'all'
-                  ? 'No notifications yet'
+                  ? 'No notification campaigns yet'
                   : filter === 'unread'
-                  ? 'No unread notifications'
-                  : 'No read notifications'}
+                  ? 'No scheduled notifications'
+                  : 'No sent notifications'}
               </p>
             </div>
           ) : (
-            filteredNotifications.map((notification) => {
-              const isProcessing = processingIds.has(notification.id);
+            filteredCampaigns.map((campaign: any) => {
+              const isScheduled = campaign.status === 'scheduled';
+              const isSent = campaign.status === 'sent';
+              const recipients = [];
+              if (campaign.send_to_designers) recipients.push(`${campaign.designers_count || 0} designers`);
+              if (campaign.send_to_customers) recipients.push(`${campaign.customers_count || 0} customers`);
+              
+              const deliveryMethodLabels = {
+                'in_app': 'In-App Only',
+                'email': 'Email Only',
+                'both': 'In-App + Email'
+              };
+              
               return (
-              <div
-                key={notification.id}
-                  className={`card ${
-                    !notification.read ? 'ring-2 ring-primary/20' : ''
-                  } hover:shadow-md transition-shadow`}
+                <div
+                  key={campaign.id}
+                  className={`group relative card overflow-hidden transition-all duration-200 ${
+                    isScheduled 
+                      ? 'ring-2 ring-warning/30 bg-warning/5 hover:ring-warning/50 hover:shadow-lg' 
+                      : isSent
+                      ? 'hover:shadow-lg hover:border-primary/20'
+                      : 'hover:shadow-md'
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-medium text-lg">{notification.title}</h3>
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getPriorityColor(
-                            notification.priority
-                          )}`}
-                        >
-                        {notification.priority}
-                      </span>
-                        {!notification.read && (
-                          <span className="w-2 h-2 rounded-full bg-primary"></span>
-                        )}
-                    </div>
-                    <p className="text-muted text-sm mb-2">{notification.message}</p>
-                      <p className="text-xs text-muted">
-                        {formatRelativeTime(notification.createdAt)}
-                      </p>
-                  </div>
+                  {/* Status Indicator Bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-0.5 ${
+                    isScheduled ? 'bg-warning' : isSent ? 'bg-success' : 'bg-muted'
+                  }`} />
                   
-                    {/* Action Icons */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                  {!notification.read && (
-                    <button
-                          onClick={() => handleMarkAsRead(notification.id)}
-                          disabled={isProcessing}
-                          className="p-2 hover:bg-success/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Mark as read"
-                    >
-                          <CheckIcon className="w-5 h-5 text-success" />
-                    </button>
-                  )}
-                      <button
-                        onClick={() => handleDelete(notification.id)}
-                        disabled={isProcessing}
-                        className="p-2 hover:bg-error/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Delete notification"
-                      >
-                        <TrashIcon className="w-5 h-5 text-error" />
-                      </button>
+                  <div className="p-4">
+                    {/* Header Section */}
+                    <div className="flex items-start gap-3 mb-3">
+                      {/* Priority Icon */}
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                        campaign.priority === 'critical' ? 'bg-error/20 text-error' :
+                        campaign.priority === 'high' ? 'bg-warning/20 text-warning' :
+                        campaign.priority === 'medium' ? 'bg-primary/20 text-primary' :
+                        'bg-muted/20 text-muted'
+                      }`}>
+                        {getPriorityIcon(campaign.priority)}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors">
+                            {campaign.title}
+                          </h3>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${getPriorityColor(
+                              campaign.priority
+                            )}`}
+                          >
+                            {campaign.priority}
+                          </span>
+                          {isScheduled && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-warning/20 text-warning border border-warning/30">
+                              <ClockIcon className="w-3 h-3" />
+                              Scheduled
+                            </span>
+                          )}
+                          {isSent && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-success/20 text-success border border-success/30">
+                              <CheckCircleIcon className="w-3 h-3" />
+                              Sent
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Message */}
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-snug mb-3 line-clamp-2">
+                          {campaign.message}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Info Grid - Compact */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      {/* Recipients */}
+                      <div className="flex items-center gap-1.5">
+                        <UserGroupIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Recipients</p>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {campaign.total_recipients || 0}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Delivery Method */}
+                      <div className="flex items-center gap-1.5">
+                        {campaign.delivery_method === 'in_app' ? (
+                          <BellIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        ) : campaign.delivery_method === 'email' ? (
+                          <EnvelopeIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        ) : (
+                          <DevicePhoneMobileIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Delivery</p>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {campaign.delivery_method === 'in_app' ? 'In-App' : 
+                             campaign.delivery_method === 'email' ? 'Email' : 'Both'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Scheduled/Sent Time */}
+                      {isScheduled && campaign.scheduled_at ? (
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDaysIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Scheduled</p>
+                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                              {formatRelativeTime(campaign.scheduled_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : isSent && campaign.sent_at ? (
+                        <div className="flex items-center gap-1.5">
+                          <PaperAirplaneIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Sent</p>
+                            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                              {formatRelativeTime(campaign.sent_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                      
+                      {/* Created Time */}
+                      <div className="flex items-center gap-1.5">
+                        <ClockIcon className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Created</p>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {formatRelativeTime(campaign.created_at)}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -855,26 +944,24 @@ export default function NotificationsPage() {
           {/* Scheduled Date & Time */}
           {formData.sendType === 'scheduled' && (
             <div className="animate-in slide-in-from-top-2 duration-200">
-              <label className="block text-sm font-semibold mb-2">
+              <DateTimePicker
+                label={
                 <div className="flex items-center gap-2">
                   <ClockIcon className="w-4 h-4" />
                 Scheduled Date & Time <span className="text-error">*</span>
                 </div>
-              </label>
-              <Input
-                type="datetime-local"
+                }
                 value={formData.scheduledDateTime}
-                onChange={(e) => {
-                  setFormData({ ...formData, scheduledDateTime: e.target.value });
+                onChange={(value) => {
+                  setFormData({ ...formData, scheduledDateTime: value });
                   if (formErrors.scheduledDateTime) {
                     setFormErrors({ ...formErrors, scheduledDateTime: undefined });
                   }
                 }}
-                onBlur={() => validateForm()}
+                placeholder="Select date and time"
                 error={formErrors.scheduledDateTime}
+                minDateTime={new Date().toISOString().slice(0, 16)}
                 helperText="Select a future date and time for delivery"
-                min={new Date().toISOString().slice(0, 16)}
-                required
               />
             </div>
           )}
