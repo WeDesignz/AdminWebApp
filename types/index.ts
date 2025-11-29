@@ -13,6 +13,29 @@ export interface Admin {
   twoFactorEnabled: boolean;
 }
 
+export interface PermissionGroup {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  admin_group: 'superadmin' | 'moderator';
+  admin_group_display: string;
+  is_active: boolean;
+  is_2fa_enabled: boolean;
+  permissions?: string[];
+  permission_group?: PermissionGroup | null;
+  created_at: string;
+  updated_at: string;
+  last_login: string | null;
+}
+
 export interface DesignerOnboardingStep1 {
   profilePhoto: string;
   firstName: string;

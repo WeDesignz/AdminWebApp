@@ -12,8 +12,12 @@ import { Dropdown } from '@/components/common/Dropdown';
 import { MagnifyingGlassIcon, EyeIcon, UserCircleIcon, CheckCircleIcon, XCircleIcon, UsersIcon, ChartBarIcon, CreditCardIcon, XMarkIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import { Customer } from '@/types';
 import { KpiCard } from '@/components/common/KpiCard';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { PermissionButton } from '@/components/common/PermissionButton';
+import toast from 'react-hot-toast';
 
 export default function CustomersPage() {
+  const { hasPermission } = usePermission();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
@@ -84,6 +88,11 @@ export default function CustomersPage() {
   };
 
   const handleActivateCustomer = async (customer: Customer) => {
+    // Check permission before proceeding
+    if (!hasPermission('customers.activate')) {
+      toast.error('You do not have permission to activate customers');
+      return;
+    }
     setIsUpdatingStatus(true);
     await MockAPI.updateCustomerStatus(customer.id, 'active');
     setIsUpdatingStatus(false);
@@ -91,6 +100,11 @@ export default function CustomersPage() {
   };
 
   const handleDeactivateCustomer = (customer: Customer) => {
+    // Check permission before proceeding
+    if (!hasPermission('customers.deactivate')) {
+      toast.error('You do not have permission to deactivate customers');
+      return;
+    }
     setSelectedCustomer(customer);
     setShowDeactivateModal(true);
   };
@@ -265,25 +279,27 @@ export default function CustomersPage() {
                             <UserCircleIcon className="w-4 h-4" />
                           </Button>
                           {customer.status === 'active' ? (
-                            <Button 
-                              size="sm" 
+                            <PermissionButton
+                              requiredPermission="customers.deactivate"
+                              size="sm"
                               variant="danger"
                               onClick={() => handleDeactivateCustomer(customer)}
                               disabled={isUpdatingStatus}
                               title="Deactivate"
                             >
                               <XCircleIcon className="w-4 h-4" />
-                            </Button>
+                            </PermissionButton>
                           ) : (
-                            <Button 
-                              size="sm" 
+                            <PermissionButton
+                              requiredPermission="customers.activate"
+                              size="sm"
                               variant="primary"
                               onClick={() => handleActivateCustomer(customer)}
                               disabled={isUpdatingStatus}
                               title="Activate"
                             >
                               <CheckCircleIcon className="w-4 h-4" />
-                            </Button>
+                            </PermissionButton>
                           )}
                         </div>
                       </td>

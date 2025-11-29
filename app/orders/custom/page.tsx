@@ -12,6 +12,10 @@ import { CustomOrder } from '@/types';
 import { Input } from '@/components/common/Input';
 import { KpiCard } from '@/components/common/KpiCard';
 import { Dropdown } from '@/components/common/Dropdown';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { PermissionButton } from '@/components/common/PermissionButton';
+import { PermissionWrapper } from '@/components/common/PermissionWrapper';
+import toast from 'react-hot-toast';
 
 interface UploadedFile {
   file: File | null;
@@ -19,6 +23,7 @@ interface UploadedFile {
 }
 
 export default function CustomOrdersPage() {
+  const { hasPermission } = usePermission();
   const [selectedOrder, setSelectedOrder] = useState<CustomOrder | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -142,6 +147,11 @@ export default function CustomOrdersPage() {
   };
 
   const handleUploadDeliverable = (order: CustomOrder) => {
+    // Check permission before proceeding
+    if (!hasPermission('custom_orders.upload_deliverables')) {
+      toast.error('You do not have permission to upload deliverables');
+      return;
+    }
     setSelectedOrder(order);
     setShowUploadModal(true);
     setUploadedFiles({
@@ -212,6 +222,11 @@ export default function CustomOrdersPage() {
   };
 
   const handleRejectOrder = (order: CustomOrder) => {
+    // Check permission before proceeding
+    if (!hasPermission('custom_orders.reject')) {
+      toast.error('You do not have permission to reject orders');
+      return;
+    }
     setSelectedOrder(order);
     setShowRejectModal(true);
   };
@@ -235,6 +250,11 @@ export default function CustomOrdersPage() {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    // Check permission before proceeding
+    if (!hasPermission('custom_orders.update_status')) {
+      toast.error('You do not have permission to update order status');
+      return;
+    }
     setUpdatingOrderId(orderId);
     await MockAPI.updateCustomOrderStatus(orderId, newStatus as CustomOrder['status']);
     setUpdatingOrderId(null);
@@ -372,8 +392,9 @@ export default function CustomOrdersPage() {
                 </div>
 
                 <div className="flex gap-2 items-center">
-                  <Button 
-                    size="sm" 
+                  <PermissionButton
+                    requiredPermission="custom_orders.upload_deliverables"
+                    size="sm"
                     variant="outline"
                     onClick={() => handleUploadDeliverable(order)}
                     title="Upload Deliverable"
@@ -381,7 +402,7 @@ export default function CustomOrdersPage() {
                   >
                     <PaperClipIcon className="w-4 h-4" />
                     Upload Deliverable
-                  </Button>
+                  </PermissionButton>
                   <Button 
                     size="sm" 
                     variant="outline"
@@ -392,23 +413,29 @@ export default function CustomOrdersPage() {
                     <EyeIcon className="w-4 h-4" />
                     View Details
                   </Button>
-                  <div style={{ width: '180px' }}>
-                    <Dropdown
-                      options={orderStatusOptions}
-                      value={order.status}
-                      onChange={(value) => handleStatusChange(order.id, value)}
-                      buttonClassName={updatingOrderId === order.id ? 'opacity-50 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <Button 
-                    size="sm" 
+                  <PermissionWrapper
+                    requiredPermissions="custom_orders.update_status"
+                    fallback={null}
+                  >
+                    <div style={{ width: '180px' }}>
+                      <Dropdown
+                        options={orderStatusOptions}
+                        value={order.status}
+                        onChange={(value) => handleStatusChange(order.id, value)}
+                        buttonClassName={updatingOrderId === order.id ? 'opacity-50 cursor-not-allowed' : ''}
+                      />
+                    </div>
+                  </PermissionWrapper>
+                  <PermissionButton
+                    requiredPermission="custom_orders.reject"
+                    size="sm"
                     variant="danger"
                     onClick={() => handleRejectOrder(order)}
                     title="Reject Order"
                     className="whitespace-nowrap"
                   >
                     Reject Order
-                  </Button>
+                  </PermissionButton>
                 </div>
               </div>
             ))

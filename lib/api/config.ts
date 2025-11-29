@@ -40,6 +40,13 @@ export function getApiUrl(endpoint: string): string {
   if (!API_CONFIG.baseURL) {
     return '/api/placeholder';
   }
+  
+  // Ensure endpoint is a string
+  if (typeof endpoint !== 'string') {
+    console.error('getApiUrl: endpoint must be a string, got:', typeof endpoint, endpoint);
+    throw new Error(`Invalid endpoint type: expected string, got ${typeof endpoint}`);
+  }
+  
   // Remove leading slash if present to avoid double slashes
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   return `${API_CONFIG.baseURL}/${cleanEndpoint}`;

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -19,6 +20,7 @@ import {
   WrenchScrewdriverIcon,
   QuestionMarkCircleIcon,
   ChatBubbleLeftRightIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils/cn';
@@ -37,6 +39,8 @@ const navigation = [
   { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
   { name: 'Reports', href: '/reports', icon: ClipboardDocumentListIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },
+  { name: 'Moderator', href: '/admin-users', icon: ShieldCheckIcon },
+  { name: 'Permission Groups', href: '/permission-groups', icon: ShieldCheckIcon },
   { name: 'System Configs', href: '/system/configs', icon: Cog6ToothIcon },
   { name: 'Activity Log', href: '/activity-log', icon: ClipboardDocumentListIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
@@ -45,15 +49,26 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, theme } = useUIStore();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure consistent initial render to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use static initial values for server render, then update after mount
+  const displayCollapsed = mounted ? sidebarCollapsed : false;
+  const displayTheme = mounted ? theme : 'light';
+  const displayWidth = displayCollapsed ? 80 : 256;
 
   return (
     <motion.aside
       initial={false}
-      animate={{ width: sidebarCollapsed ? 80 : 256 }}
+      animate={{ width: displayWidth }}
       className="glass border-r border-border h-screen sticky top-0 flex flex-col"
     >
       <div className="p-6 flex items-center">
-        {!sidebarCollapsed ? (
+        {!displayCollapsed ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -62,19 +77,19 @@ export function Sidebar() {
             <img
               src="/Logos/ONLY LOGO.svg"
               alt="WeDesignz Logo"
-              className={`h-8 w-8 ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-8 w-8 ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
             <img
               src="/Logos/ONLY TEXT.svg"
               alt="WeDesignz"
-              className={`h-5 w-auto ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-5 w-auto ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
           </motion.div>
         ) : (
           <img
             src="/Logos/ONLY LOGO.svg"
             alt="WeDesignz"
-            className={`w-8 h-8 object-contain ${theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+            className={`w-8 h-8 object-contain ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
           />
         )}
       </div>
@@ -108,10 +123,10 @@ export function Sidebar() {
                   ? 'bg-primary text-white font-medium shadow-lg'
                   : 'hover:bg-muted/10 text-muted hover:text-primary'
               )}
-              title={sidebarCollapsed ? item.name : undefined}
+              title={displayCollapsed ? item.name : undefined}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && (
+              {!displayCollapsed && (
                 <span className="truncate">{item.name}</span>
               )}
             </Link>

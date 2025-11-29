@@ -21,6 +21,8 @@ import {
   CheckIcon as CheckIconSolid,
   EyeIcon,
 } from '@heroicons/react/24/outline';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { PermissionButton } from '@/components/common/PermissionButton';
 import toast from 'react-hot-toast';
 
 // Helper function to format price with Rupee symbol and duration
@@ -59,6 +61,7 @@ const getPlanBadgeColor = (planName: string | undefined | null): string => {
 
 export default function PlansPage() {
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermission();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -87,6 +90,11 @@ export default function PlansPage() {
   });
 
   const handleCreate = () => {
+    // Check permission before proceeding
+    if (!hasPermission('plans.create')) {
+      toast.error('You do not have permission to create plans');
+      return;
+    }
     setFormData({
       planName: '',
       description: '',
@@ -103,6 +111,11 @@ export default function PlansPage() {
   };
 
   const handleEdit = (plan: Plan) => {
+    // Check permission before proceeding
+    if (!hasPermission('plans.update')) {
+      toast.error('You do not have permission to update plans');
+      return;
+    }
     // Helper function to safely convert number to string, handling 0 values
     const numToString = (value: number | undefined | null): string => {
       if (value === undefined || value === null) return '';
@@ -127,6 +140,11 @@ export default function PlansPage() {
   };
 
   const handleDelete = (plan: Plan) => {
+    // Check permission before proceeding
+    if (!hasPermission('plans.delete')) {
+      toast.error('You do not have permission to delete plans');
+      return;
+    }
     setSelectedPlan(plan);
     setShowDeleteModal(true);
   };
@@ -349,14 +367,15 @@ export default function PlansPage() {
                 <TableCellsIcon className="w-5 h-5" />
               </button>
             </div>
-            <Button 
-              variant="primary" 
+            <PermissionButton
+              requiredPermission="plans.create"
+              variant="primary"
               onClick={handleCreate}
               className="flex items-center gap-2"
             >
               <PlusIcon className="w-5 h-5" />
               Create New Plan
-            </Button>
+            </PermissionButton>
           </div>
         </div>
 
@@ -439,7 +458,8 @@ export default function PlansPage() {
                             <EyeIcon className="w-4 h-4" />
                             View
                           </Button>
-                          <Button
+                          <PermissionButton
+                            requiredPermission="plans.update"
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(plan)}
@@ -447,8 +467,9 @@ export default function PlansPage() {
                           >
                             <PencilIcon className="w-4 h-4" />
                             Edit
-                          </Button>
-                          <Button
+                          </PermissionButton>
+                          <PermissionButton
+                            requiredPermission="plans.delete"
                             size="sm"
                             variant="danger"
                             onClick={() => handleDelete(plan)}
@@ -456,7 +477,7 @@ export default function PlansPage() {
                           >
                             <TrashIcon className="w-4 h-4" />
                             Delete
-                          </Button>
+                          </PermissionButton>
                         </div>
                       </td>
                     </tr>
@@ -527,7 +548,8 @@ export default function PlansPage() {
                       <EyeIcon className="w-4 h-4" />
                       View
                     </Button>
-                    <Button
+                    <PermissionButton
+                      requiredPermission="plans.update"
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(plan)}
@@ -535,8 +557,9 @@ export default function PlansPage() {
                     >
                       <PencilIcon className="w-4 h-4" />
                       Edit
-                    </Button>
-                    <Button
+                    </PermissionButton>
+                    <PermissionButton
+                      requiredPermission="plans.delete"
                       variant="danger"
                       size="sm"
                       onClick={() => handleDelete(plan)}
@@ -544,7 +567,7 @@ export default function PlansPage() {
                     >
                       <TrashIcon className="w-4 h-4" />
                       Delete
-                    </Button>
+                    </PermissionButton>
                   </div>
                 </div>
               ))

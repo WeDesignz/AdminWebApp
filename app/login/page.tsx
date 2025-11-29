@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAdmin, setTokens, setRequires2FA, requires2FA, tempEmail, isAuthenticated } = useAuthStore();
+  const { setAdmin, setTokens, setRequires2FA, requires2FA, tempEmail, isAuthenticated, setPermissions } = useAuthStore();
   const { theme } = useUIStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -59,7 +59,7 @@ export default function LoginPage() {
         } else {
           // 2FA is NOT enabled - direct login
           if (response.data.admin && response.data.tokens) {
-            setAdmin(response.data.admin);
+            setAdmin(response.data.admin, response.data.permissions);
             setTokens(response.data.tokens.accessToken, response.data.tokens.refreshToken);
             toast.success('Login successful!');
             router.push('/dashboard');
@@ -93,7 +93,7 @@ export default function LoginPage() {
     try {
       const response = await MockAPI.verify2FA(tempToken, twoFactorCode, userId);
       if (response.success && response.data) {
-        setAdmin(response.data.admin);
+        setAdmin(response.data.admin, response.data.permissions);
         setTokens(response.data.accessToken, response.data.refreshToken);
         toast.success('Login successful!');
         router.push('/dashboard');

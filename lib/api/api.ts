@@ -4,11 +4,13 @@
  */
 
 import { apiClient } from './client';
+import { getApiUrl } from './config';
 import type {
   ApiResponse,
   KPIData,
   Notification,
   Admin,
+  AdminUser,
   Designer,
   PaginatedResponse,
   Design,
@@ -45,6 +47,7 @@ export const AuthAPI = {
       user: any;
       temp_token?: string;
       requires_2fa: boolean;
+      permissions?: string[];
       tokens?: {
         access: string;
         refresh: string;
@@ -57,10 +60,12 @@ export const AuthAPI = {
         tempToken?: string;
         user?: any;
         admin?: any;
+        permissions?: string[];
         tokens?: { accessToken: string; refreshToken: string };
       } = {
         requires2FA: response.data.requires_2fa,
         user: response.data.user,
+        permissions: response.data.permissions || [],
       };
 
       if (response.data.requires_2fa) {
@@ -108,7 +113,7 @@ export const AuthAPI = {
     tempToken: string,
     code: string,
     userId?: number
-  ): Promise<ApiResponse<{ admin: Admin; accessToken: string; refreshToken: string }>> {
+  ): Promise<ApiResponse<{ admin: Admin; permissions: string[]; accessToken: string; refreshToken: string }>> {
     if (!userId) {
       return {
         success: false,
@@ -119,6 +124,7 @@ export const AuthAPI = {
     const response = await apiClient.post<{
       message: string;
       user: any;
+      permissions?: string[];
       tokens: {
         access: string;
         refresh: string;
@@ -145,6 +151,7 @@ export const AuthAPI = {
         success: true,
         data: {
           admin,
+          permissions: response.data.permissions || [],
           accessToken: response.data.tokens.access,
           refreshToken: response.data.tokens.refresh,
         },
@@ -1880,6 +1887,315 @@ export const SettingsAPI = {
 };
 
 /**
+ * Admin Users API (Super Admin only)
+ */
+export const AdminUsersAPI = {
+  /**
+   * Get list of admin users
+   */
+  async getAdminUsers(params?: {
+    page?: number;
+    limit?: number;
+    role?: 'superadmin' | 'moderator';
+    status?: 'active' | 'inactive';
+    search?: string;
+  }): Promise<ApiResponse<PaginatedResponse<AdminUser>>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+
+    // Backend returns: { success: True, data: [...], pagination: {...} }
+    // apiClient.get uses transformResponse which extracts 'data' field, losing 'pagination'
+    // So we need to handle this custom response structure manually using fetch directly
+    try {
+      const authHeaders = await (apiClient as any).getAuthHeaders();
+      
+      // Build endpoint string safely
+      const queryString = queryParams.toString();
+      const endpoint = queryString 
+        ? `api/coreadmin/admin-users/?${queryString}`
+        : 'api/coreadmin/admin-users/';
+      
+      // Ensure endpoint is a string
+      if (typeof endpoint !== 'string') {
+        throw new Error('Invalid endpoint type');
+      }
+      
+      const url = getApiUrl(endpoint);
+      
+      const rawResponse = await fetch(url, {
+        method: 'GET',
+        headers: authHeaders,
+        credentials: 'include',
+      });
+
+      if (!rawResponse.ok) {
+        const errorData = await rawResponse.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errorData.error || errorData.detail || 'Failed to fetch admin users',
+        };
+      }
+
+      const backendData = await rawResponse.json();
+
+      if (backendData.success && Array.isArray(backendData.data)) {
+        return {
+          success: true,
+          data: {
+            data: backendData.data,
+            pagination: {
+              page: backendData.pagination?.page || 1,
+              limit: backendData.pagination?.limit || 20,
+              total: backendData.pagination?.total || 0,
+              totalPages: backendData.pagination?.total_pages || 0,
+            },
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: backendData.error || 'Failed to fetch admin users',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch admin users',
+      };
+    }
+  },
+
+  /**
+   * Get admin user details
+   */
+  async getAdminUser(userId: number): Promise<ApiResponse<AdminUser>> {
+    const response = await apiClient.get<{ data: AdminUser }>(
+      `api/coreadmin/admin-users/${userId}/`
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch admin user',
+    };
+  },
+
+  /**
+   * Create admin user
+   */
+  async createAdminUser(data: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    password: string;
+    admin_group: 'superadmin' | 'moderator';
+    permission_group_id?: number | null;
+    permissions?: string[];
+  }): Promise<ApiResponse<AdminUser>> {
+    const response = await apiClient.post<{ data: AdminUser }>(
+      'api/coreadmin/admin-users/create/',
+      data
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to create admin user',
+    };
+  },
+
+  /**
+   * Update admin user
+   */
+  async updateAdminUser(
+    userId: number,
+    data: Partial<{
+      first_name: string;
+      last_name: string;
+      admin_group: 'superadmin' | 'moderator';
+      permission_group_id: number | null;
+      is_active: boolean;
+      permissions: string[];
+    }>
+  ): Promise<ApiResponse<AdminUser>> {
+    const response = await apiClient.put<{ data: AdminUser }>(
+      `api/coreadmin/admin-users/${userId}/`,
+      data
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to update admin user',
+    };
+  },
+
+  /**
+   * Deactivate admin user
+   */
+  async deactivateAdminUser(userId: number): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(
+      `api/coreadmin/admin-users/${userId}/`
+    );
+
+    return response;
+  },
+
+  /**
+   * Reset admin user password
+   */
+  async resetAdminPassword(
+    userId: number,
+    data: { new_password: string; confirm_password: string }
+  ): Promise<ApiResponse<void>> {
+    const response = await apiClient.post<void>(
+      `api/coreadmin/admin-users/${userId}/reset-password/`,
+      data
+    );
+
+    return response;
+  },
+};
+
+/**
+ * Permission Groups API
+ */
+export interface PermissionGroup {
+  id: number;
+  name: string;
+  description: string;
+  permissions: string[];
+  is_active: boolean;
+  permission_count: number;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PermissionGroupsAPI = {
+  /**
+   * Get list of permission groups
+   */
+  async getPermissionGroups(params?: {
+    is_active?: boolean;
+  }): Promise<ApiResponse<PermissionGroup[]>> {
+    const queryParams = new URLSearchParams();
+    if (params?.is_active !== undefined) {
+      queryParams.append('is_active', params.is_active.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString
+      ? `api/coreadmin/permission-groups/?${queryString}`
+      : 'api/coreadmin/permission-groups/';
+
+    const response = await apiClient.get<{ data: PermissionGroup[] }>(endpoint);
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch permission groups',
+    };
+  },
+
+  /**
+   * Get permission group by ID
+   */
+  async getPermissionGroup(groupId: number): Promise<ApiResponse<PermissionGroup>> {
+    const response = await apiClient.get<{ data: PermissionGroup }>(
+      `api/coreadmin/permission-groups/${groupId}/`
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch permission group',
+    };
+  },
+
+  /**
+   * Create permission group
+   */
+  async createPermissionGroup(data: {
+    name: string;
+    description?: string;
+    permissions: string[];
+    is_active?: boolean;
+  }): Promise<ApiResponse<PermissionGroup>> {
+    const response = await apiClient.post<{ data: PermissionGroup }>(
+      'api/coreadmin/permission-groups/create/',
+      data
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to create permission group',
+    };
+  },
+
+  /**
+   * Update permission group
+   */
+  async updatePermissionGroup(
+    groupId: number,
+    data: Partial<{
+      name: string;
+      description: string;
+      permissions: string[];
+      is_active: boolean;
+    }>
+  ): Promise<ApiResponse<PermissionGroup>> {
+    const response = await apiClient.put<{ data: PermissionGroup }>(
+      `api/coreadmin/permission-groups/${groupId}/`,
+      data
+    );
+
+    if (response.success && response.data) {
+      return { success: true, data: response.data.data };
+    }
+
+    return {
+      success: false,
+      error: response.error || 'Failed to update permission group',
+    };
+  },
+
+  /**
+   * Delete permission group
+   */
+  async deletePermissionGroup(groupId: number): Promise<ApiResponse<void>> {
+    const response = await apiClient.delete<void>(
+      `api/coreadmin/permission-groups/${groupId}/`
+    );
+
+    return response;
+  },
+};
+
+/**
  * FAQ API
  */
 export const FAQAPI = {
@@ -2109,6 +2425,8 @@ export const API = {
   systemConfig: SystemConfigAPI,
   activityLogs: ActivityLogsAPI,
   settings: SettingsAPI,
+  adminUsers: AdminUsersAPI,
+  permissionGroups: PermissionGroupsAPI,
   faq: FAQAPI,
   coreAdmin: CoreAdminAPI,
 };

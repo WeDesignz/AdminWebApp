@@ -15,6 +15,8 @@ import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Design } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { PermissionButton } from '@/components/common/PermissionButton';
 import toast from 'react-hot-toast';
 
 export default function DesignsPage() {
@@ -41,6 +43,7 @@ export default function DesignsPage() {
   
   // Wait for auth store to hydrate
   const { isAuthenticated, accessToken } = useAuthStore();
+  const { hasPermission } = usePermission();
   const [isHydrated, setIsHydrated] = useState(false);
   const queryClient = useQueryClient();
 
@@ -76,6 +79,12 @@ export default function DesignsPage() {
 
   // Simplified approve design handler - just send request, show toast, and refresh page
   const handleApproveDesign = async (design: Design) => {
+    // Check permission before proceeding
+    if (!hasPermission('designs.approve')) {
+      toast.error('You do not have permission to approve designs');
+      return;
+    }
+    
     // Prevent multiple clicks
     if (approvingDesignId === design.id) {
       return;
@@ -156,6 +165,11 @@ export default function DesignsPage() {
 
 
   const handleRejectDesign = (design: Design) => {
+    // Check permission before proceeding
+    if (!hasPermission('designs.reject')) {
+      toast.error('You do not have permission to reject designs');
+      return;
+    }
     setSelectedDesign(design);
     setShowRejectModal(true);
   };
@@ -204,6 +218,11 @@ export default function DesignsPage() {
   };
 
   const handleFlagDesign = (design: Design) => {
+    // Check permission before proceeding
+    if (!hasPermission('designs.flag')) {
+      toast.error('You do not have permission to flag designs');
+      return;
+    }
     setSelectedDesign(design);
     setShowFlagModal(true);
   };
@@ -478,9 +497,10 @@ export default function DesignsPage() {
                           <ChartBarIcon className="w-4 h-4" />
                         </Button>
                         {design.status !== 'approved' && (
-                          <Button 
-                            size="sm" 
-                            variant="primary" 
+                          <PermissionButton
+                            requiredPermission="designs.approve"
+                            size="sm"
+                            variant="primary"
                             className="flex-1"
                             onClick={() => handleApproveDesign(design)}
                             isLoading={approvingDesignId === design.id}
@@ -488,18 +508,19 @@ export default function DesignsPage() {
                             title="Approve"
                           >
                             <CheckIcon className="w-4 h-4" />
-                          </Button>
+                          </PermissionButton>
                         )}
                         {design.status !== 'rejected' && design.status !== 'approved' && (
-                          <Button 
-                            size="sm" 
-                            variant="danger" 
+                          <PermissionButton
+                            requiredPermission="designs.reject"
+                            size="sm"
+                            variant="danger"
                             className="flex-1"
                             onClick={() => handleRejectDesign(design)}
                             title="Reject"
                           >
                             <XCircleIcon className="w-4 h-4" />
-                          </Button>
+                          </PermissionButton>
                         )}
                       </div>
                     </div>
@@ -603,8 +624,9 @@ export default function DesignsPage() {
                                 <ChartBarIcon className="w-4 h-4" />
                               </Button>
                               {design.status !== 'approved' && (
-                                <Button 
-                                  size="sm" 
+                                <PermissionButton
+                                  requiredPermission="designs.approve"
+                                  size="sm"
                                   variant="primary"
                                   onClick={() => handleApproveDesign(design)}
                                   isLoading={approvingDesignId === design.id}
@@ -612,17 +634,18 @@ export default function DesignsPage() {
                                   title="Approve"
                                 >
                                   <CheckIcon className="w-4 h-4" />
-                                </Button>
+                                </PermissionButton>
                               )}
                               {design.status !== 'rejected' && design.status !== 'approved' && (
-                                <Button 
-                                  size="sm" 
+                                <PermissionButton
+                                  requiredPermission="designs.reject"
+                                  size="sm"
                                   variant="danger"
                                   onClick={() => handleRejectDesign(design)}
                                   title="Reject"
                                 >
                                   <XCircleIcon className="w-4 h-4" />
-                                </Button>
+                                </PermissionButton>
                               )}
                             </div>
                       </td>
@@ -700,7 +723,8 @@ export default function DesignsPage() {
                     Conflict Resolved
                   </Button>
                 ) : (
-                  <Button
+                  <PermissionButton
+                    requiredPermission="designs.flag"
                     variant="warning"
                     size="sm"
                     onClick={() => handleFlagDesign(designDetail.data!)}
@@ -709,7 +733,7 @@ export default function DesignsPage() {
                   >
                     <FlagIcon className="w-4 h-4" />
                     Flag Design
-                  </Button>
+                  </PermissionButton>
                 )}
               </div>
             </div>

@@ -13,9 +13,13 @@ import { MagnifyingGlassIcon, EyeIcon, XMarkIcon, UsersIcon, ClockIcon, CreditCa
 import { Designer, DesignerOnboardingStep1, DesignerOnboardingStep2, DesignerOnboardingStep3 } from '@/types';
 import { KpiCard } from '@/components/common/KpiCard';
 import { API } from '@/lib/api';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { PermissionButton } from '@/components/common/PermissionButton';
+import toast from 'react-hot-toast';
 
 export default function DesignersPage() {
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermission();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
@@ -146,6 +150,11 @@ export default function DesignersPage() {
   };
 
   const handleRejectFromTable = (designer: Designer) => {
+    // Check permission before proceeding
+    if (!hasPermission('designers.reject')) {
+      toast.error('You do not have permission to reject designers');
+      return;
+    }
     setSelectedDesigner(designer);
     setShowRejectModalFromTable(true);
   };
@@ -171,6 +180,11 @@ export default function DesignersPage() {
 
   const handleApproveDesigner = (designer: any) => {
     if (!designer?.id) return;
+    // Check permission before proceeding
+    if (!hasPermission('designers.approve')) {
+      toast.error('You do not have permission to approve designers');
+      return;
+    }
     setSelectedDesigner(designer);
     setApprovingDesignerId(designer.id);
     setShowApproveModal(true);
@@ -184,6 +198,12 @@ export default function DesignersPage() {
 
   const handleConfirmApprove = async () => {
     if (!selectedDesigner?.id) return;
+    
+    // Check permission before proceeding
+    if (!hasPermission('designers.approve')) {
+      toast.error('You do not have permission to approve designers');
+      return;
+    }
     
     setIsApproving(true);
     // Close modal immediately when confirm is clicked
@@ -199,13 +219,13 @@ export default function DesignersPage() {
         // Refetch the data immediately
         await queryClient.refetchQueries({ queryKey: ['designers'] });
         // Show success message (you can add a toast notification here)
-        alert('Designer approved successfully!');
+        toast.success('Designer approved successfully!');
       } else {
-        alert(response.error || 'Failed to approve designer');
+        toast.error(response.error || 'Failed to approve designer');
       }
     } catch (error) {
       console.error('Error approving designer:', error);
-      alert('An error occurred while approving the designer');
+      toast.error('An error occurred while approving the designer');
     } finally {
       setIsApproving(false);
     }
@@ -558,25 +578,27 @@ export default function DesignersPage() {
                                 Approved
                               </Button>
                             ) : (
-                              <Button 
-                                size="sm" 
+                              <PermissionButton
+                                requiredPermission="designers.approve"
+                                size="sm"
                                 variant="primary"
                                 onClick={() => handleApproveDesigner(designer)}
                                 title="Approve Designer"
                               >
                                 <CheckIcon className="w-4 h-4 mr-2" />
                                 Approve
-                              </Button>
+                              </PermissionButton>
                             )}
-                            <Button 
-                              size="sm" 
+                            <PermissionButton
+                              requiredPermission="designers.reject"
+                              size="sm"
                               variant="danger"
                               onClick={() => handleRejectFromTable(designer)}
                               title="Reject Designer"
                             >
                               <XMarkIcon className="w-4 h-4 mr-2" />
                               Reject
-                            </Button>
+                            </PermissionButton>
                           </div>
                         </td>
                       </tr>
