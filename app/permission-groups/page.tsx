@@ -335,19 +335,16 @@ export default function PermissionGroupsPage() {
               title="Total Groups"
               value={stats.total}
               icon={<ShieldCheckIcon className="w-6 h-6" />}
-              trend={null}
             />
             <KpiCard
               title="Active Groups"
               value={stats.active}
               icon={<CheckCircleIcon className="w-6 h-6" />}
-              trend={null}
             />
             <KpiCard
               title="Total Members"
               value={stats.totalMembers}
               icon={<UsersIcon className="w-6 h-6" />}
-              trend={null}
             />
           </div>
 
