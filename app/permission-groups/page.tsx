@@ -269,7 +269,7 @@ export default function PermissionGroupsPage() {
       'custom_orders.upload_deliverables',
       'orders.update_status',
       'notifications.create',
-    ].filter((p) => allAvailablePerms.includes(p)) as Permission[];
+    ].filter((p) => allAvailablePerms.includes(p as Permission)) as Permission[];
 
     const fullPerms = MODERATOR_DEFAULT_PERMISSIONS;
 
