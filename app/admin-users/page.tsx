@@ -617,7 +617,7 @@ export default function AdminUsersPage() {
                       </Button>
                       <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 max-w-md">
                         <p className="text-sm text-blue-800 dark:text-blue-300">
-                          <strong>Note:</strong> If you created a user in the User table but don't see them here, 
+                          <strong>Note:</strong> If you created a user in the User table but don&apos;t see them here, 
                           you need to create an AdminUserProfile for that user. Run this command in your backend:
                         </p>
                         <code className="block mt-2 p-2 bg-blue-100 dark:bg-blue-900/40 rounded text-xs text-left">
