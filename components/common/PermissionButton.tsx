@@ -19,6 +19,7 @@ export function PermissionButton({
   requiredPermission, 
   fallback = null,
   requireAll = false,
+  children,
   ...buttonProps 
 }: PermissionButtonProps) {
   return (
@@ -27,7 +28,9 @@ export function PermissionButton({
       requireAll={requireAll}
       fallback={fallback}
     >
-      <Button {...buttonProps} />
+      <Button {...buttonProps}>
+        {children}
+      </Button>
     </PermissionWrapper>
   );
 }
