@@ -9,6 +9,7 @@ interface PermissionButtonProps extends ButtonProps {
   requiredPermission: Permission | Permission[];
   fallback?: ReactNode;
   requireAll?: boolean;
+  children: ReactNode;
 }
 
 /**
