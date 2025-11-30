@@ -332,7 +332,7 @@ export default function AdminUsersPage() {
       // Deselect all in group
       setEditForm({
         ...editForm,
-        permissions: editForm.permissions.filter((p) => !groupPermissions.includes(p)),
+        permissions: editForm.permissions.filter((p) => !groupPermissions.includes(p as Permission)),
       });
     } else {
       // Select all in group
