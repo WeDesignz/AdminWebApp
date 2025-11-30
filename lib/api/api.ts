@@ -40,6 +40,7 @@ export const AuthAPI = {
     tempToken?: string; 
     user?: any;
     admin?: any;
+    permissions?: string[];
     tokens?: { accessToken: string; refreshToken: string };
   }>> {
     const response = await apiClient.post<{

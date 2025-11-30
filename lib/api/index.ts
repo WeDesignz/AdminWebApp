@@ -37,6 +37,7 @@ class RealAPI {
     tempToken?: string; 
     user?: any;
     admin?: any;
+    permissions?: string[];
     tokens?: { accessToken: string; refreshToken: string };
   }>> {
     const response = await API.auth.login(email, password);
@@ -48,6 +49,7 @@ class RealAPI {
           tempToken: response.data.tempToken,
           user: response.data.user,
           admin: response.data.admin,
+          permissions: response.data.permissions,
           tokens: response.data.tokens,
         },
       };
@@ -59,7 +61,7 @@ class RealAPI {
     tempToken: string,
     code: string,
     userId?: number
-  ): Promise<ApiResponse<{ admin: Admin; accessToken: string; refreshToken: string }>> {
+  ): Promise<ApiResponse<{ admin: Admin; permissions: string[]; accessToken: string; refreshToken: string }>> {
     return API.auth.verify2FA(tempToken, code, userId);
   }
 
