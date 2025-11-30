@@ -11,6 +11,7 @@ import { MockAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
 import { useEffect } from 'react';
+import { Permission } from '@/lib/permissions/config';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function LoginPage() {
         } else {
           // 2FA is NOT enabled - direct login
           if (response.data.admin && response.data.tokens) {
-            setAdmin(response.data.admin, response.data.permissions);
+            setAdmin(response.data.admin, response.data.permissions as Permission[] | undefined);
             setTokens(response.data.tokens.accessToken, response.data.tokens.refreshToken);
             toast.success('Login successful!');
             router.push('/dashboard');
@@ -93,7 +94,7 @@ export default function LoginPage() {
     try {
       const response = await MockAPI.verify2FA(tempToken, twoFactorCode, userId);
       if (response.success && response.data) {
-        setAdmin(response.data.admin, response.data.permissions);
+        setAdmin(response.data.admin, response.data.permissions as Permission[]);
         setTokens(response.data.accessToken, response.data.refreshToken);
         toast.success('Login successful!');
         router.push('/dashboard');
