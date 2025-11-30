@@ -805,6 +805,8 @@ export default function AdminUsersPage() {
                 password: '',
                 confirm_password: '',
                 admin_group: 'moderator',
+                permission_group_id: null,
+                permissions: [],
               });
             }}
             title="Create Admin User"
