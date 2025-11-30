@@ -400,7 +400,7 @@ export default function AdminUsersPage() {
         permission_group_id: editForm.admin_group === 'superadmin' ? null : editForm.permission_group_id,
         is_active: editForm.is_active,
         permissions: editForm.admin_group === 'superadmin' ? [] : editForm.permissions,
-      },
+      } as Partial<AdminUser> & { permission_group_id: number | null },
     });
   };
 
