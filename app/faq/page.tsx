@@ -712,7 +712,7 @@ export default function FAQPage() {
                                     <p className="text-xs text-muted-foreground mb-1">Display Locations</p>
                                     <div className="flex flex-wrap gap-1">
                                       {faq.display_locations && faq.display_locations.length > 0 ? (
-                                        faq.display_locations.map((loc: string) => (
+                                        (faq.display_locations as string[]).map((loc: string) => (
                                           <Badge key={loc} variant="secondary" className="text-xs">
                                             {loc.replace('_', ' ')}
                                           </Badge>
@@ -1019,7 +1019,7 @@ export default function FAQPage() {
                 <p className="text-xs text-muted-foreground mb-2">Display Locations</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedFAQ.display_locations && selectedFAQ.display_locations.length > 0 ? (
-                    selectedFAQ.display_locations.map((loc: string) => (
+                    (selectedFAQ.display_locations as string[]).map((loc: string) => (
                       <Badge key={loc} variant="secondary" className="text-xs">
                         <MapPinIcon className="w-3 h-3 mr-1" />
                         {loc.replace('_', ' ')}
