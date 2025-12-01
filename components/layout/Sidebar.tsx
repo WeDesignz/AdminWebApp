@@ -144,9 +144,10 @@ export function Sidebar() {
     <motion.aside
       initial={false}
       animate={{ width: displayWidth }}
-      className="glass border-r border-border h-screen sticky top-0 flex flex-col"
+      className="bg-card border-r border-border/50 h-screen sticky top-0 flex flex-col shadow-sm"
     >
-      <div className="p-6 flex items-center">
+      {/* Logo Section */}
+      <div className="p-5 flex items-center border-b border-border/50">
         {!displayCollapsed ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -165,15 +166,18 @@ export function Sidebar() {
             />
           </motion.div>
         ) : (
-          <img
-            src="/Logos/ONLY LOGO.svg"
-            alt="WeDesignz"
-            className={`w-8 h-8 object-contain ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
-          />
+          <div className="flex justify-center w-full">
+            <img
+              src="/Logos/ONLY LOGO.svg"
+              alt="WeDesignz"
+              className={`w-8 h-8 object-contain ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+            />
+          </div>
         )}
       </div>
 
-      <nav className="flex-1 px-3 space-y-6 overflow-y-auto scrollbar-thin pb-6">
+      {/* Navigation */}
+      <nav className="flex-1 px-2 py-4 space-y-5 overflow-y-auto scrollbar-thin">
         {navigationCategories.map((category, categoryIndex) => {
           // Filter items based on access
           const accessibleItems = category.items.filter(hasAccess);
@@ -182,25 +186,23 @@ export function Sidebar() {
           if (accessibleItems.length === 0) return null;
 
           return (
-            <div key={category.name} className="space-y-2">
+            <div key={category.name} className="space-y-1.5">
               {/* Category Header - Only show when not collapsed */}
               {!displayCollapsed && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: categoryIndex * 0.05 }}
-                  className="px-3 py-2 mb-1"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: categoryIndex * 0.03 }}
+                  className="px-3 py-1.5"
                 >
-                  <h3 className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
+                  <h3 className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
                     {category.name}
                   </h3>
-                  {/* Divider line under category header */}
-                  <div className="h-px bg-border/50 mt-2" />
                 </motion.div>
               )}
               
               {/* Category Items */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {category.items.map((item) => {
                   const canAccess = hasAccess(item);
                   const isRestricted = item.restrictedTo && !canAccess;
@@ -221,49 +223,52 @@ export function Sidebar() {
                     isActive = !hasMoreSpecificMatch;
                   }
           
-                // If restricted, show disabled state with lock icon
-                if (isRestricted) {
-                  return (
-                    <div
-                      key={item.name}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                        'opacity-50 cursor-not-allowed',
-                        'text-muted'
-                      )}
-                      title={displayCollapsed ? `${item.name} (Restricted)` : undefined}
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      {!displayCollapsed && (
-                        <>
-                          <span className="truncate flex-1">{item.name}</span>
-                          <LockClosedIcon className="w-4 h-4 flex-shrink-0 text-muted" />
-                        </>
-                      )}
-                    </div>
-                  );
-                }
+                  // If restricted, show disabled state with lock icon
+                  if (isRestricted) {
+                    return (
+                      <div
+                        key={item.name}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
+                          'opacity-40 cursor-not-allowed',
+                          'text-muted-foreground/50'
+                        )}
+                        title={displayCollapsed ? `${item.name} (Restricted)` : undefined}
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {!displayCollapsed && (
+                          <>
+                            <span className="truncate flex-1 text-sm">{item.name}</span>
+                            <LockClosedIcon className="w-4 h-4 flex-shrink-0 text-muted-foreground/40" />
+                          </>
+                        )}
+                      </div>
+                    );
+                  }
 
-                // Normal accessible item
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                      isActive
-                        ? 'bg-primary text-white font-medium shadow-lg'
-                        : 'hover:bg-muted/10 text-muted hover:text-primary'
-                    )}
-                    title={displayCollapsed ? item.name : undefined}
-                  >
-                    <item.icon className="w-5 h-5 flex-shrink-0" />
-                    {!displayCollapsed && (
-                      <span className="truncate">{item.name}</span>
-                    )}
-                  </Link>
-                );
-              })}
+                  // Normal accessible item
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+                        isActive
+                          ? 'bg-primary text-white font-medium shadow-md shadow-primary/20'
+                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      )}
+                      title={displayCollapsed ? item.name : undefined}
+                    >
+                      <item.icon className={cn(
+                        'w-5 h-5 flex-shrink-0 transition-transform duration-200',
+                        isActive ? 'text-white' : 'group-hover:scale-110'
+                      )} />
+                      {!displayCollapsed && (
+                        <span className="truncate text-sm font-medium">{item.name}</span>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           );

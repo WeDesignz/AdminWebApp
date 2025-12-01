@@ -252,7 +252,7 @@ export default function FAQPage() {
         (faq) =>
           faq.question.toLowerCase().includes(query) ||
           faq.answer.toLowerCase().includes(query) ||
-          faq.tags?.some((tag) => tag.name.toLowerCase().includes(query))
+          faq.tags?.some((tag: { id: number; name: string }) => tag.name.toLowerCase().includes(query))
       );
     }
 
