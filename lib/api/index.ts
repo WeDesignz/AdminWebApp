@@ -494,6 +494,7 @@ class RealAPI {
     customDesignHour?: number;
     mockPdfCount?: number;
     noOfFreeDownloads?: number;
+    isMostPopular?: boolean;
   }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     return API.plans.createPlan(data);
   }

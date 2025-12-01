@@ -817,6 +817,7 @@ class MockAPI {
     customDesignHour?: number;
     mockPdfCount?: number;
     noOfFreeDownloads?: number;
+    isMostPopular?: boolean;
   }): Promise<ApiResponse<Plan>> {
     await delay(800);
 
