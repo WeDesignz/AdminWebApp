@@ -67,19 +67,6 @@ export default function PlansPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermission();
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -106,6 +93,19 @@ export default function PlansPage() {
     queryKey: ['plans'],
     queryFn: () => MockAPI.getPlans(),
   });
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   const handleCreate = () => {
     // Check permission before proceeding

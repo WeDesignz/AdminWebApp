@@ -164,31 +164,6 @@ export default function OrdersAndTransactionsPage() {
     }
   }, [isChatModalOpen, orderChatMessages]);
 
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
-  const handleUpdateStatus = (order: Order) => {
-    setSelectedOrder(order);
-    setNewStatus(order.status);
-    setShowStatusModal(true);
-  };
-
-  // Chat handlers
-  const handleOpenChat = async (order: any) => {
-    setSelectedOrderForChat(order);
-    setIsChatModalOpen(true);
-    // Mark messages as read when opening
-    try {
-      await API.orderComments.markOrderCommentsAsRead(String(order.id));
-      // Immediately refetch chat data to update unread count
-      await refetchOrdersChatData();
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
   // Scroll to bottom helper
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -215,6 +190,31 @@ export default function OrdersAndTransactionsPage() {
       toast.error(error.message || 'Failed to send message');
     },
   });
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
+
+  const handleUpdateStatus = (order: Order) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status);
+    setShowStatusModal(true);
+  };
+
+  // Chat handlers
+  const handleOpenChat = async (order: any) => {
+    setSelectedOrderForChat(order);
+    setIsChatModalOpen(true);
+    // Mark messages as read when opening
+    try {
+      await API.orderComments.markOrderCommentsAsRead(String(order.id));
+      // Immediately refetch chat data to update unread count
+      await refetchOrdersChatData();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
 
   const handleCloseStatusModal = () => {
     setShowStatusModal(false);

@@ -173,8 +173,8 @@ export function Sidebar() {
         )}
       </div>
 
-      <nav className="flex-1 px-3 space-y-4 overflow-y-auto scrollbar-thin">
-        {navigationCategories.map((category) => {
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto scrollbar-thin pb-6">
+        {navigationCategories.map((category, categoryIndex) => {
           // Filter items based on access
           const accessibleItems = category.items.filter(hasAccess);
           
@@ -182,36 +182,44 @@ export function Sidebar() {
           if (accessibleItems.length === 0) return null;
 
           return (
-            <div key={category.name} className="space-y-1">
+            <div key={category.name} className="space-y-2">
               {/* Category Header - Only show when not collapsed */}
               {!displayCollapsed && (
-                <div className="px-3 py-2">
-                  <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: categoryIndex * 0.05 }}
+                  className="px-3 py-2 mb-1"
+                >
+                  <h3 className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest">
                     {category.name}
                   </h3>
-                </div>
+                  {/* Divider line under category header */}
+                  <div className="h-px bg-border/50 mt-2" />
+                </motion.div>
               )}
               
               {/* Category Items */}
-              {category.items.map((item) => {
-                const canAccess = hasAccess(item);
-                const isRestricted = item.restrictedTo && !canAccess;
-                
-          // Check exact match first
-          let isActive = pathname === item.href;
-          
-          // For parent routes, check if pathname starts with href + '/'
-          if (!isActive && pathname.startsWith(item.href + '/')) {
-                  const hasMoreSpecificMatch = navigationCategories.some(
-                    (cat) => cat.items.some(
-              (otherItem) =>
-                otherItem.href !== item.href &&
-                pathname.startsWith(otherItem.href) &&
-                otherItem.href.length > item.href.length
-                    )
-            );
-            isActive = !hasMoreSpecificMatch;
-          }
+              <div className="space-y-1">
+                {category.items.map((item) => {
+                  const canAccess = hasAccess(item);
+                  const isRestricted = item.restrictedTo && !canAccess;
+                  
+                  // Check exact match first
+                  let isActive = pathname === item.href;
+                  
+                  // For parent routes, check if pathname starts with href + '/'
+                  if (!isActive && pathname.startsWith(item.href + '/')) {
+                    const hasMoreSpecificMatch = navigationCategories.some(
+                      (cat) => cat.items.some(
+                        (otherItem) =>
+                          otherItem.href !== item.href &&
+                          pathname.startsWith(otherItem.href) &&
+                          otherItem.href.length > item.href.length
+                      )
+                    );
+                    isActive = !hasMoreSpecificMatch;
+                  }
           
                 // If restricted, show disabled state with lock icon
                 if (isRestricted) {
@@ -237,25 +245,26 @@ export function Sidebar() {
                 }
 
                 // Normal accessible item
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                isActive
-                  ? 'bg-primary text-white font-medium shadow-lg'
-                  : 'hover:bg-muted/10 text-muted hover:text-primary'
-              )}
-              title={displayCollapsed ? item.name : undefined}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!displayCollapsed && (
-                <span className="truncate">{item.name}</span>
-              )}
-            </Link>
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                      isActive
+                        ? 'bg-primary text-white font-medium shadow-lg'
+                        : 'hover:bg-muted/10 text-muted hover:text-primary'
+                    )}
+                    title={displayCollapsed ? item.name : undefined}
+                  >
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    {!displayCollapsed && (
+                      <span className="truncate">{item.name}</span>
+                    )}
+                  </Link>
                 );
               })}
+              </div>
             </div>
           );
         })}

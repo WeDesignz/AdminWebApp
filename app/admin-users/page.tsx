@@ -176,11 +176,6 @@ export default function AdminUsersPage() {
     }
   }, [error]);
 
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
   // Calculate stats from data
   const stats = useMemo(() => {
     if (!data?.data?.data) {
@@ -280,6 +275,26 @@ export default function AdminUsersPage() {
     },
   });
 
+  // Track changes
+  useEffect(() => {
+    if (!selectedUser) return;
+    
+    const hasFormChanges = 
+      editForm.first_name !== selectedUser.first_name ||
+      editForm.last_name !== selectedUser.last_name ||
+      editForm.admin_group !== selectedUser.admin_group ||
+      editForm.permission_group_id !== (selectedUser.permission_group?.id || null) ||
+      editForm.is_active !== selectedUser.is_active ||
+      JSON.stringify(editForm.permissions?.sort()) !== JSON.stringify((selectedUser.permissions || []).sort());
+    
+    setHasChanges(hasFormChanges);
+  }, [editForm, selectedUser]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
+
   const handleCreate = () => {
     if (!createForm.email || !createForm.first_name || !createForm.last_name || !createForm.password) {
       toast.error('Please fill in all required fields');
@@ -313,21 +328,6 @@ export default function AdminUsersPage() {
     setHasChanges(false);
     setShowEditModal(true);
   };
-  
-  // Track changes
-  useEffect(() => {
-    if (!selectedUser) return;
-    
-    const hasFormChanges = 
-      editForm.first_name !== selectedUser.first_name ||
-      editForm.last_name !== selectedUser.last_name ||
-      editForm.admin_group !== selectedUser.admin_group ||
-      editForm.permission_group_id !== (selectedUser.permission_group?.id || null) ||
-      editForm.is_active !== selectedUser.is_active ||
-      JSON.stringify(editForm.permissions?.sort()) !== JSON.stringify((selectedUser.permissions || []).sort());
-    
-    setHasChanges(hasFormChanges);
-  }, [editForm, selectedUser]);
   
   const togglePermissionGroup = (group: string) => {
     setExpandedPermissionGroups((prev) => {
