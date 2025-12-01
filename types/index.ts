@@ -199,7 +199,7 @@ export interface Customer {
   joinedAt?: string; // Legacy field name for backward compatibility
   account_status?: 'active' | 'inactive' | 'suspended' | 'blocked' | 'deactivated'; // Backend field name
   account_status_display?: string;
-  status?: 'active' | 'inactive' | 'suspended' | 'blocked'; // Legacy field name for backward compatibility
+  status?: 'active' | 'inactive' | 'suspended' | 'blocked' | 'deactivated'; // Legacy field name for backward compatibility
   plan_status_display?: 'active' | 'expired' | 'none'; // Backend field name (string)
   plan_status?: 'active' | 'expired' | 'none' | { status: string; plan_name?: string; plan_duration?: string; expires_at?: string }; // Backend field (can be object or string)
   planStatus?: 'active' | 'expired' | 'none'; // Legacy field name for backward compatibility
