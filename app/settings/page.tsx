@@ -209,7 +209,7 @@ export default function SettingsPage() {
       // First upload profile photo if a new file is selected
       let uploadedPhotoUrl: string | undefined = undefined;
       if (selectedFile) {
-        const photoResponse = await API.settings.uploadAdminProfilePhoto(selectedFile);
+        const photoResponse = await API.uploadAdminProfilePhoto(selectedFile);
         if (!photoResponse.success) {
           toast.error(photoResponse.error || 'Failed to upload profile photo');
           setIsUpdatingProfile(false);
@@ -223,7 +223,7 @@ export default function SettingsPage() {
       }
 
       // Update profile data
-      const response = await API.settings.updateAdminProfile({
+      const response = await API.updateAdminProfile({
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         email: profileData.email,
@@ -233,7 +233,7 @@ export default function SettingsPage() {
       if (response.success) {
         toast.success('Profile updated successfully');
         // Refetch admin profile to get latest data including photo URL and mobile number
-        const profileResponse = await API.settings.getAdminProfile();
+        const profileResponse = await API.getAdminProfile();
         if (profileResponse.success && profileResponse.data) {
           // Update auth store with latest profile data including photo
           setAdmin(profileResponse.data);
@@ -290,7 +290,7 @@ export default function SettingsPage() {
 
     setIsUpdatingPassword(true);
     try {
-      const response = await API.settings.updateAdminPassword({
+      const response = await API.updateAdminPassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
         confirmPassword: passwordData.confirmPassword,
