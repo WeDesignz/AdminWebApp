@@ -82,6 +82,7 @@ export default function PlansPage() {
     customDesignHour: '',
     mockPdfCount: '',
     noOfFreeDownloads: '',
+    isMostPopular: false,
   });
 
   const { data, isLoading } = useQuery({
@@ -134,6 +135,7 @@ export default function PlansPage() {
       customDesignHour: numToString(plan.customDesignHour),
       mockPdfCount: numToString(plan.mockPdfCount),
       noOfFreeDownloads: numToString(plan.noOfFreeDownloads),
+      isMostPopular: plan.isMostPopular || false,
     });
     setSelectedPlan(plan);
     setShowEditModal(true);
@@ -171,6 +173,7 @@ export default function PlansPage() {
       customDesignHour: '',
       mockPdfCount: '',
       noOfFreeDownloads: '',
+      isMostPopular: false,
     });
   };
 
@@ -187,6 +190,7 @@ export default function PlansPage() {
       customDesignHour: '',
       mockPdfCount: '',
       noOfFreeDownloads: '',
+      isMostPopular: false,
     });
   };
 
@@ -218,6 +222,7 @@ export default function PlansPage() {
         customDesignHour: formData.customDesignHour ? parseInt(formData.customDesignHour) : 2,
         mockPdfCount: formData.mockPdfCount ? parseInt(formData.mockPdfCount) : 0,
         noOfFreeDownloads: formData.noOfFreeDownloads ? parseInt(formData.noOfFreeDownloads) : 0,
+        isMostPopular: formData.isMostPopular,
       });
 
       if (response.success) {
@@ -289,6 +294,7 @@ export default function PlansPage() {
         customDesignHour: formData.customDesignHour && formData.customDesignHour.trim() !== '' ? parseInt(formData.customDesignHour) : (selectedPlan.customDesignHour ?? 2),
         mockPdfCount: formData.mockPdfCount && formData.mockPdfCount.trim() !== '' ? parseInt(formData.mockPdfCount) : (selectedPlan.mockPdfCount ?? 0),
         noOfFreeDownloads: formData.noOfFreeDownloads && formData.noOfFreeDownloads.trim() !== '' ? parseInt(formData.noOfFreeDownloads) : (selectedPlan.noOfFreeDownloads ?? 0),
+        isMostPopular: formData.isMostPopular,
       });
 
       if (response.success) {
@@ -410,7 +416,16 @@ export default function PlansPage() {
                 ) : (
                   (Array.isArray(data.data) ? data.data : []).map((plan) => (
                     <tr key={plan.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{plan.planName}</td>
+                      <td className="py-3 px-4 font-medium whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span>{plan.planName}</span>
+                          {plan.isMostPopular === true && (
+                            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-primary text-white">
+                              Most Popular
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="max-w-md">
                           {Array.isArray(plan.description) ? (
@@ -501,14 +516,25 @@ export default function PlansPage() {
               (Array.isArray(data.data) ? data.data : []).map((plan) => (
                 <div key={plan.id} className="card hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">{plan.planName || 'Unnamed Plan'}</h3>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                      plan.status === 'Active' 
-                        ? 'bg-success/20 text-success' 
-                        : 'bg-muted/20 text-muted'
-                    }`}>
-                      {plan.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-bold">{plan.planName || 'Unnamed Plan'}</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Most Popular Badge - Just left of Active badge */}
+                      {plan.isMostPopular === true && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-primary to-purple-600 text-white shadow-md">
+                          <span>⭐</span>
+                          <span>Most Popular</span>
+                        </span>
+                      )}
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                        plan.status === 'Active' 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-muted/20 text-muted'
+                      }`}>
+                        {plan.status}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mb-6">
@@ -726,6 +752,23 @@ export default function PlansPage() {
             </div>
           </div>
 
+          <div className="pt-2 border-t border-border">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isMostPopular}
+                onChange={(e) => setFormData({ ...formData, isMostPopular: e.target.checked })}
+                className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+              />
+              <div>
+                <span className="block text-sm font-medium">Mark as Most Popular</span>
+                <span className="block text-xs text-muted mt-1">
+                  Only one plan per duration (monthly/annual) can be marked as most popular. Marking this will unmark the current most popular plan.
+                </span>
+              </div>
+            </label>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               variant="outline"
@@ -901,6 +944,23 @@ export default function PlansPage() {
             </div>
           </div>
 
+          <div className="pt-2 border-t border-border">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isMostPopular}
+                onChange={(e) => setFormData({ ...formData, isMostPopular: e.target.checked })}
+                className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+              />
+              <div>
+                <span className="block text-sm font-medium">Mark as Most Popular</span>
+                <span className="block text-xs text-muted mt-1">
+                  Only one plan per duration (monthly/annual) can be marked as most popular. Marking this will unmark the current most popular plan.
+                </span>
+              </div>
+            </label>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               variant="outline"
@@ -941,13 +1001,22 @@ export default function PlansPage() {
                   {selectedPlan.duration} Plan
                 </p>
               </div>
-              <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                selectedPlan.status === 'Active' 
-                  ? 'bg-success/20 text-success' 
-                  : 'bg-muted/20 text-muted'
-              }`}>
-                {selectedPlan.status}
-              </span>
+              <div className="flex items-center gap-2">
+                {/* Most Popular Badge - Just left of Active badge */}
+                {selectedPlan.isMostPopular === true && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-primary to-purple-600 text-white shadow-md">
+                    <span>⭐</span>
+                    <span>Most Popular</span>
+                  </span>
+                )}
+                <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                  selectedPlan.status === 'Active' 
+                    ? 'bg-success/20 text-success' 
+                    : 'bg-muted/20 text-muted'
+                }`}>
+                  {selectedPlan.status}
+                </span>
+              </div>
             </div>
 
             {/* Price Section */}

@@ -1264,6 +1264,7 @@ function transformBackendPlanToFrontend(backendPlan: any): Plan {
     customDesignHour: backendPlan.custom_design_hour !== undefined && backendPlan.custom_design_hour !== null ? parseInt(String(backendPlan.custom_design_hour)) : undefined,
     mockPdfCount: backendPlan.mock_pdf_count !== undefined && backendPlan.mock_pdf_count !== null ? parseInt(String(backendPlan.mock_pdf_count)) : undefined,
     noOfFreeDownloads: backendPlan.no_of_free_downloads !== undefined && backendPlan.no_of_free_downloads !== null ? parseInt(String(backendPlan.no_of_free_downloads)) : undefined,
+    isMostPopular: backendPlan.is_most_popular === true || backendPlan.is_most_popular === 1,
     createdAt: backendPlan.created_at,
     updatedAt: backendPlan.updated_at,
   };
@@ -1324,6 +1325,7 @@ export const PlansAPI = {
     customDesignHour?: number;
     mockPdfCount?: number;
     noOfFreeDownloads?: number;
+    isMostPopular?: boolean;
   }): Promise<ApiResponse<Plan & { was_reactivated?: boolean }>> {
     // Transform frontend data to backend format
     const backendData: any = {
@@ -1339,6 +1341,7 @@ export const PlansAPI = {
     if (data.customDesignHour !== undefined) backendData.custom_design_hour = data.customDesignHour;
     if (data.mockPdfCount !== undefined) backendData.mock_pdf_count = data.mockPdfCount;
     if (data.noOfFreeDownloads !== undefined) backendData.no_of_free_downloads = data.noOfFreeDownloads;
+    if (data.isMostPopular !== undefined) backendData.is_most_popular = data.isMostPopular;
     const response = await apiClient.post<any>('api/coreadmin/subscription-plans/create/', backendData);
     if (response.success && response.data) {
       // Preserve was_reactivated from backend response
@@ -1376,6 +1379,7 @@ export const PlansAPI = {
     if ((data as any).customDesignHour !== undefined) backendData.custom_design_hour = (data as any).customDesignHour;
     if ((data as any).mockPdfCount !== undefined) backendData.mock_pdf_count = (data as any).mockPdfCount;
     if ((data as any).noOfFreeDownloads !== undefined) backendData.no_of_free_downloads = (data as any).noOfFreeDownloads;
+    if ((data as any).isMostPopular !== undefined) backendData.is_most_popular = (data as any).isMostPopular;
     const response = await apiClient.put<any>(`api/coreadmin/subscription-plans/${planId}/update/`, backendData);
     if (response.success && response.data) {
       return {
