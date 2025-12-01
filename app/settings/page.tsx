@@ -209,7 +209,7 @@ export default function SettingsPage() {
       // First upload profile photo if a new file is selected
       let uploadedPhotoUrl: string | undefined = undefined;
       if (selectedFile) {
-        const photoResponse = await MockAPI.uploadAdminProfilePhoto(selectedFile);
+        const photoResponse = await API.settings.uploadAdminProfilePhoto(selectedFile);
         if (!photoResponse.success) {
           toast.error(photoResponse.error || 'Failed to upload profile photo');
           setIsUpdatingProfile(false);
@@ -223,7 +223,7 @@ export default function SettingsPage() {
       }
 
       // Update profile data
-      const response = await MockAPI.updateAdminProfile({
+      const response = await API.settings.updateAdminProfile({
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         email: profileData.email,
@@ -233,7 +233,7 @@ export default function SettingsPage() {
       if (response.success) {
         toast.success('Profile updated successfully');
         // Refetch admin profile to get latest data including photo URL and mobile number
-        const profileResponse = await MockAPI.getAdminProfile();
+        const profileResponse = await API.settings.getAdminProfile();
         if (profileResponse.success && profileResponse.data) {
           // Update auth store with latest profile data including photo
           setAdmin(profileResponse.data);
@@ -290,7 +290,7 @@ export default function SettingsPage() {
 
     setIsUpdatingPassword(true);
     try {
-      const response = await MockAPI.updateAdminPassword({
+      const response = await API.settings.updateAdminPassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
         confirmPassword: passwordData.confirmPassword,
@@ -317,7 +317,7 @@ export default function SettingsPage() {
   const handle2FASetup = async () => {
     setIs2FASettingUp(true);
     try {
-      const response = await MockAPI.setup2FA();
+      const response = await API.auth.setup2FA();
       if (response.success && response.data) {
         setQrCodeUrl(response.data.qr_code);
         setSecretKey(response.data.secret_key);
@@ -343,7 +343,7 @@ export default function SettingsPage() {
 
     setIs2FAEnabling(true);
     try {
-      const response = await MockAPI.enable2FA(twoFactorCode);
+      const response = await API.auth.enable2FA(twoFactorCode);
       if (response.success && response.data) {
         setBackupCodes(response.data.backup_codes);
         setShow2FASetup(false);
@@ -374,7 +374,7 @@ export default function SettingsPage() {
 
     setIs2FADisabling(true);
     try {
-      const response = await MockAPI.disable2FA(disablePassword);
+      const response = await API.auth.disable2FA(disablePassword);
       if (response.success) {
         setShow2FADisable(false);
         setDisablePassword('');
