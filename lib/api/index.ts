@@ -288,6 +288,43 @@ class RealAPI {
     return API.designs.resolveFlag(designId);
   }
 
+  // Pinterest methods
+  static async getPinterestStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    has_board: boolean;
+    board_name: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return API.pinterest.getStatus();
+  }
+
+  static async authorizePinterest(): Promise<void> {
+    return API.pinterest.authorize();
+  }
+
+  static async getPinterestBoards(): Promise<ApiResponse<{
+    boards: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      pin_count?: number;
+    }>;
+  }>> {
+    return API.pinterest.getBoards();
+  }
+
+  static async setPinterestBoard(boardId: string, boardName?: string): Promise<ApiResponse<{
+    board_id: string;
+    board_name: string;
+    message: string;
+  }>> {
+    return API.pinterest.setBoard(boardId, boardName);
+  }
+
   // Customer methods
   static async getCustomers(params: {
     page?: number;

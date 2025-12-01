@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './client';
-import { getApiUrl } from './config';
+import { getApiUrl, API_CONFIG } from './config';
 import type {
   ApiResponse,
   KPIData,
@@ -911,6 +911,70 @@ export const DesignsAPI = {
   async resolveFlag(designId: string): Promise<ApiResponse<void>> {
     return apiClient.post(`api/coreadmin/designs/${designId}/action/`, { 
       action: 'resolve_flag' 
+    });
+  },
+};
+
+/**
+ * Pinterest API
+ */
+export const PinterestAPI = {
+  /**
+   * Get Pinterest integration status
+   */
+  async getStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    has_board: boolean;
+    board_name: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return apiClient.get('api/pinterest/status/');
+  },
+
+  /**
+   * Initiate Pinterest OAuth
+   */
+  async authorize(): Promise<void> {
+    // This redirects, so we handle it differently
+    // Use API_CONFIG.baseURL directly since we're building the full URL ourselves
+    const baseUrl = API_CONFIG.baseURL || '';
+    if (!baseUrl) {
+      throw new Error('API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in .env.local');
+    }
+    // Remove trailing slash if present
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    window.location.href = `${cleanBaseUrl}/api/pinterest/authorize/`;
+  },
+
+  /**
+   * Get Pinterest boards
+   */
+  async getBoards(): Promise<ApiResponse<{
+    boards: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      pin_count?: number;
+    }>;
+  }>> {
+    return apiClient.get('api/pinterest/boards/');
+  },
+
+  /**
+   * Set Pinterest board ID
+   */
+  async setBoard(boardId: string, boardName?: string): Promise<ApiResponse<{
+    board_id: string;
+    board_name: string;
+    message: string;
+  }>> {
+    return apiClient.post('api/pinterest/set-board/', {
+      board_id: boardId,
+      board_name: boardName,
     });
   },
 };
@@ -2262,6 +2326,7 @@ export const API = {
   designers: DesignersAPI,
   customers: CustomersAPI,
   designs: DesignsAPI,
+  pinterest: PinterestAPI,
   orders: OrdersAPI,
   customOrders: CustomOrdersAPI,
   orderComments: OrderCommentsAPI,

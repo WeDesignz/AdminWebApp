@@ -77,6 +77,13 @@ export default function DesignsPage() {
     enabled: !!selectedDesign && showDetailModal,
   });
 
+  const { data: pinterestStatus } = useQuery({
+    queryKey: ['pinterest-status'],
+    queryFn: () => API.getPinterestStatus(),
+    enabled: isReady,
+    refetchInterval: 60000, // Refetch every minute
+  });
+
   // Simplified approve design handler - just send request, show toast, and refresh page
   const handleApproveDesign = async (design: Design) => {
     // Check permission before proceeding
@@ -380,6 +387,53 @@ export default function DesignsPage() {
               value={statsData.data.rejected}
               icon={<XCircleIcon className="w-6 h-6" />}
             />
+          </div>
+        )}
+
+        {/* Pinterest Status Banner */}
+        {pinterestStatus?.data && (
+          <div className={`p-4 rounded-lg border ${
+            pinterestStatus.data.is_configured && pinterestStatus.data.is_token_valid
+              ? 'bg-success/10 border-success/20 text-success'
+              : 'bg-warning/10 border-warning/20 text-warning'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {pinterestStatus.data.is_configured && pinterestStatus.data.is_token_valid ? (
+                  <>
+                    <CheckCircleIcon className="w-5 h-5" />
+                    <div>
+                      <p className="font-semibold">Pinterest Connected</p>
+                      <p className="text-sm opacity-80">
+                        Designs will automatically post to Pinterest when approved
+                        {pinterestStatus.data.board_name && ` (${pinterestStatus.data.board_name})`}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <XCircleIcon className="w-5 h-5" />
+                    <div>
+                      <p className="font-semibold">Pinterest Not Configured</p>
+                      <p className="text-sm opacity-80">
+                        {!pinterestStatus.data.is_configured 
+                          ? 'Please configure Pinterest integration in Settings to enable automatic posting.'
+                          : 'Pinterest token expired. Please re-authorize in Settings.'}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+              {(!pinterestStatus.data.is_configured || !pinterestStatus.data.is_token_valid) && (
+                <Button
+                  onClick={() => window.location.href = '/settings?tab=pinterest'}
+                  size="sm"
+                  variant="outline"
+                >
+                  Configure Pinterest
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

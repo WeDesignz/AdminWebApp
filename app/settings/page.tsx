@@ -2,7 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { RealAPI as API } from '@/lib/api';
 import { Input } from '@/components/common/Input';
 import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
@@ -14,6 +14,13 @@ import {
   XMarkIcon,
   ShieldCheckIcon,
   KeyIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ArrowPathIcon,
+  LinkIcon,
+  ClockIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -40,10 +47,91 @@ export default function SettingsPage() {
   const [is2FAEnabling, setIs2FAEnabling] = useState(false);
   const [is2FADisabling, setIs2FADisabling] = useState(false);
 
+  // Pinterest state
+  const [pinterestStatus, setPinterestStatus] = useState<any>(null);
+  const [isLoadingPinterest, setIsLoadingPinterest] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('profile');
+  const [boards, setBoards] = useState<any[]>([]);
+  const [loadingBoards, setLoadingBoards] = useState(false);
+  const [selectedBoardId, setSelectedBoardId] = useState('');
+  const [showBoardSelector, setShowBoardSelector] = useState(false);
+
   const { data: adminData } = useQuery({
     queryKey: ['admin-profile'],
-    queryFn: () => MockAPI.getAdminProfile(),
+    queryFn: () => API.getAdminProfile(),
   });
+
+  const { data: pinterestStatusData, refetch: refetchPinterest } = useQuery({
+    queryKey: ['pinterest-status'],
+    queryFn: () => API.getPinterestStatus(),
+    enabled: true,
+  });
+
+  useEffect(() => {
+    if (pinterestStatusData?.data) {
+      setPinterestStatus(pinterestStatusData.data);
+    }
+  }, [pinterestStatusData]);
+
+  // Handle tab from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'pinterest') {
+      setActiveTab('pinterest');
+      // Scroll to Pinterest section after a brief delay
+      setTimeout(() => {
+        const element = document.getElementById('pinterest-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
+
+  // Pinterest board management functions
+  const fetchBoards = async () => {
+    setLoadingBoards(true);
+    try {
+      const response = await API.getPinterestBoards();
+      if (response.success && response.data?.boards) {
+        setBoards(response.data.boards);
+        setShowBoardSelector(true);
+      } else {
+        toast.error(response.error || 'Failed to fetch boards');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch Pinterest boards');
+    } finally {
+      setLoadingBoards(false);
+    }
+  };
+
+  const handleSetBoard = async () => {
+    if (!selectedBoardId) {
+      toast.error('Please select a board');
+      return;
+    }
+
+    setIsLoadingPinterest(true);
+    try {
+      const selectedBoard = boards.find(b => String(b.id) === String(selectedBoardId));
+      const response = await API.setPinterestBoard(selectedBoardId, selectedBoard?.name);
+      
+      if (response.success) {
+        toast.success(`Board "${response.data?.board_name}" set successfully!`);
+        setShowBoardSelector(false);
+        setSelectedBoardId('');
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to set board');
+      }
+    } catch (error) {
+      toast.error('Failed to set Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
 
   const admin = adminData?.data;
 
@@ -749,6 +837,409 @@ export default function SettingsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Pinterest Integration */}
+      <div id="pinterest-section" className="card mt-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold">Pinterest Integration</h3>
+            <p className="text-sm text-muted mt-1">
+              Automatically post approved designs to your Pinterest board
+            </p>
+          </div>
+        </div>
+        
+        {pinterestStatus ? (
+          <div className="space-y-6">
+            {/* Connection Status Card */}
+            <div className={`p-5 rounded-xl border-2 ${
+              pinterestStatus.is_configured && pinterestStatus.is_token_valid
+                ? 'bg-success/5 border-success/30'
+                : 'bg-warning/5 border-warning/30'
+            }`}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {pinterestStatus.is_configured && pinterestStatus.is_token_valid ? (
+                    <div className="p-2 bg-success/20 rounded-lg">
+                      <CheckCircleIcon className="w-6 h-6 text-success" />
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-warning/20 rounded-lg">
+                      <ExclamationTriangleIcon className="w-6 h-6 text-warning" />
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-semibold text-lg">
+                      {pinterestStatus.is_configured && pinterestStatus.is_token_valid
+                        ? 'Pinterest Connected'
+                        : 'Pinterest Not Connected'}
+                    </h4>
+                    <p className="text-sm text-muted">
+                      {pinterestStatus.is_configured && pinterestStatus.is_token_valid
+                        ? 'Your account is connected and ready to post designs'
+                        : 'Connect your Pinterest account to start posting designs'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {(!pinterestStatus.is_configured || !pinterestStatus.is_token_valid) ? (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingPinterest(true);
+                        try {
+                          await API.authorizePinterest();
+                        } catch (error) {
+                          toast.error('Failed to initiate Pinterest authorization');
+                          setIsLoadingPinterest(false);
+                        }
+                      }}
+                      disabled={isLoadingPinterest}
+                      className="flex items-center gap-2"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      {isLoadingPinterest ? 'Connecting...' : 'Connect Pinterest'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingPinterest(true);
+                        try {
+                          await API.authorizePinterest();
+                        } catch (error) {
+                          toast.error('Failed to re-authorize Pinterest');
+                          setIsLoadingPinterest(false);
+                        }
+                      }}
+                      variant="outline"
+                      disabled={isLoadingPinterest}
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      Re-authorize
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Details Grid */}
+              {pinterestStatus.is_configured && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border/50">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Status</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        pinterestStatus.is_enabled 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {pinterestStatus.is_enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Token Status</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        pinterestStatus.is_token_valid 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-warning/20 text-warning'
+                      }`}>
+                        {pinterestStatus.is_token_valid ? 'Valid' : 'Expired'}
+                      </span>
+                    </div>
+                  </div>
+                  {pinterestStatus.last_successful_post && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Last Post</div>
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <ClockIcon className="w-3.5 h-3.5 text-muted" />
+                        <span className="text-xs">
+                          {new Date(pinterestStatus.last_successful_post).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {pinterestStatus.board_name && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Board</div>
+                      <div className="text-sm font-medium truncate" title={pinterestStatus.board_name}>
+                        {pinterestStatus.board_name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Error Display */}
+              {pinterestStatus.last_error && (
+                <div className="mt-4 p-3 bg-error/10 border border-error/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <XCircleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-error mb-1">Last Error</div>
+                      <div className="text-xs text-error/80">{pinterestStatus.last_error}</div>
+                      {pinterestStatus.last_error_at && (
+                        <div className="text-xs text-error/60 mt-1">
+                          {new Date(pinterestStatus.last_error_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Board Selection Section */}
+            {pinterestStatus.is_token_valid && (
+              <div className="p-5 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="font-semibold text-base flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5" />
+                      Pinterest Board
+                    </h4>
+                    <p className="text-sm text-muted mt-1">
+                      Select the board where approved designs will be posted
+                    </p>
+                  </div>
+                </div>
+
+                {!pinterestStatus.has_board ? (
+                  <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <InformationCircleIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-warning mb-2">
+                          No board selected
+                        </p>
+                        <p className="text-xs text-muted mb-3">
+                          You need to select a Pinterest board before designs can be automatically posted.
+                        </p>
+                        {!showBoardSelector ? (
+                          <Button
+                            onClick={fetchBoards}
+                            disabled={loadingBoards}
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            {loadingBoards ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Loading boards...
+                              </>
+                            ) : (
+                              <>
+                                <LinkIcon className="w-4 h-4" />
+                                Select Board
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-foreground mb-2">
+                                Choose a board
+                              </label>
+                              <select
+                                value={selectedBoardId}
+                                onChange={(e) => setSelectedBoardId(e.target.value)}
+                                className="select select-bordered w-full"
+                                disabled={isLoadingPinterest}
+                              >
+                                <option value="">Select a board...</option>
+                                {boards.map((board) => (
+                                  <option key={board.id} value={board.id}>
+                                    {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={handleSetBoard}
+                                disabled={!selectedBoardId || isLoadingPinterest}
+                                size="sm"
+                                className="flex items-center gap-2"
+                              >
+                                {isLoadingPinterest ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    Setting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckIcon className="w-4 h-4" />
+                                    Set Board
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setShowBoardSelector(false);
+                                  setSelectedBoardId('');
+                                }}
+                                variant="outline"
+                                size="sm"
+                                disabled={isLoadingPinterest}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <CheckCircleIcon className="w-5 h-5 text-success" />
+                          <div>
+                            <p className="text-sm font-medium">Board Selected</p>
+                            <p className="text-xs text-muted">{pinterestStatus.board_name}</p>
+                          </div>
+                        </div>
+                        {!showBoardSelector && (
+                          <Button
+                            onClick={fetchBoards}
+                            disabled={loadingBoards}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            {loadingBoards ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <ArrowPathIcon className="w-4 h-4" />
+                                Change Board
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {showBoardSelector && (
+                      <div className="p-4 bg-card border border-border rounded-lg space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-2">
+                            Select a different board
+                          </label>
+                          <select
+                            value={selectedBoardId}
+                            onChange={(e) => setSelectedBoardId(e.target.value)}
+                            className="select select-bordered w-full"
+                            disabled={isLoadingPinterest}
+                          >
+                            <option value="">Select a board...</option>
+                            {boards.map((board) => (
+                              <option key={board.id} value={board.id}>
+                                {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleSetBoard}
+                            disabled={!selectedBoardId || isLoadingPinterest}
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            {isLoadingPinterest ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Updating...
+                              </>
+                            ) : (
+                              <>
+                                <CheckIcon className="w-4 h-4" />
+                                Update Board
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowBoardSelector(false);
+                              setSelectedBoardId('');
+                            }}
+                            variant="outline"
+                            size="sm"
+                            disabled={isLoadingPinterest}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Setup Steps (when not configured) */}
+            {(!pinterestStatus.is_configured || !pinterestStatus.is_token_valid) && (
+              <div className="p-5 rounded-xl border border-border bg-card">
+                <h4 className="font-semibold text-base mb-4">Setup Steps</h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      pinterestStatus.is_configured && pinterestStatus.is_token_valid
+                        ? 'bg-success text-white'
+                        : 'bg-primary text-white'
+                    }`}>
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Connect Pinterest Account</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        Click &quot;Connect Pinterest&quot; to authorize access to your account
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      pinterestStatus.has_board
+                        ? 'bg-success text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Select a Board</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        Choose the Pinterest board where designs will be posted
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold bg-muted text-muted-foreground">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Start Posting</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        Approve designs in the Designs page to automatically post them
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted">Loading Pinterest status...</p>
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }
