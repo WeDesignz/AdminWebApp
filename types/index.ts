@@ -404,6 +404,7 @@ export interface Plan {
   customDesignHour?: number; // Hours for custom design delivery
   mockPdfCount?: number; // Number of mock PDFs allowed
   noOfFreeDownloads?: number; // Number of free downloads allowed
+  isMostPopular?: boolean; // Mark as most popular for its duration
   createdAt?: string;
   updatedAt?: string;
 }
