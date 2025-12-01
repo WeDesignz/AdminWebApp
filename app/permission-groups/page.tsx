@@ -67,20 +67,6 @@ function GroupCheckbox({
 export default function PermissionGroupsPage() {
   const router = useRouter();
   const { hasRole } = useAuthStore();
-
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -91,14 +77,6 @@ export default function PermissionGroupsPage() {
     new Set(Object.keys(PERMISSION_GROUPS))
   );
   const [permissionSearch, setPermissionSearch] = useState('');
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -185,6 +163,27 @@ export default function PermissionGroupsPage() {
       toast.error(error?.error || 'Failed to delete permission group');
     },
   });
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   const handleCreate = () => {
     if (!formData.name.trim()) {

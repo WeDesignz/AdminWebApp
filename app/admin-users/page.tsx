@@ -72,20 +72,6 @@ function GroupCheckbox({
 export default function AdminUsersPage() {
   const router = useRouter();
   const { hasRole } = useAuthStore();
-
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
@@ -97,15 +83,6 @@ export default function AdminUsersPage() {
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -173,6 +150,23 @@ export default function AdminUsersPage() {
     retry: 1,
   });
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
   // Show error toast
   useEffect(() => {
     if (error) {
@@ -181,6 +175,11 @@ export default function AdminUsersPage() {
       console.error('Admin Users query error:', error);
     }
   }, [error]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   // Calculate stats from data
   const stats = useMemo(() => {

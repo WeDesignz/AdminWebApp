@@ -27,19 +27,6 @@ export default function SystemConfigsPage() {
   const { hasRole } = useAuthStore();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
-
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
   const [showDesignSelector, setShowDesignSelector] = useState(false);
   const [selectedDesignType, setSelectedDesignType] = useState<'hero_section' | 'featured' | 'dome_gallery' | null>(null);
   const [showClientNameModal, setShowClientNameModal] = useState(false);
@@ -116,6 +103,19 @@ export default function SystemConfigsPage() {
       }));
     }
   }, [businessConfigData]);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   const activeDesigns = designsData?.data?.filter((d: Design) => d.status === 'approved') || [];
   

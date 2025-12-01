@@ -55,6 +55,13 @@ type ActionType =
 export default function ActivityLogPage() {
   const router = useRouter();
   const { hasRole } = useAuthStore();
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [timeFilter, setTimeFilter] = useState<number | null>(null); // days: 7, 15, 30, or null for all
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['activity-logs'],
+    queryFn: () => MockAPI.getActivityLogs({ limit: 100 }),
+  });
 
   // Redirect moderators away from this page
   useEffect(() => {
@@ -68,14 +75,6 @@ export default function ActivityLogPage() {
   if (!hasRole('Super Admin')) {
     return null;
   }
-
-  const [actionFilter, setActionFilter] = useState<string>('all');
-  const [timeFilter, setTimeFilter] = useState<number | null>(null); // days: 7, 15, 30, or null for all
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['activity-logs'],
-    queryFn: () => MockAPI.getActivityLogs({ limit: 100 }),
-  });
 
   const logs = data?.data || [];
 

@@ -66,19 +66,6 @@ export default function OrdersAndTransactionsPage() {
   const queryClient = useQueryClient();
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
   // Unified query for Orders with RazorpayPayment data
   // Using transactions endpoint which includes RazorpayPayment data via TransactionListSerializer
   const { data, isLoading, refetch, error: ordersError } = useQuery({
@@ -162,6 +149,26 @@ export default function OrdersAndTransactionsPage() {
     }
   }, [statsError]);
 
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Auto-scroll when chat messages load or modal opens
+  useEffect(() => {
+    if (isChatModalOpen && orderChatMessages) {
+      scrollToBottom();
+    }
+  }, [isChatModalOpen, orderChatMessages]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
+
   const handleUpdateStatus = (order: Order) => {
     setSelectedOrder(order);
     setNewStatus(order.status);
@@ -190,13 +197,6 @@ export default function OrdersAndTransactionsPage() {
       }
     }, 100);
   };
-
-  // Auto-scroll when chat messages load or modal opens
-  useEffect(() => {
-    if (isChatModalOpen && orderChatMessages) {
-      scrollToBottom();
-    }
-  }, [isChatModalOpen, orderChatMessages]);
 
   // Send chat message mutation
   const sendChatMessageMutation = useMutation({
