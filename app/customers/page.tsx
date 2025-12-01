@@ -175,21 +175,21 @@ export default function CustomersPage() {
         </div>
 
         {/* Statistics Tiles */}
-        {statsData?.data && (
+        {statsData && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <KpiCard
               title="Total Customers"
-              value={statsData.data.total}
+              value={statsData.total}
               icon={<UsersIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Active Users"
-              value={statsData.data.active}
+              value={statsData.active}
               icon={<ChartBarIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Inactive Users"
-              value={statsData.data.inactive}
+              value={statsData.inactive}
               icon={<CreditCardIcon className="w-6 h-6" />}
             />
           </div>
