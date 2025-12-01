@@ -517,7 +517,7 @@ export default function CustomersPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Total Spent:</span>
-                    <span className="text-muted font-medium">{formatCurrency(selectedCustomer.totalSpent)}</span>
+                    <span className="text-muted font-medium">{formatCurrency(selectedCustomer.totalSpent || 0)}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
