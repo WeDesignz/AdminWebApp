@@ -20,7 +20,6 @@ import {
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/common/Modal';
-import toast from 'react-hot-toast';
 import { API_CONFIG } from '@/lib/api/config';
 
 export default function SystemConfigsPage() {
