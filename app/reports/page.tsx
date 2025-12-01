@@ -24,20 +24,7 @@ export default function ReportsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Redirect moderators away from this page
-  useEffect(() => {
-    if (!hasRole('Super Admin')) {
-      toast.error('Access denied. This page is restricted to Super Admins only.');
-      router.replace('/dashboard');
-    }
-  }, [hasRole, router]);
-
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
-    return null;
-  }
-
-  // Debounce search input
+  // Debounce search input (hooks must be called before any early returns)
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -45,7 +32,7 @@ export default function ReportsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch moderators
+  // Fetch moderators (hooks must be called before any early returns)
   const { data, isLoading, error } = useQuery({
     queryKey: ['adminUsers', 'moderator', debouncedSearch],
     queryFn: async () => {
@@ -61,7 +48,16 @@ export default function ReportsPage() {
       
       return response;
     },
+    enabled: hasRole('Super Admin'),
   });
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
 
   // Show error toast
   useEffect(() => {
@@ -70,6 +66,11 @@ export default function ReportsPage() {
       toast.error(errorMessage);
     }
   }, [error]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   const moderators = data?.data?.data || [];
 
