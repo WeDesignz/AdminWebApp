@@ -123,6 +123,7 @@ export default function PlansPage() {
       customDesignHour: '',
       mockPdfCount: '',
       noOfFreeDownloads: '',
+      isMostPopular: false,
     });
     setSelectedPlan(null);
     setShowCreateModal(true);
