@@ -317,7 +317,7 @@ export default function SettingsPage() {
   const handle2FASetup = async () => {
     setIs2FASettingUp(true);
     try {
-      const response = await API.auth.setup2FA();
+      const response = await API.setup2FA();
       if (response.success && response.data) {
         setQrCodeUrl(response.data.qr_code);
         setSecretKey(response.data.secret_key);
@@ -343,7 +343,7 @@ export default function SettingsPage() {
 
     setIs2FAEnabling(true);
     try {
-      const response = await API.auth.enable2FA(twoFactorCode);
+      const response = await API.enable2FA(twoFactorCode);
       if (response.success && response.data) {
         setBackupCodes(response.data.backup_codes);
         setShow2FASetup(false);
@@ -374,7 +374,7 @@ export default function SettingsPage() {
 
     setIs2FADisabling(true);
     try {
-      const response = await API.auth.disable2FA(disablePassword);
+      const response = await API.disable2FA(disablePassword);
       if (response.success) {
         setShow2FADisable(false);
         setDisablePassword('');
