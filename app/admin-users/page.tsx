@@ -34,6 +34,8 @@ import {
 import { AdminUser } from '@/types';
 import { Permission, PERMISSION_GROUPS, MODERATOR_DEFAULT_PERMISSIONS } from '@/lib/permissions/config';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
 
 // Component for checkbox with indeterminate state support
 function GroupCheckbox({
@@ -68,6 +70,22 @@ function GroupCheckbox({
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const { hasRole } = useAuthStore();
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');

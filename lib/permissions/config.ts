@@ -89,10 +89,6 @@ export type Permission =
   | 'support.view'
   | 'support.respond'
   
-  // Contract Workers
-  | 'contract_workers.view'
-  | 'contract_workers.manage'
-  
   // Reports/Analytics
   | 'reports.view'
   | 'analytics.view';
@@ -128,7 +124,6 @@ export const MODERATOR_DEFAULT_PERMISSIONS: Permission[] = [
   'activity_log.view',
   'support.view',
   'support.respond',
-  'contract_workers.view',
 ];
 
 /**
@@ -225,11 +220,6 @@ export const PERMISSION_GROUPS: Record<string, Permission[]> = {
   support: [
     'support.view',
     'support.respond',
-  ],
-  
-  contract_workers: [
-    'contract_workers.view',
-    'contract_workers.manage',
   ],
   
   reports: [

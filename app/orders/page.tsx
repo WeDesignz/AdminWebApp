@@ -39,8 +39,12 @@ import {
 import { Order, Transaction, Designer, Customer } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils/cn';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
 
 export default function OrdersAndTransactionsPage() {
+  const router = useRouter();
+  const { hasRole } = useAuthStore();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
@@ -61,6 +65,19 @@ export default function OrdersAndTransactionsPage() {
   const [newChatMessage, setNewChatMessage] = useState('');
   const queryClient = useQueryClient();
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
 
   // Unified query for Orders with RazorpayPayment data
   // Using transactions endpoint which includes RazorpayPayment data via TransactionListSerializer

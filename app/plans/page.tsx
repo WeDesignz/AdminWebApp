@@ -9,7 +9,10 @@ import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { Plan } from '@/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   PlusIcon,
   PencilIcon,
@@ -23,7 +26,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { PermissionButton } from '@/components/common/PermissionButton';
-import toast from 'react-hot-toast';
 
 // Helper function to format price with Rupee symbol and duration
 const formatPlanPrice = (price: number, duration: string | undefined | null): string => {
@@ -60,9 +62,24 @@ const getPlanBadgeColor = (planName: string | undefined | null): string => {
 };
 
 export default function PlansPage() {
+  const router = useRouter();
+  const { hasRole } = useAuthStore();
   const queryClient = useQueryClient();
   const { hasPermission } = usePermission();
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -527,13 +544,13 @@ export default function PlansPage() {
                           <span>Most Popular</span>
                         </span>
                       )}
-                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                        plan.status === 'Active' 
-                          ? 'bg-success/20 text-success' 
-                          : 'bg-muted/20 text-muted'
-                      }`}>
-                        {plan.status}
-                      </span>
+                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                      plan.status === 'Active' 
+                        ? 'bg-success/20 text-success' 
+                        : 'bg-muted/20 text-muted'
+                    }`}>
+                      {plan.status}
+                    </span>
                     </div>
                   </div>
 
@@ -1009,13 +1026,13 @@ export default function PlansPage() {
                     <span>Most Popular</span>
                   </span>
                 )}
-                <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                  selectedPlan.status === 'Active' 
-                    ? 'bg-success/20 text-success' 
-                    : 'bg-muted/20 text-muted'
-                }`}>
-                  {selectedPlan.status}
-                </span>
+              <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                selectedPlan.status === 'Active' 
+                  ? 'bg-success/20 text-success' 
+                  : 'bg-muted/20 text-muted'
+              }`}>
+                {selectedPlan.status}
+              </span>
               </div>
             </div>
 

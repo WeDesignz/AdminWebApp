@@ -5,7 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { MockAPI } from '@/lib/api';
 import { formatDate, formatRelativeTime } from '@/lib/utils/cn';
 import { ActivityLog } from '@/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { Dropdown } from '@/components/common/Dropdown';
 import {
   UserGroupIcon,
@@ -50,6 +53,22 @@ type ActionType =
   | 'UPLOAD_DELIVERABLES';
 
 export default function ActivityLogPage() {
+  const router = useRouter();
+  const { hasRole } = useAuthStore();
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
+
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [timeFilter, setTimeFilter] = useState<number | null>(null); // days: 7, 15, 30, or null for all
 

@@ -2228,14 +2228,14 @@ export const FAQAPI = {
     answer: string;
     is_active: boolean;
     sort_order: number;
-    tag_ids: number[];
+    display_locations: string[];
   }): Promise<ApiResponse<any>> {
     const payload = {
       question: data.question,
       answer: data.answer,
       is_active: data.is_active,
       sort_order: data.sort_order,
-      tag_ids: data.tag_ids,
+      display_locations: data.display_locations,
     };
     const response = await apiClient.post<any>('api/feedback/faqs/', payload);
     return response as ApiResponse<any>;
@@ -2249,14 +2249,14 @@ export const FAQAPI = {
     answer: string;
     is_active: boolean;
     sort_order: number;
-    tag_ids: number[];
+    display_locations: string[];
   }): Promise<ApiResponse<any>> {
     const payload = {
       question: data.question,
       answer: data.answer,
       is_active: data.is_active,
       sort_order: data.sort_order,
-      tag_ids: data.tag_ids,
+      display_locations: data.display_locations,
     };
     const response = await apiClient.put<any>(`api/feedback/faqs/${id}/`, payload);
     return response as ApiResponse<any>;
@@ -2267,144 +2267,6 @@ export const FAQAPI = {
    */
   async deleteFAQ(id: number): Promise<ApiResponse<void>> {
     const response = await apiClient.delete(`api/feedback/faqs/${id}/`);
-    return response as ApiResponse<void>;
-  },
-};
-
-/**
- * Core Admin API
- */
-export const CoreAdminAPI = {
-  /**
-   * Get Contract Workers List
-   */
-  async getContractWorkers(params?: {
-    page?: number;
-    page_size?: number;
-    search?: string;
-    status?: string;
-  }): Promise<ApiResponse<{ data: any[]; pagination: any }>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', String(params.page));
-    if (params?.page_size) queryParams.append('page_size', String(params.page_size));
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.status) queryParams.append('status', params.status);
-    
-    const url = `api/coreadmin/contract-workers/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-    const response = await apiClient.get<{ message: string; data: any[]; pagination: any }>(url);
-    
-    if (response.success && response.data) {
-      return {
-        success: true,
-        data: {
-          data: response.data.data || [],
-          pagination: response.data.pagination || {},
-        },
-      };
-    }
-    
-    return {
-      success: false,
-      error: response.error || 'Failed to fetch contract workers',
-    };
-  },
-
-  /**
-   * Get Contract Worker Detail
-   */
-  async getContractWorker(workerId: string): Promise<ApiResponse<any>> {
-    const response = await apiClient.get<{ message: string; data: any }>(`api/coreadmin/contract-workers/${workerId}/`);
-    if (response.success && response.data) {
-      return {
-        success: true,
-        data: response.data.data,
-      };
-    }
-    return {
-      success: false,
-      error: response.error || 'Failed to fetch contract worker',
-    };
-  },
-
-  /**
-   * Create Contract Worker
-   */
-  async createContractWorker(data: {
-    first_name: string;
-    last_name: string;
-    father_name?: string;
-    email: string;
-    phone?: string;
-    employee_id?: string;
-    esi_number?: string;
-    status: 'active' | 'inactive' | 'terminated';
-    address?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-    country?: string;
-    bank_account_number?: string;
-    bank_ifsc_code?: string;
-    bank_account_holder_name?: string;
-    date_of_joining?: string;
-    date_of_birth?: string;
-    notes?: string;
-  }): Promise<ApiResponse<any>> {
-    const response = await apiClient.post<{ message: string; data: any }>('api/coreadmin/contract-workers/create/', data);
-    if (response.success && response.data) {
-      return {
-        success: true,
-        data: response.data.data,
-      };
-    }
-    return {
-      success: false,
-      error: response.error || 'Failed to create contract worker',
-    };
-  },
-
-  /**
-   * Update Contract Worker
-   */
-  async updateContractWorker(workerId: string, data: {
-    first_name?: string;
-    last_name?: string;
-    father_name?: string;
-    email?: string;
-    phone?: string;
-    employee_id?: string;
-    esi_number?: string;
-    status?: 'active' | 'inactive' | 'terminated';
-    address?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-    country?: string;
-    bank_account_number?: string;
-    bank_ifsc_code?: string;
-    bank_account_holder_name?: string;
-    date_of_joining?: string;
-    date_of_birth?: string;
-    notes?: string;
-  }): Promise<ApiResponse<any>> {
-    const response = await apiClient.put<{ message: string; data: any }>(`api/coreadmin/contract-workers/${workerId}/update/`, data);
-    if (response.success && response.data) {
-      return {
-        success: true,
-        data: response.data.data,
-      };
-    }
-    return {
-      success: false,
-      error: response.error || 'Failed to update contract worker',
-    };
-  },
-
-  /**
-   * Delete Contract Worker
-   */
-  async deleteContractWorker(workerId: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.delete(`api/coreadmin/contract-workers/${workerId}/delete/`);
     return response as ApiResponse<void>;
   },
 };
@@ -2433,7 +2295,6 @@ export const API = {
   adminUsers: AdminUsersAPI,
   permissionGroups: PermissionGroupsAPI,
   faq: FAQAPI,
-  coreAdmin: CoreAdminAPI,
 };
 
 // For backward compatibility, export as default

@@ -7,6 +7,9 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { SystemConfig, Design } from '@/types';
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   CheckIcon,
   XMarkIcon,
@@ -21,8 +24,23 @@ import toast from 'react-hot-toast';
 import { API_CONFIG } from '@/lib/api/config';
 
 export default function SystemConfigsPage() {
+  const router = useRouter();
+  const { hasRole } = useAuthStore();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
+
+  // Redirect moderators away from this page
+  useEffect(() => {
+    if (!hasRole('Super Admin')) {
+      toast.error('Access denied. This page is restricted to Super Admins only.');
+      router.replace('/dashboard');
+    }
+  }, [hasRole, router]);
+
+  // Don't render if not Super Admin
+  if (!hasRole('Super Admin')) {
+    return null;
+  }
   const [showDesignSelector, setShowDesignSelector] = useState(false);
   const [selectedDesignType, setSelectedDesignType] = useState<'hero_section' | 'featured' | 'dome_gallery' | null>(null);
   const [showClientNameModal, setShowClientNameModal] = useState(false);
