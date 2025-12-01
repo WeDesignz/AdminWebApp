@@ -135,8 +135,12 @@ export function Sidebar() {
   const displayWidth = displayCollapsed ? 80 : 256;
 
   // Check if user has access to a menu item
+  // On server, return true for all items to prevent hydration mismatch
+  // After mount, check actual role permissions
   const hasAccess = (item: any) => {
     if (!item.restrictedTo) return true;
+    // Before mount (server-side), show all items to ensure consistent rendering
+    if (!mounted) return true;
     return hasRole(item.restrictedTo);
   };
 
@@ -179,11 +183,13 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-5 overflow-y-auto scrollbar-thin">
         {navigationCategories.map((category, categoryIndex) => {
-          // Filter items based on access
-          const accessibleItems = category.items.filter(hasAccess);
+          // Filter items based on access - only filter after mount to prevent hydration mismatch
+          const accessibleItems = mounted 
+            ? category.items.filter(hasAccess)
+            : category.items; // Show all items on server
           
-          // Don't render category if no accessible items
-          if (accessibleItems.length === 0) return null;
+          // Don't render category if no accessible items (only check after mount)
+          if (mounted && accessibleItems.length === 0) return null;
 
           return (
             <div key={category.name} className="space-y-1.5">
@@ -223,8 +229,8 @@ export function Sidebar() {
                     isActive = !hasMoreSpecificMatch;
                   }
           
-                  // If restricted, show disabled state with lock icon
-                  if (isRestricted) {
+                  // If restricted, show disabled state with lock icon (only after mount)
+                  if (isRestricted && mounted) {
                     return (
                       <div
                         key={item.name}
