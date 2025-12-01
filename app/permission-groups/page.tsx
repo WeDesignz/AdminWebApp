@@ -32,6 +32,9 @@ import type { PermissionGroup as PermissionGroupType } from '@/lib/api/api';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
 
+// Feature flag: Permission Groups is currently locked/disabled
+const PERMISSION_GROUPS_ENABLED = false;
+
 // Component for checkbox with indeterminate state support
 function GroupCheckbox({
   checked,
@@ -172,6 +175,14 @@ export default function PermissionGroupsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Redirect all users away from this page if feature is disabled
+  useEffect(() => {
+    if (!PERMISSION_GROUPS_ENABLED) {
+      toast.error('Permission Groups feature is currently locked.');
+      router.replace('/dashboard');
+    }
+  }, [router]);
+
   // Redirect moderators away from this page
   useEffect(() => {
     if (!hasRole('Super Admin')) {
@@ -180,8 +191,8 @@ export default function PermissionGroupsPage() {
     }
   }, [hasRole, router]);
 
-  // Don't render if not Super Admin
-  if (!hasRole('Super Admin')) {
+  // Don't render if feature is disabled or not Super Admin
+  if (!PERMISSION_GROUPS_ENABLED || !hasRole('Super Admin')) {
     return null;
   }
 

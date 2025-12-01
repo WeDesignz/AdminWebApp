@@ -239,44 +239,10 @@ export const AuthAPI = {
  */
 export const DashboardAPI = {
   /**
-   * Get KPI Data for Dashboard
+   * Get Dashboard Summary Data (role-based)
    */
-  async getKPIData(): Promise<ApiResponse<KPIData>> {
-    const response = await apiClient.get<{
-      total_revenue?: { today: number; month: number; change: number };
-      active_users?: { count: number; change: number };
-      new_designers?: { count: number; period: string };
-      pending_payouts?: { count: number; amount: number };
-    }>('api/admin-analytics/dashboard/');
-
-    if (response.success && response.data) {
-      const data: KPIData = {
-        totalRevenue: {
-          today: response.data.total_revenue?.today || 0,
-          month: response.data.total_revenue?.month || 0,
-          change: response.data.total_revenue?.change || 0,
-        },
-        activeUsers: {
-          count: response.data.active_users?.count || 0,
-          change: response.data.active_users?.change || 0,
-        },
-        newDesigners: {
-          count: response.data.new_designers?.count || 0,
-          period: '7d' as const,
-        },
-        pendingPayouts: {
-          count: response.data.pending_payouts?.count || 0,
-          amount: response.data.pending_payouts?.amount || 0,
-        },
-      };
-
-      return { success: true, data };
-    }
-
-    return {
-      success: false,
-      error: response.error || 'Failed to fetch KPI data',
-    };
+  async getKPIData(): Promise<ApiResponse<any>> {
+    return apiClient.get('api/admin-analytics/dashboard/');
   },
 
   /**
@@ -291,6 +257,17 @@ export const DashboardAPI = {
    */
   async getTopDesigners(limit: number = 10): Promise<ApiResponse<any>> {
     return apiClient.get('api/admin-analytics/top-designers/', { limit });
+  },
+
+  /**
+   * Get Moderator Daily Report
+   */
+  async getModeratorDailyReport(moderatorId: number, date?: string): Promise<ApiResponse<any>> {
+    const params: any = {};
+    if (date) {
+      params.date = date;
+    }
+    return apiClient.get(`api/admin-analytics/moderator-daily-report/${moderatorId}/`, params);
   },
 };
 
@@ -631,6 +608,10 @@ export const CustomersAPI = {
     }>
   > {
     const response = await apiClient.get<{
+      total_customers?: number;
+      active_customers?: number;
+      deactivated_customers?: number;
+      blocked_customers?: number;
       total?: number;
       active?: number;
       inactive?: number;
@@ -641,10 +622,10 @@ export const CustomersAPI = {
       return {
         success: true,
         data: {
-          total: response.data.total || 0,
-          active: response.data.active || 0,
-          inactive: response.data.inactive || 0,
-          suspended: response.data.suspended || 0,
+          total: response.data.total_customers || response.data.total || 0,
+          active: response.data.active_customers || response.data.active || 0,
+          inactive: response.data.deactivated_customers || response.data.inactive || 0,
+          suspended: response.data.blocked_customers || response.data.suspended || 0,
         },
       };
     }

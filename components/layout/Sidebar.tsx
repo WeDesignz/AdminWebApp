@@ -100,6 +100,7 @@ const navigationCategories = [
         href: '/permission-groups', 
         icon: ShieldCheckIcon, 
         restrictedTo: ['Super Admin'],
+        disabled: true, // Locked for now - will be enabled when micro-permissions are needed
       },
       { 
         name: 'System Configs', 
@@ -144,6 +145,16 @@ export function Sidebar() {
     return hasRole(item.restrictedTo);
   };
 
+  // Check if item should be shown (including disabled items for Super Admins)
+  const shouldShowItem = (item: any) => {
+    // If item is disabled, only show to Super Admins
+    if (item.disabled) {
+      if (!mounted) return true; // Show on server to prevent hydration mismatch
+      return hasRole('Super Admin');
+    }
+    return hasAccess(item);
+  };
+
   return (
     <motion.aside
       initial={false}
@@ -183,13 +194,14 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-5 overflow-y-auto scrollbar-thin">
         {navigationCategories.map((category, categoryIndex) => {
-          // Filter items based on access - only filter after mount to prevent hydration mismatch
-          const accessibleItems = mounted 
-            ? category.items.filter(hasAccess)
+          // Filter items based on access - include disabled items for Super Admins
+          // Only filter after mount to prevent hydration mismatch
+          const visibleItems = mounted 
+            ? category.items.filter(shouldShowItem)
             : category.items; // Show all items on server
           
-          // Don't render category if no accessible items (only check after mount)
-          if (mounted && accessibleItems.length === 0) return null;
+          // Don't render category if no visible items (only check after mount)
+          if (mounted && visibleItems.length === 0) return null;
 
           return (
             <div key={category.name} className="space-y-1.5">
@@ -209,10 +221,7 @@ export function Sidebar() {
               
               {/* Category Items */}
               <div className="space-y-0.5">
-                {category.items.map((item) => {
-                  const canAccess = hasAccess(item);
-                  const isRestricted = item.restrictedTo && !canAccess;
-                  
+                {visibleItems.map((item) => {
                   // Check exact match first
                   let isActive = pathname === item.href;
                   
@@ -228,9 +237,9 @@ export function Sidebar() {
                     );
                     isActive = !hasMoreSpecificMatch;
                   }
-          
-                  // If restricted, show disabled state with lock icon (only after mount)
-                  if (isRestricted && mounted) {
+
+                  // If item is disabled, show locked state
+                  if (item.disabled && mounted) {
                     return (
                       <div
                         key={item.name}
@@ -239,7 +248,7 @@ export function Sidebar() {
                           'opacity-40 cursor-not-allowed',
                           'text-muted-foreground/50'
                         )}
-                        title={displayCollapsed ? `${item.name} (Restricted)` : undefined}
+                        title={displayCollapsed ? `${item.name} (Locked)` : undefined}
                       >
                         <item.icon className="w-5 h-5 flex-shrink-0" />
                         {!displayCollapsed && (

@@ -187,14 +187,30 @@ export interface CustomerDeactivation {
 
 export interface Customer {
   id: string;
-  name: string;
+  // Backend fields
+  name?: string; // Computed from first_name + last_name
+  first_name?: string;
+  last_name?: string;
+  username?: string;
   email: string;
-  phoneNumber?: string;
-  joinedAt: string;
-  status: 'active' | 'inactive' | 'suspended' | 'blocked';
-  planStatus: 'active' | 'expired' | 'none';
-  totalPurchases: number;
-  totalSpent: number;
+  phone_number?: string; // Backend field name
+  phoneNumber?: string; // Legacy field name for backward compatibility
+  date_joined?: string; // Backend field name
+  joinedAt?: string; // Legacy field name for backward compatibility
+  account_status?: 'active' | 'inactive' | 'suspended' | 'blocked' | 'deactivated'; // Backend field name
+  account_status_display?: string;
+  status?: 'active' | 'inactive' | 'suspended' | 'blocked'; // Legacy field name for backward compatibility
+  plan_status_display?: 'active' | 'expired' | 'none'; // Backend field name (string)
+  plan_status?: 'active' | 'expired' | 'none' | { status: string; plan_name?: string; plan_duration?: string; expires_at?: string }; // Backend field (can be object or string)
+  planStatus?: 'active' | 'expired' | 'none'; // Legacy field name for backward compatibility
+  total_orders?: number; // Backend field name
+  totalPurchases?: number; // Legacy field name for backward compatibility
+  total_spent?: number; // Backend field name
+  totalSpent?: number; // Legacy field name for backward compatibility
+  last_activity?: string;
+  is_active?: boolean;
+  last_login?: string;
+  // Additional fields
   address?: CustomerAddress;
   plan?: CustomerPlan;
   purchases?: CustomerPurchase[];

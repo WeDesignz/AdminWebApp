@@ -2,7 +2,7 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery } from '@tanstack/react-query';
-import { MockAPI } from '@/lib/api';
+import { API } from '@/lib/api';
 import { useState } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
@@ -32,12 +32,30 @@ export default function CustomersPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['customers', page, pageSize, search, statusFilter, planStatusFilter],
-    queryFn: () => MockAPI.getCustomers({ page, limit: pageSize, status: statusFilter, planStatus: planStatusFilter, search }),
+    queryFn: async () => {
+      const response = await API.customers.getCustomers({ 
+        page, 
+        limit: pageSize, 
+        status: statusFilter, 
+        planStatus: planStatusFilter, 
+        search 
+      });
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.error || 'Failed to fetch customers');
+    },
   });
 
   const { data: statsData } = useQuery({
     queryKey: ['customerStats'],
-    queryFn: () => MockAPI.getCustomerStats(),
+    queryFn: async () => {
+      const response = await API.customers.getCustomerStats();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new Error(response.error || 'Failed to fetch customer stats');
+    },
   });
 
   // Filter options
@@ -94,9 +112,19 @@ export default function CustomersPage() {
       return;
     }
     setIsUpdatingStatus(true);
-    await MockAPI.updateCustomerStatus(customer.id, 'active');
-    setIsUpdatingStatus(false);
-    refetch();
+    try {
+      const response = await API.customers.updateCustomerStatus(customer.id, 'active');
+      if (response.success) {
+        toast.success('Customer activated successfully');
+        refetch();
+      } else {
+        toast.error(response.error || 'Failed to activate customer');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to activate customer');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handleDeactivateCustomer = (customer: Customer) => {
@@ -118,12 +146,22 @@ export default function CustomersPage() {
   const handleSubmitDeactivation = async () => {
     if (!selectedCustomer || !deactivationReason.trim()) return;
     setIsUpdatingStatus(true);
-    await MockAPI.updateCustomerStatus(selectedCustomer.id, 'inactive', deactivationReason);
-    setIsUpdatingStatus(false);
-    setShowDeactivateModal(false);
-    setDeactivationReason('');
-    setSelectedCustomer(null);
-    refetch();
+    try {
+      const response = await API.customers.updateCustomerStatus(selectedCustomer.id, 'deactivated', deactivationReason);
+      if (response.success) {
+        toast.success('Customer deactivated successfully');
+        setShowDeactivateModal(false);
+        setDeactivationReason('');
+        setSelectedCustomer(null);
+        refetch();
+      } else {
+        toast.error(response.error || 'Failed to deactivate customer');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to deactivate customer');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   return (
@@ -234,32 +272,38 @@ export default function CustomersPage() {
                     </td>
                   </tr>
                 ) : (
-                  data.data.map((customer) => (
+                  data.data.map((customer: any) => (
                     <tr key={customer.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{customer.name}</td>
+                      <td className="py-3 px-4 font-medium whitespace-nowrap">
+                        {customer.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.username || customer.email}
+                      </td>
                       <td className="py-3 px-4 text-muted whitespace-nowrap">{customer.email}</td>
-                      <td className="py-3 px-4 text-muted whitespace-nowrap">{customer.phoneNumber || 'N/A'}</td>
-                      <td className="py-3 px-4 text-muted whitespace-nowrap">{formatDate(customer.joinedAt)}</td>
+                      <td className="py-3 px-4 text-muted whitespace-nowrap">{customer.phone_number || 'N/A'}</td>
+                      <td className="py-3 px-4 text-muted whitespace-nowrap">
+                        {customer.date_joined ? formatDate(customer.date_joined) : 'N/A'}
+                      </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                          customer.status === 'active' ? 'bg-success/20 text-success' :
-                          customer.status === 'blocked' ? 'bg-error/20 text-error' :
+                          customer.account_status === 'active' ? 'bg-success/20 text-success' :
+                          customer.account_status === 'blocked' ? 'bg-error/20 text-error' :
                           'bg-warning/20 text-warning'
                         }`}>
-                          {customer.status}
+                          {customer.account_status_display || customer.account_status || 'N/A'}
                         </span>
                       </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                          customer.planStatus === 'active' ? 'bg-success/20 text-success' :
-                          customer.planStatus === 'expired' ? 'bg-warning/20 text-warning' :
+                          customer.plan_status_display === 'active' ? 'bg-success/20 text-success' :
+                          customer.plan_status_display === 'expired' ? 'bg-warning/20 text-warning' :
                           'bg-muted/20 text-muted'
                         }`}>
-                          {customer.planStatus}
+                          {customer.plan_status_display || 'none'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap">{customer.totalPurchases}</td>
-                      <td className="py-3 px-4 font-medium whitespace-nowrap">{formatCurrency(customer.totalSpent)}</td>
+                      <td className="py-3 px-4 whitespace-nowrap">{customer.total_orders || 0}</td>
+                      <td className="py-3 px-4 font-medium whitespace-nowrap">
+                        {formatCurrency(customer.total_spent || 0)}
+                      </td>
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex gap-2">
                           <Button 
@@ -278,7 +322,7 @@ export default function CustomersPage() {
                           >
                             <UserCircleIcon className="w-4 h-4" />
                           </Button>
-                          {customer.status === 'active' ? (
+                          {(customer.account_status === 'active' || customer.status === 'active') ? (
                             <PermissionButton
                               requiredPermission="customers.deactivate"
                               size="sm"
