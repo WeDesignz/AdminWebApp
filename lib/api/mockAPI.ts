@@ -509,8 +509,8 @@ class MockAPI {
     if (params.search) {
       filtered = filtered.filter(
         (c) =>
-          c.name.toLowerCase().includes(params.search!.toLowerCase()) ||
-          c.email.toLowerCase().includes(params.search!.toLowerCase())
+          (c.name?.toLowerCase().includes(params.search!.toLowerCase()) ?? false) ||
+          (c.email?.toLowerCase().includes(params.search!.toLowerCase()) ?? false)
       );
     }
 
