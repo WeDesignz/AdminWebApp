@@ -342,8 +342,36 @@ export default function SystemConfigsPage() {
         return makeAbsoluteUrl(mockupFile.url);
       }
       
-      // If no mockup, find ANY image file
-      const imageFile = design.files.find((f) => f.type === 'image');
+      // If no mockup, find JPG or PNG files (prioritize JPG over PNG)
+      // Check file extension from the file name or URL
+      const getFileExtension = (url: string, name?: string): string => {
+        const fileName = name || url.split('/').pop() || '';
+        const ext = fileName.toLowerCase().split('.').pop() || '';
+        return ext;
+      };
+      
+      // First, try to find a JPG file
+      const jpgFile = design.files.find((f) => {
+        if (f.type !== 'image' || f.isMockup) return false;
+        const ext = getFileExtension(f.url, f.name);
+        return ext === 'jpg' || ext === 'jpeg';
+      });
+      if (jpgFile && jpgFile.url) {
+        return makeAbsoluteUrl(jpgFile.url);
+      }
+      
+      // If no JPG, try to find a PNG file
+      const pngFile = design.files.find((f) => {
+        if (f.type !== 'image' || f.isMockup) return false;
+        const ext = getFileExtension(f.url, f.name);
+        return ext === 'png';
+      });
+      if (pngFile && pngFile.url) {
+        return makeAbsoluteUrl(pngFile.url);
+      }
+      
+      // Fallback: find any other image file (excluding mockups)
+      const imageFile = design.files.find((f) => f.type === 'image' && !f.isMockup);
       if (imageFile && imageFile.url) {
         return makeAbsoluteUrl(imageFile.url);
       }
