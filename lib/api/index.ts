@@ -325,6 +325,42 @@ class RealAPI {
     return API.pinterest.setBoard(boardId, boardName);
   }
 
+  static async createPinterestBoard(data: {
+    name: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return API.pinterest.createBoard(data);
+  }
+
+  static async updatePinterestBoard(boardId: string, data: {
+    name?: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return API.pinterest.updateBoard(boardId, data);
+  }
+
+  static async deletePinterestBoard(boardId: string): Promise<ApiResponse<void>> {
+    return API.pinterest.deleteBoard(boardId);
+  }
+
   // Customer methods
   static async getCustomers(params: {
     page?: number;

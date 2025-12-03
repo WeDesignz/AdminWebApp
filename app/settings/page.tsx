@@ -21,6 +21,11 @@ import {
   LinkIcon,
   ClockIcon,
   InformationCircleIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  LockClosedIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -55,6 +60,21 @@ export default function SettingsPage() {
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [selectedBoardId, setSelectedBoardId] = useState('');
   const [showBoardSelector, setShowBoardSelector] = useState(false);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [showEditBoardModal, setShowEditBoardModal] = useState(false);
+  const [editingBoard, setEditingBoard] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingBoardId, setDeletingBoardId] = useState<string>('');
+  const [newBoardData, setNewBoardData] = useState({
+    name: '',
+    description: '',
+    privacy: 'PUBLIC' as 'PUBLIC' | 'SECRET',
+  });
+  const [editBoardData, setEditBoardData] = useState({
+    name: '',
+    description: '',
+    privacy: 'PUBLIC' as 'PUBLIC' | 'SECRET',
+  });
 
   const { data: adminData } = useQuery({
     queryKey: ['admin-profile'],
@@ -128,6 +148,88 @@ export default function SettingsPage() {
       }
     } catch (error) {
       toast.error('Failed to set Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleCreateBoard = async () => {
+    if (!newBoardData.name.trim()) {
+      toast.error('Board name is required');
+      return;
+    }
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.createPinterestBoard(newBoardData);
+      if (response.success) {
+        toast.success(`Board "${response.data?.board.name}" created successfully!`);
+        setShowCreateBoardModal(false);
+        setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to create board');
+      }
+    } catch (error) {
+      toast.error('Failed to create Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleEditBoard = (board: any) => {
+    setEditingBoard(board);
+    setEditBoardData({
+      name: board.name || '',
+      description: board.description || '',
+      privacy: board.privacy || 'PUBLIC',
+    });
+    setShowEditBoardModal(true);
+  };
+
+  const handleUpdateBoard = async () => {
+    if (!editingBoard || !editBoardData.name.trim()) {
+      toast.error('Board name is required');
+      return;
+    }
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.updatePinterestBoard(editingBoard.id, editBoardData);
+      if (response.success) {
+        toast.success(`Board "${response.data?.board.name}" updated successfully!`);
+        setShowEditBoardModal(false);
+        setEditingBoard(null);
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to update board');
+      }
+    } catch (error) {
+      toast.error('Failed to update Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!deletingBoardId) return;
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.deletePinterestBoard(deletingBoardId);
+      if (response.success) {
+        toast.success('Board deleted successfully');
+        setShowDeleteConfirm(false);
+        setDeletingBoardId('');
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to delete board');
+      }
+    } catch (error) {
+      toast.error('Failed to delete Pinterest board');
     } finally {
       setIsLoadingPinterest(false);
     }
@@ -989,193 +1091,168 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Board Selection Section */}
+            {/* Enhanced Board Management Section */}
             {pinterestStatus.is_token_valid && (
               <div className="p-5 rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h4 className="font-semibold text-base flex items-center gap-2">
+                    <h4 className="font-semibold text-lg flex items-center gap-2">
                       <LinkIcon className="w-5 h-5" />
-                      Pinterest Board
+                      Pinterest Boards
                     </h4>
                     <p className="text-sm text-muted mt-1">
-                      Select the board where approved designs will be posted
+                      Manage your Pinterest boards and select where designs will be posted
                     </p>
                   </div>
+                  <Button
+                    onClick={() => setShowCreateBoardModal(true)}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Create Board
+                  </Button>
                 </div>
 
-                {!pinterestStatus.has_board ? (
-                  <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <InformationCircleIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-warning mb-2">
-                          No board selected
-                        </p>
-                        <p className="text-xs text-muted mb-3">
-                          You need to select a Pinterest board before designs can be automatically posted.
-                        </p>
-                        {!showBoardSelector ? (
-                          <Button
-                            onClick={fetchBoards}
-                            disabled={loadingBoards}
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            {loadingBoards ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Loading boards...
-                              </>
-                            ) : (
-                              <>
-                                <LinkIcon className="w-4 h-4" />
-                                Select Board
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-2">
-                                Choose a board
-                              </label>
-                              <select
-                                value={selectedBoardId}
-                                onChange={(e) => setSelectedBoardId(e.target.value)}
-                                className="select select-bordered w-full"
-                                disabled={isLoadingPinterest}
-                              >
-                                <option value="">Select a board...</option>
-                                {boards.map((board) => (
-                                  <option key={board.id} value={board.id}>
-                                    {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={handleSetBoard}
-                                disabled={!selectedBoardId || isLoadingPinterest}
-                                size="sm"
-                                className="flex items-center gap-2"
-                              >
-                                {isLoadingPinterest ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Setting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckIcon className="w-4 h-4" />
-                                    Set Board
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  setShowBoardSelector(false);
-                                  setSelectedBoardId('');
-                                }}
-                                variant="outline"
-                                size="sm"
-                                disabled={isLoadingPinterest}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                {/* Current Board Display */}
+                {pinterestStatus.has_board && (
+                  <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-success" />
+                        <div>
+                          <p className="text-sm font-medium">Active Board</p>
+                          <p className="text-xs text-muted">{pinterestStatus.board_name}</p>
+                        </div>
                       </div>
+                      <Button
+                        onClick={fetchBoards}
+                        disabled={loadingBoards}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowPathIcon className="w-4 h-4" />
+                        Change
+                      </Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CheckCircleIcon className="w-5 h-5 text-success" />
-                          <div>
-                            <p className="text-sm font-medium">Board Selected</p>
-                            <p className="text-xs text-muted">{pinterestStatus.board_name}</p>
-                          </div>
-                        </div>
-                        {!showBoardSelector && (
-                          <Button
-                            onClick={fetchBoards}
-                            disabled={loadingBoards}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            {loadingBoards ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                <ArrowPathIcon className="w-4 h-4" />
-                                Change Board
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                )}
 
-                    {showBoardSelector && (
-                      <div className="p-4 bg-card border border-border rounded-lg space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-foreground mb-2">
-                            Select a different board
-                          </label>
-                          <select
-                            value={selectedBoardId}
-                            onChange={(e) => setSelectedBoardId(e.target.value)}
-                            className="select select-bordered w-full"
-                            disabled={isLoadingPinterest}
-                          >
-                            <option value="">Select a board...</option>
-                            {boards.map((board) => (
-                              <option key={board.id} value={board.id}>
-                                {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={handleSetBoard}
-                            disabled={!selectedBoardId || isLoadingPinterest}
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            {isLoadingPinterest ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Updating...
-                              </>
-                            ) : (
-                              <>
-                                <CheckIcon className="w-4 h-4" />
-                                Update Board
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setShowBoardSelector(false);
-                              setSelectedBoardId('');
-                            }}
-                            variant="outline"
-                            size="sm"
-                            disabled={isLoadingPinterest}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
+                {/* Boards List */}
+                {boards.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="grid gap-3">
+                        {boards.map((board) => {
+                          const isSelected = String(pinterestStatus?.board_id) === String(board.id);
+                          return (
+                            <div
+                              key={board.id}
+                              className={`p-4 rounded-lg border-2 transition-all ${
+                                isSelected
+                                  ? 'bg-primary/5 border-primary/30'
+                                  : 'bg-card border-border hover:border-primary/20'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h5 className="font-semibold text-sm truncate">{board.name}</h5>
+                                    {isSelected && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-white">
+                                        Active
+                                      </span>
+                                    )}
+                                    {board.privacy === 'SECRET' ? (
+                                      <LockClosedIcon className="w-4 h-4 text-muted" title="Secret board" />
+                                    ) : (
+                                      <GlobeAltIcon className="w-4 h-4 text-muted" title="Public board" />
+                                    )}
+                                  </div>
+                                  {board.description && (
+                                    <p className="text-xs text-muted mb-2 line-clamp-2">{board.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-4 text-xs text-muted">
+                                    {board.pin_count !== undefined && (
+                                      <span>{board.pin_count} pins</span>
+                                    )}
+                                    <span className="capitalize">{board.privacy?.toLowerCase() || 'public'}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {!isSelected ? (
+                                    <>
+                                      <Button
+                                        onClick={() => handleEditBoard(board)}
+                                        variant="outline"
+                                        size="sm"
+                                        className="p-2"
+                                        title="Edit board"
+                                      >
+                                        <PencilIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        onClick={() => {
+                                          setDeletingBoardId(board.id);
+                                          setShowDeleteConfirm(true);
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="p-2 text-error border-error hover:bg-error/10"
+                                        title="Delete board"
+                                      >
+                                        <TrashIcon className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        onClick={async () => {
+                                          setSelectedBoardId(board.id);
+                                          await handleSetBoard();
+                                        }}
+                                        size="sm"
+                                        disabled={isLoadingPinterest}
+                                        className="flex items-center gap-2"
+                                      >
+                                        {isLoadingPinterest && selectedBoardId === board.id ? (
+                                          <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            Setting...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <CheckIcon className="w-4 h-4" />
+                                            Select
+                                          </>
+                                        )}
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-muted">Currently active</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    {loadingBoards ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-sm text-muted">Loading boards...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted">No boards loaded yet.</p>
+                        <Button
+                          onClick={fetchBoards}
+                          className="flex items-center gap-2 mx-auto"
+                        >
+                          <LinkIcon className="w-4 h-4" />
+                          Load Boards
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -1240,6 +1317,190 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Board Modal */}
+      <Modal
+        isOpen={showCreateBoardModal}
+        onClose={() => {
+          setShowCreateBoardModal(false);
+          setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        }}
+        title="Create New Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Board Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={newBoardData.name}
+              onChange={(e) => setNewBoardData({ ...newBoardData, name: e.target.value })}
+              placeholder="Enter board name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <textarea
+              value={newBoardData.description}
+              onChange={(e) => setNewBoardData({ ...newBoardData, description: e.target.value })}
+              placeholder="Enter board description (optional)"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Privacy</label>
+            <select
+              value={newBoardData.privacy}
+              onChange={(e) => setNewBoardData({ ...newBoardData, privacy: e.target.value as 'PUBLIC' | 'SECRET' })}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="PUBLIC">Public</option>
+              <option value="SECRET">Secret</option>
+            </select>
+            <p className="text-xs text-muted mt-1">
+              Public boards are visible to everyone. Secret boards are only visible to you.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateBoardModal(false);
+                setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateBoard}
+              isLoading={isLoadingPinterest}
+              disabled={!newBoardData.name.trim()}
+              className="flex-1"
+            >
+              Create Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Board Modal */}
+      <Modal
+        isOpen={showEditBoardModal}
+        onClose={() => {
+          setShowEditBoardModal(false);
+          setEditingBoard(null);
+          setEditBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        }}
+        title="Edit Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Board Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={editBoardData.name}
+              onChange={(e) => setEditBoardData({ ...editBoardData, name: e.target.value })}
+              placeholder="Enter board name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <textarea
+              value={editBoardData.description}
+              onChange={(e) => setEditBoardData({ ...editBoardData, description: e.target.value })}
+              placeholder="Enter board description (optional)"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Privacy</label>
+            <select
+              value={editBoardData.privacy}
+              onChange={(e) => setEditBoardData({ ...editBoardData, privacy: e.target.value as 'PUBLIC' | 'SECRET' })}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="PUBLIC">Public</option>
+              <option value="SECRET">Secret</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditBoardModal(false);
+                setEditingBoard(null);
+                setEditBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateBoard}
+              isLoading={isLoadingPinterest}
+              disabled={!editBoardData.name.trim()}
+              className="flex-1"
+            >
+              Update Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingBoardId('');
+        }}
+        title="Delete Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-error mb-1">Warning</p>
+                <p className="text-sm text-muted">
+                  Deleting a board will permanently remove it and all its pins from Pinterest. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeletingBoardId('');
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteBoard}
+              isLoading={isLoadingPinterest}
+              className="flex-1"
+            >
+              Delete Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }

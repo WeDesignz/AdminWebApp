@@ -977,6 +977,54 @@ export const PinterestAPI = {
       board_name: boardName,
     });
   },
+
+  /**
+   * Create a new Pinterest board
+   */
+  async createBoard(data: {
+    name: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return apiClient.post('api/pinterest/create-board/', data);
+  },
+
+  /**
+   * Update a Pinterest board
+   */
+  async updateBoard(boardId: string, data: {
+    name?: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return apiClient.patch('api/pinterest/update-board/', {
+      board_id: boardId,
+      ...data,
+    });
+  },
+
+  /**
+   * Delete a Pinterest board
+   */
+  async deleteBoard(boardId: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`api/pinterest/delete-board/${boardId}/`);
+  },
 };
 
 /**
