@@ -26,6 +26,10 @@ import {
   TrashIcon,
   LockClosedIcon,
   GlobeAltIcon,
+  MagnifyingGlassIcon,
+  Squares2X2Icon,
+  EllipsisVerticalIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -75,6 +79,8 @@ export default function SettingsPage() {
     description: '',
     privacy: 'PUBLIC' as 'PUBLIC' | 'SECRET',
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showBoardActions, setShowBoardActions] = useState<string | null>(null);
 
   const { data: adminData } = useQuery({
     queryKey: ['admin-profile'],
@@ -92,6 +98,24 @@ export default function SettingsPage() {
       setPinterestStatus(pinterestStatusData.data);
     }
   }, [pinterestStatusData]);
+
+  // Auto-load boards when token becomes valid
+  useEffect(() => {
+    if (pinterestStatus?.is_token_valid && boards.length === 0 && !loadingBoards && !showBoardSelector) {
+      fetchBoards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinterestStatus?.is_token_valid]);
+
+  // Filter boards based on search query
+  const filteredBoards = boards.filter((board) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      board.name?.toLowerCase().includes(query) ||
+      board.description?.toLowerCase().includes(query)
+    );
+  });
 
   // Handle tab from URL
   useEffect(() => {
@@ -1094,25 +1118,59 @@ export default function SettingsPage() {
             {/* Enhanced Board Management Section */}
             {pinterestStatus.is_token_valid && (
               <div className="p-5 rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
                     <h4 className="font-semibold text-lg flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5" />
+                      <Squares2X2Icon className="w-5 h-5 text-primary" />
                       Pinterest Boards
                     </h4>
                     <p className="text-sm text-muted mt-1">
                       Manage your Pinterest boards and select where designs will be posted
                     </p>
                   </div>
-                  <Button
-                    onClick={() => setShowCreateBoardModal(true)}
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                    Create Board
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={fetchBoards}
+                      disabled={loadingBoards}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      title="Refresh boards"
+                    >
+                      <ArrowPathIcon className={`w-4 h-4 ${loadingBoards ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button
+                      onClick={() => setShowCreateBoardModal(true)}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      Create Board
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Search Bar */}
+                {boards.length > 0 && (
+                  <div className="mb-4">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted" />
+                      <Input
+                        type="text"
+                        placeholder="Search boards by name or description..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {searchQuery && (
+                      <p className="text-xs text-muted mt-2">
+                        {filteredBoards.length} board{filteredBoards.length !== 1 ? 's' : ''} found
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Current Board Display */}
                 {pinterestStatus.has_board && (
@@ -1140,69 +1198,82 @@ export default function SettingsPage() {
                 )}
 
                 {/* Boards List */}
-                {boards.length > 0 ? (
+                {loadingBoards ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 rounded-lg border border-border bg-card animate-pulse">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="h-4 bg-muted/20 rounded w-1/3 mb-2"></div>
+                            <div className="h-3 bg-muted/20 rounded w-2/3 mb-2"></div>
+                            <div className="h-3 bg-muted/20 rounded w-1/4"></div>
+                          </div>
+                          <div className="h-8 w-24 bg-muted/20 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredBoards.length > 0 ? (
                   <div className="space-y-3">
                     <div className="grid gap-3">
-                      {boards.map((board) => {
+                      {filteredBoards.map((board) => {
                         const isSelected = String(pinterestStatus?.board_id) === String(board.id);
                         return (
                           <div
                             key={board.id}
-                            className={`p-4 rounded-lg border-2 transition-all ${
+                            className={`group p-4 rounded-xl border-2 transition-all duration-200 ${
                               isSelected
-                                ? 'bg-primary/5 border-primary/30'
-                                : 'bg-card border-border hover:border-primary/20'
+                                ? 'bg-primary/10 border-primary/40 shadow-lg shadow-primary/10'
+                                : 'bg-card border-border hover:border-primary/30 hover:shadow-md'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h5 className="font-semibold text-sm truncate">{board.name}</h5>
-                                  {isSelected && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-white">
-                                      Active
-                                    </span>
-                                  )}
-                                  {board.privacy === 'SECRET' ? (
-                                    <LockClosedIcon className="w-4 h-4 text-muted" title="Secret board" />
-                                  ) : (
-                                    <GlobeAltIcon className="w-4 h-4 text-muted" title="Public board" />
-                                  )}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className={`p-2 rounded-lg ${
+                                    isSelected ? 'bg-primary/20' : 'bg-muted/10'
+                                  }`}>
+                                    <Squares2X2Icon className={`w-4 h-4 ${
+                                      isSelected ? 'text-primary' : 'text-muted'
+                                    }`} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h5 className="font-semibold text-base truncate">{board.name}</h5>
+                                      {isSelected && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary text-white shadow-sm">
+                                          <SparklesIcon className="w-3 h-3 mr-1" />
+                                          Active
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      {board.privacy === 'SECRET' ? (
+                                        <span className="inline-flex items-center gap-1 text-xs text-muted">
+                                          <LockClosedIcon className="w-3.5 h-3.5" />
+                                          Secret
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-xs text-muted">
+                                          <GlobeAltIcon className="w-3.5 h-3.5" />
+                                          Public
+                                        </span>
+                                      )}
+                                      {board.pin_count !== undefined && (
+                                        <span className="text-xs text-muted">
+                                          {board.pin_count.toLocaleString()} pin{board.pin_count !== 1 ? 's' : ''}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                                 {board.description && (
-                                  <p className="text-xs text-muted mb-2 line-clamp-2">{board.description}</p>
+                                  <p className="text-sm text-muted mb-3 line-clamp-2 pl-12">{board.description}</p>
                                 )}
-                                <div className="flex items-center gap-4 text-xs text-muted">
-                                  {board.pin_count !== undefined && (
-                                    <span>{board.pin_count} pins</span>
-                                  )}
-                                  <span className="capitalize">{board.privacy?.toLowerCase() || 'public'}</span>
-                                </div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {!isSelected ? (
-                                  <>
-                                    <Button
-                                      onClick={() => handleEditBoard(board)}
-                                      variant="outline"
-                                      size="sm"
-                                      className="p-2"
-                                      title="Edit board"
-                                    >
-                                      <PencilIcon className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      onClick={() => {
-                                        setDeletingBoardId(board.id);
-                                        setShowDeleteConfirm(true);
-                                      }}
-                                      variant="outline"
-                                      size="sm"
-                                      className="p-2 text-error border-error hover:bg-error/10"
-                                      title="Delete board"
-                                    >
-                                      <TrashIcon className="w-4 h-4" />
-                                    </Button>
+                                  <div className="flex items-center gap-1">
                                     <Button
                                       onClick={async () => {
                                         setSelectedBoardId(board.id);
@@ -1224,9 +1295,54 @@ export default function SettingsPage() {
                                         </>
                                       )}
                                     </Button>
-                                  </>
+                                    <div className="relative">
+                                      <Button
+                                        onClick={() => setShowBoardActions(showBoardActions === board.id ? null : board.id)}
+                                        variant="outline"
+                                        size="sm"
+                                        className="p-2"
+                                        title="More options"
+                                      >
+                                        <EllipsisVerticalIcon className="w-4 h-4" />
+                                      </Button>
+                                      {showBoardActions === board.id && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setShowBoardActions(null)}
+                                          />
+                                          <div className="absolute right-0 top-full mt-1 z-20 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
+                                            <button
+                                              onClick={() => {
+                                                handleEditBoard(board);
+                                                setShowBoardActions(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm hover:bg-muted/10 flex items-center gap-2"
+                                            >
+                                              <PencilIcon className="w-4 h-4" />
+                                              Edit
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setDeletingBoardId(board.id);
+                                                setShowDeleteConfirm(true);
+                                                setShowBoardActions(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-error hover:bg-error/10 flex items-center gap-2"
+                                            >
+                                              <TrashIcon className="w-4 h-4" />
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <span className="text-xs text-muted">Currently active</span>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                                    <CheckCircleIcon className="w-4 h-4 text-primary" />
+                                    <span className="text-xs font-medium text-primary">Active</span>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1235,25 +1351,59 @@ export default function SettingsPage() {
                       })}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    {loadingBoards ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <p className="text-sm text-muted">Loading boards...</p>
+                ) : searchQuery ? (
+                  <div className="text-center py-12">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 rounded-full bg-muted/10">
+                        <MagnifyingGlassIcon className="w-12 h-12 text-muted" />
                       </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-sm text-muted">No boards loaded yet.</p>
+                      <div>
+                        <p className="text-base font-medium mb-1">No boards found</p>
+                        <p className="text-sm text-muted mb-4">
+                          Try adjusting your search terms
+                        </p>
                         <Button
-                          onClick={fetchBoards}
+                          onClick={() => setSearchQuery('')}
+                          variant="outline"
+                          size="sm"
                           className="flex items-center gap-2 mx-auto"
                         >
-                          <LinkIcon className="w-4 h-4" />
-                          Load Boards
+                          <XMarkIcon className="w-4 h-4" />
+                          Clear Search
                         </Button>
                       </div>
-                    )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-4 rounded-full bg-muted/10">
+                        <Squares2X2Icon className="w-12 h-12 text-muted" />
+                      </div>
+                      <div>
+                        <p className="text-base font-medium mb-1">No boards loaded yet</p>
+                        <p className="text-sm text-muted mb-4">
+                          Create your first board or load existing boards from Pinterest
+                        </p>
+                        <div className="flex items-center gap-2 justify-center">
+                          <Button
+                            onClick={fetchBoards}
+                            className="flex items-center gap-2"
+                          >
+                            <ArrowPathIcon className="w-4 h-4" />
+                            Load Boards
+                          </Button>
+                          <Button
+                            onClick={() => setShowCreateBoardModal(true)}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                            Create Board
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
