@@ -1143,97 +1143,97 @@ export default function SettingsPage() {
                 {boards.length > 0 ? (
                   <div className="space-y-3">
                     <div className="grid gap-3">
-                        {boards.map((board) => {
-                          const isSelected = String(pinterestStatus?.board_id) === String(board.id);
-                          return (
-                            <div
-                              key={board.id}
-                              className={`p-4 rounded-lg border-2 transition-all ${
-                                isSelected
-                                  ? 'bg-primary/5 border-primary/30'
-                                  : 'bg-card border-border hover:border-primary/20'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h5 className="font-semibold text-sm truncate">{board.name}</h5>
-                                    {isSelected && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-white">
-                                        Active
-                                      </span>
-                                    )}
-                                    {board.privacy === 'SECRET' ? (
-                                      <LockClosedIcon className="w-4 h-4 text-muted" title="Secret board" />
-                                    ) : (
-                                      <GlobeAltIcon className="w-4 h-4 text-muted" title="Public board" />
-                                    )}
-                                  </div>
-                                  {board.description && (
-                                    <p className="text-xs text-muted mb-2 line-clamp-2">{board.description}</p>
+                      {boards.map((board) => {
+                        const isSelected = String(pinterestStatus?.board_id) === String(board.id);
+                        return (
+                          <div
+                            key={board.id}
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? 'bg-primary/5 border-primary/30'
+                                : 'bg-card border-border hover:border-primary/20'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h5 className="font-semibold text-sm truncate">{board.name}</h5>
+                                  {isSelected && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-white">
+                                      Active
+                                    </span>
                                   )}
-                                  <div className="flex items-center gap-4 text-xs text-muted">
-                                    {board.pin_count !== undefined && (
-                                      <span>{board.pin_count} pins</span>
-                                    )}
-                                    <span className="capitalize">{board.privacy?.toLowerCase() || 'public'}</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {!isSelected ? (
-                                    <>
-                                      <Button
-                                        onClick={() => handleEditBoard(board)}
-                                        variant="outline"
-                                        size="sm"
-                                        className="p-2"
-                                        title="Edit board"
-                                      >
-                                        <PencilIcon className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        onClick={() => {
-                                          setDeletingBoardId(board.id);
-                                          setShowDeleteConfirm(true);
-                                        }}
-                                        variant="outline"
-                                        size="sm"
-                                        className="p-2 text-error border-error hover:bg-error/10"
-                                        title="Delete board"
-                                      >
-                                        <TrashIcon className="w-4 h-4" />
-                                      </Button>
-                                      <Button
-                                        onClick={async () => {
-                                          setSelectedBoardId(board.id);
-                                          await handleSetBoard();
-                                        }}
-                                        size="sm"
-                                        disabled={isLoadingPinterest}
-                                        className="flex items-center gap-2"
-                                      >
-                                        {isLoadingPinterest && selectedBoardId === board.id ? (
-                                          <>
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                            Setting...
-                                          </>
-                                        ) : (
-                                          <>
-                                            <CheckIcon className="w-4 h-4" />
-                                            Select
-                                          </>
-                                        )}
-                                      </Button>
-                                    </>
+                                  {board.privacy === 'SECRET' ? (
+                                    <LockClosedIcon className="w-4 h-4 text-muted" title="Secret board" />
                                   ) : (
-                                    <span className="text-xs text-muted">Currently active</span>
+                                    <GlobeAltIcon className="w-4 h-4 text-muted" title="Public board" />
                                   )}
+                                </div>
+                                {board.description && (
+                                  <p className="text-xs text-muted mb-2 line-clamp-2">{board.description}</p>
+                                )}
+                                <div className="flex items-center gap-4 text-xs text-muted">
+                                  {board.pin_count !== undefined && (
+                                    <span>{board.pin_count} pins</span>
+                                  )}
+                                  <span className="capitalize">{board.privacy?.toLowerCase() || 'public'}</span>
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {!isSelected ? (
+                                  <>
+                                    <Button
+                                      onClick={() => handleEditBoard(board)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="p-2"
+                                      title="Edit board"
+                                    >
+                                      <PencilIcon className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      onClick={() => {
+                                        setDeletingBoardId(board.id);
+                                        setShowDeleteConfirm(true);
+                                      }}
+                                      variant="outline"
+                                      size="sm"
+                                      className="p-2 text-error border-error hover:bg-error/10"
+                                      title="Delete board"
+                                    >
+                                      <TrashIcon className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      onClick={async () => {
+                                        setSelectedBoardId(board.id);
+                                        await handleSetBoard();
+                                      }}
+                                      size="sm"
+                                      disabled={isLoadingPinterest}
+                                      className="flex items-center gap-2"
+                                    >
+                                      {isLoadingPinterest && selectedBoardId === board.id ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                          Setting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckIcon className="w-4 h-4" />
+                                          Select
+                                        </>
+                                      )}
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-muted">Currently active</span>
+                                )}
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">
