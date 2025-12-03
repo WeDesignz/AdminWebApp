@@ -138,16 +138,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSetBoard = async () => {
-    if (!selectedBoardId) {
+  const handleSetBoard = async (boardId?: string) => {
+    const targetBoardId = boardId || selectedBoardId;
+    
+    if (!targetBoardId) {
       toast.error('Please select a board');
       return;
     }
 
     setIsLoadingPinterest(true);
+    setSelectedBoardId(targetBoardId);
     try {
-      const selectedBoard = boards.find(b => String(b.id) === String(selectedBoardId));
-      const response = await API.setPinterestBoard(selectedBoardId, selectedBoard?.name);
+      const selectedBoard = boards.find(b => String(b.id) === String(targetBoardId));
+      const response = await API.setPinterestBoard(targetBoardId, selectedBoard?.name);
       
       if (response.success) {
         toast.success(`Board "${response.data?.board_name}" set successfully!`);
@@ -1225,10 +1228,7 @@ export default function SettingsPage() {
                                 {!isSelected ? (
                                   <>
                                     <Button
-                                      onClick={async () => {
-                                        setSelectedBoardId(board.id);
-                                        await handleSetBoard();
-                                      }}
+                                      onClick={() => handleSetBoard(board.id)}
                                       size="sm"
                                       disabled={isLoadingPinterest}
                                       className="flex items-center gap-1.5 text-xs"
@@ -1261,13 +1261,13 @@ export default function SettingsPage() {
                                             className="fixed inset-0 z-10"
                                             onClick={() => setShowBoardActions(null)}
                                           />
-                                          <div className="absolute right-0 top-full mt-1 z-20 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
+                                          <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-800 border border-border rounded-lg shadow-xl py-1 min-w-[140px]">
                                             <button
                                               onClick={() => {
                                                 handleEditBoard(board);
                                                 setShowBoardActions(null);
                                               }}
-                                              className="w-full px-4 py-2 text-left text-sm hover:bg-muted/10 flex items-center gap-2"
+                                              className="w-full px-4 py-2 text-left text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
                                             >
                                               <PencilIcon className="w-4 h-4" />
                                               Edit
@@ -1278,7 +1278,7 @@ export default function SettingsPage() {
                                                 setShowDeleteConfirm(true);
                                                 setShowBoardActions(null);
                                               }}
-                                              className="w-full px-4 py-2 text-left text-sm text-error hover:bg-error/10 flex items-center gap-2"
+                                              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
                                             >
                                               <TrashIcon className="w-4 h-4" />
                                               Delete
