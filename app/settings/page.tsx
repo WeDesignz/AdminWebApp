@@ -1234,7 +1234,6 @@ export default function SettingsPage() {
                           );
                         })}
                       </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
