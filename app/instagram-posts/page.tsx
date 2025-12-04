@@ -124,6 +124,7 @@ export default function InstagramPostsPage() {
   const handleClearSelection = () => {
     setSelectedProduct(null);
     setCaption('');
+    setPostType('post'); // Reset to post type
   };
 
   const handleMediaTypeChange = (mediaType: 'mockup' | 'jpg' | 'png') => {
@@ -138,7 +139,8 @@ export default function InstagramPostsPage() {
       return;
     }
 
-    if (!caption.trim()) {
+    // Only require caption for posts, not stories
+    if (postType === 'post' && !caption.trim()) {
       toast.error('Please add a caption for your Instagram post');
       return;
     }
@@ -148,7 +150,7 @@ export default function InstagramPostsPage() {
       const post = {
         productId: selectedProduct.id,
         mediaType: selectedProduct.selectedMediaType,
-        caption: caption.trim(),
+        caption: postType === 'post' ? caption.trim() : '', // Empty caption for stories
         postType,
       };
 
@@ -467,7 +469,10 @@ export default function InstagramPostsPage() {
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={() => setPostType('post')}
+                        onClick={() => {
+                          setPostType('post');
+                          // Don't clear caption when switching to post (user might want to keep it)
+                        }}
                         className={`p-4 rounded-xl border-2 transition-all ${
                           postType === 'post'
                             ? 'border-primary bg-primary/10 shadow-md'
@@ -480,7 +485,11 @@ export default function InstagramPostsPage() {
                         </p>
                       </button>
                       <button
-                        onClick={() => setPostType('story')}
+                        onClick={() => {
+                          setPostType('story');
+                          // Clear caption when switching to story (stories don't support captions)
+                          setCaption('');
+                        }}
                         className={`p-4 rounded-xl border-2 transition-all ${
                           postType === 'story'
                             ? 'border-primary bg-primary/10 shadow-md'
@@ -495,36 +504,48 @@ export default function InstagramPostsPage() {
                     </div>
                   </div>
 
-                  {/* Caption Input */}
-                  <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">
-                      Caption <span className="text-error">*</span>
-                    </label>
-                    <textarea
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
-                      placeholder={`Enter caption for Instagram ${postType}...`}
-                      className="input-field w-full min-h-[120px] text-sm resize-none"
-                      maxLength={2200}
-                    />
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-muted">
-                        {caption.length} / 2200 characters
-                      </p>
-                      {!caption.trim() && (
-                        <p className="text-xs text-error flex items-center gap-1">
-                          <ExclamationTriangleIcon className="w-3 h-3" />
-                          Required
+                  {/* Caption Input - Only show for posts, not stories */}
+                  {postType === 'post' && (
+                    <div>
+                      <label className="text-sm font-semibold text-foreground mb-2 block">
+                        Caption <span className="text-error">*</span>
+                      </label>
+                      <textarea
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        placeholder="Enter caption for Instagram post..."
+                        className="input-field w-full min-h-[120px] text-sm resize-none"
+                        maxLength={2200}
+                      />
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-muted">
+                          {caption.length} / 2200 characters
                         </p>
-                      )}
+                        {!caption.trim() && (
+                          <p className="text-xs text-error flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" />
+                            Required
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Info message for stories */}
+                  {postType === 'story' && (
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-900 dark:text-blue-100">
+                        <SparklesIcon className="w-4 h-4 inline mr-2" />
+                        Stories don't support captions. Your image will be posted as a story.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Post Button */}
                   <Button
                     onClick={handlePost}
                     variant="primary"
-                    disabled={isPosting || !isInstagramReady || !caption.trim()}
+                    disabled={isPosting || !isInstagramReady || (postType === 'post' && !caption.trim())}
                     isLoading={isPosting}
                     size="lg"
                     className="w-full shadow-lg"
