@@ -536,7 +536,7 @@ export default function InstagramPostsPage() {
                     <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                       <p className="text-sm text-blue-900 dark:text-blue-100">
                         <SparklesIcon className="w-4 h-4 inline mr-2" />
-                        Stories don't support captions. Your image will be posted as a story.
+                        Stories don&apos;t support captions. Your image will be posted as a story.
                       </p>
                     </div>
                   )}
