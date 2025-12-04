@@ -305,17 +305,19 @@ class RealAPI {
     return API.instagram.authorize();
   }
 
-  static async postToInstagram(posts: Array<{
+  static async postToInstagram(post: {
     productId: string;
     mediaType: 'mockup' | 'jpg' | 'png';
     caption: string;
     postType: 'post' | 'story';
-  }>): Promise<ApiResponse<{
+  }): Promise<ApiResponse<{
     message: string;
-    posts_queued: number;
-    post_ids: number[];
+    post_id: number;
+    product_id: string;
+    task_id: string;
+    status: string;
   }>> {
-    return API.instagram.postToInstagram(posts);
+    return API.instagram.postToInstagram(post);
   }
 
   // Pinterest methods

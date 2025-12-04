@@ -163,22 +163,66 @@ export default function InstagramPostsPage() {
     }
 
     setIsPosting(true);
-    try {
-      const posts = selectedProducts.map(p => ({
-        productId: p.id,
-        mediaType: p.selectedMediaType,
-        caption: p.caption,
-        postType, // 'post' or 'story'
-      }));
+    let successCount = 0;
+    let errorCount = 0;
 
-      const response = await API.postToInstagram(posts);
+    try {
+      // Post each product one at a time
+      for (let i = 0; i < selectedProducts.length; i++) {
+        const product = selectedProducts[i];
+        
+        try {
+          const post = {
+            productId: product.id,
+            mediaType: product.selectedMediaType,
+            caption: product.caption,
+            postType, // 'post' or 'story'
+          };
+
+          const response = await API.postToInstagram(post);
+          
+          if (response.success) {
+            successCount++;
+            toast.success(`Queued ${product.title} for Instagram posting (${i + 1}/${selectedProducts.length})`, {
+              duration: 2000,
+            });
+          } else {
+            errorCount++;
+            toast.error(`Failed to queue ${product.title}: ${response.error || 'Unknown error'}`, {
+              duration: 3000,
+            });
+          }
+        } catch (error: any) {
+          errorCount++;
+          toast.error(`Error posting ${product.title}: ${error.message || 'Unknown error'}`, {
+            duration: 3000,
+          });
+          console.error(`Error posting product ${product.id}:`, error);
+        }
+
+        // Small delay between posts to avoid overwhelming the server
+        if (i < selectedProducts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      // Final summary
+      if (successCount > 0) {
+        toast.success(`Successfully queued ${successCount} ${postType}(s) for Instagram posting`, {
+          duration: 4000,
+        });
+      }
       
-      if (response.success) {
-        toast.success(`Successfully queued ${selectedProducts.length} ${postType}(s) for Instagram posting`);
+      if (errorCount > 0) {
+        toast.error(`${errorCount} ${postType}(s) failed to queue`, {
+          duration: 4000,
+        });
+      }
+
+      // Clear selection and refresh
+      if (successCount > 0) {
         setSelectedProducts([]);
         queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
-      } else {
-        toast.error(response.error || 'Failed to post to Instagram');
       }
     } catch (error) {
       toast.error('An error occurred while posting to Instagram');

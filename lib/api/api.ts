@@ -950,19 +950,21 @@ export const InstagramAPI = {
   },
 
   /**
-   * Post to Instagram (supports bulk posting)
+   * Post to Instagram (single post)
    */
-  async postToInstagram(posts: Array<{
+  async postToInstagram(post: {
     productId: string;
     mediaType: 'mockup' | 'jpg' | 'png';
     caption: string;
     postType: 'post' | 'story';
-  }>): Promise<ApiResponse<{
+  }): Promise<ApiResponse<{
     message: string;
-    posts_queued: number;
-    post_ids: number[];
+    post_id: number;
+    product_id: string;
+    task_id: string;
+    status: string;
   }>> {
-    return apiClient.post('api/common/instagram/post/', { posts });
+    return apiClient.post('api/common/instagram/post/', { post });
   },
 
   /**
