@@ -4,7 +4,6 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RealAPI as API } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { formatDate } from '@/lib/utils/cn';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -12,20 +11,15 @@ import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { 
   CameraIcon,
-  Squares2X2Icon,
   CheckCircleIcon,
-  XMarkIcon,
+  CheckIcon,
   PlusIcon,
   TrashIcon,
   PaperAirplaneIcon,
   MagnifyingGlassIcon,
   PhotoIcon,
   SparklesIcon,
-  ArrowPathIcon,
   ExclamationTriangleIcon,
-  CheckIcon,
-  XCircleIcon,
-  ClockIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -360,7 +354,7 @@ export default function InstagramPostsPage() {
                     Selected Products ({selectedProducts.length})
                   </h2>
                   <p className="text-sm text-muted mt-1">
-                    Configure each product's image type and caption before posting
+                    Configure each product&apos;s image type and caption before posting
                   </p>
                 </div>
                 <Button
