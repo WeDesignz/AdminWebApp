@@ -7,19 +7,15 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { Modal } from '@/components/common/Modal';
-import { Dropdown } from '@/components/common/Dropdown';
 import { 
   CameraIcon,
   CheckCircleIcon,
-  CheckIcon,
-  PlusIcon,
-  TrashIcon,
   PaperAirplaneIcon,
   MagnifyingGlassIcon,
   PhotoIcon,
   SparklesIcon,
   ExclamationTriangleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,17 +32,16 @@ interface SelectedProduct {
     fileName: string;
   }[];
   selectedMediaType: 'mockup' | 'jpg' | 'png';
-  caption: string;
 }
 
 export default function InstagramPostsPage() {
-  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
-  const [showProductSelector, setShowProductSelector] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
   const [postType, setPostType] = useState<'post' | 'story'>('post');
+  const [caption, setCaption] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('approved');
   const queryClient = useQueryClient();
 
   // Wait for auth store to hydrate
@@ -68,7 +63,7 @@ export default function InstagramPostsPage() {
       page,
       limit: 20
     }),
-    enabled: isReady && showProductSelector,
+    enabled: isReady,
   });
 
   // Fetch Instagram status
@@ -104,12 +99,6 @@ export default function InstagramPostsPage() {
       return;
     }
 
-    // Check if product is already selected
-    if (selectedProducts.find(p => p.id === product.id)) {
-      toast.error('Product already selected');
-      return;
-    }
-
     // Determine default media type (prefer mockup, then png, then jpg)
     let defaultMediaType: 'mockup' | 'jpg' | 'png' = 'jpg';
     if (mediaFiles.find((f: any) => f.type === 'mockup')) {
@@ -125,133 +114,77 @@ export default function InstagramPostsPage() {
       category: product.category,
       mediaFiles,
       selectedMediaType: defaultMediaType,
-      caption: '',
     };
 
-    setSelectedProducts([...selectedProducts, newProduct]);
-    toast.success('Product added to selection');
+    setSelectedProduct(newProduct);
+    setCaption(''); // Reset caption when selecting new product
+    toast.success('Product selected');
   };
 
-  const handleRemoveProduct = (productId: string) => {
-    setSelectedProducts(selectedProducts.filter(p => p.id !== productId));
-    toast.success('Product removed from selection');
+  const handleClearSelection = () => {
+    setSelectedProduct(null);
+    setCaption('');
   };
 
-  const handleMediaTypeChange = (productId: string, mediaType: 'mockup' | 'jpg' | 'png') => {
-    setSelectedProducts(selectedProducts.map(p => 
-      p.id === productId ? { ...p, selectedMediaType: mediaType } : p
-    ));
+  const handleMediaTypeChange = (mediaType: 'mockup' | 'jpg' | 'png') => {
+    if (selectedProduct) {
+      setSelectedProduct({ ...selectedProduct, selectedMediaType: mediaType });
+    }
   };
 
-  const handleCaptionChange = (productId: string, caption: string) => {
-    setSelectedProducts(selectedProducts.map(p => 
-      p.id === productId ? { ...p, caption } : p
-    ));
-  };
-
-  const handleBulkPost = async () => {
-    if (selectedProducts.length === 0) {
-      toast.error('Please select at least one product');
+  const handlePost = async () => {
+    if (!selectedProduct) {
+      toast.error('Please select a product first');
       return;
     }
 
-    // Validate all have captions
-    const missingCaptions = selectedProducts.filter(p => !p.caption.trim());
-    if (missingCaptions.length > 0) {
-      toast.error(`Please add captions for all products (${missingCaptions.length} missing)`);
+    if (!caption.trim()) {
+      toast.error('Please add a caption for your Instagram post');
       return;
     }
 
     setIsPosting(true);
-    let successCount = 0;
-    let errorCount = 0;
-
     try {
-      // Post each product one at a time
-      for (let i = 0; i < selectedProducts.length; i++) {
-        const product = selectedProducts[i];
-        
-        try {
-          const post = {
-            productId: product.id,
-            mediaType: product.selectedMediaType,
-            caption: product.caption,
-            postType, // 'post' or 'story'
-          };
+      const post = {
+        productId: selectedProduct.id,
+        mediaType: selectedProduct.selectedMediaType,
+        caption: caption.trim(),
+        postType,
+      };
 
-          const response = await API.postToInstagram(post);
-          
-          if (response.success) {
-            successCount++;
-            toast.success(`Queued ${product.title} for Instagram posting (${i + 1}/${selectedProducts.length})`, {
-              duration: 2000,
-            });
-          } else {
-            errorCount++;
-            toast.error(`Failed to queue ${product.title}: ${response.error || 'Unknown error'}`, {
-              duration: 3000,
-            });
-          }
-        } catch (error: any) {
-          errorCount++;
-          toast.error(`Error posting ${product.title}: ${error.message || 'Unknown error'}`, {
-            duration: 3000,
-          });
-          console.error(`Error posting product ${product.id}:`, error);
-        }
-
-        // Small delay between posts to avoid overwhelming the server
-        if (i < selectedProducts.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-
-      // Final summary
-      if (successCount > 0) {
-        toast.success(`Successfully queued ${successCount} ${postType}(s) for Instagram posting`, {
-          duration: 4000,
-        });
-      }
+      const response = await API.postToInstagram(post);
       
-      if (errorCount > 0) {
-        toast.error(`${errorCount} ${postType}(s) failed to queue`, {
+      if (response.success) {
+        toast.success(`Successfully queued ${postType} for Instagram!`, {
+          icon: '✅',
           duration: 4000,
         });
-      }
-
-      // Clear selection and refresh
-      if (successCount > 0) {
-        setSelectedProducts([]);
+        handleClearSelection();
         queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
+      } else {
+        toast.error(response.error || 'Failed to post to Instagram');
       }
-    } catch (error) {
-      toast.error('An error occurred while posting to Instagram');
+    } catch (error: any) {
+      toast.error(error.message || 'An error occurred while posting to Instagram');
       console.error(error);
     } finally {
       setIsPosting(false);
     }
   };
 
-  const handleClearAll = () => {
-    if (selectedProducts.length === 0) return;
-    if (confirm(`Clear all ${selectedProducts.length} selected products?`)) {
-      setSelectedProducts([]);
-      toast.success('Selection cleared');
-    }
+  const getSelectedImageUrl = () => {
+    if (!selectedProduct) return '';
+    const mediaFile = selectedProduct.mediaFiles.find(f => f.type === selectedProduct.selectedMediaType);
+    return mediaFile?.url || selectedProduct.thumbnailUrl;
   };
 
-  const getSelectedImageUrl = (product: SelectedProduct) => {
-    const mediaFile = product.mediaFiles.find(f => f.type === product.selectedMediaType);
-    return mediaFile?.url || product.thumbnailUrl;
-  };
-
-  const getAvailableMediaTypes = (product: SelectedProduct) => {
-    const types = new Set(product.mediaFiles.map(f => f.type));
+  const getAvailableMediaTypes = () => {
+    if (!selectedProduct) return [];
+    const types = new Set(selectedProduct.mediaFiles.map(f => f.type));
     return Array.from(types) as ('mockup' | 'jpg' | 'png')[];
   };
 
   const statusFilterOptions = [
-    { value: '', label: 'All Status' },
     { value: 'approved', label: 'Approved' },
     { value: 'pending', label: 'Pending' },
   ];
@@ -266,35 +199,18 @@ export default function InstagramPostsPage() {
     );
   }
 
+  const isInstagramReady = instagramStatus?.data?.is_configured && instagramStatus?.data?.is_token_valid;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
               Instagram Posts
             </h1>
-            <p className="text-muted mt-1">Create and manage Instagram posts and stories from your designs</p>
-          </div>
-          <div className="flex gap-3">
-            {selectedProducts.length > 0 && (
-              <Button
-                onClick={handleClearAll}
-                variant="outline"
-                size="sm"
-              >
-                <TrashIcon className="w-4 h-4 mr-2" />
-                Clear All
-              </Button>
-            )}
-            <Button
-              onClick={() => setShowProductSelector(true)}
-              variant="primary"
-            >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Select Products
-            </Button>
+            <p className="text-muted mt-1">Create and share your designs on Instagram</p>
           </div>
         </div>
 
@@ -304,20 +220,20 @@ export default function InstagramPostsPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`p-4 rounded-xl border ${
-              instagramStatus.data.is_configured && instagramStatus.data.is_token_valid
+              isInstagramReady
                 ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800'
                 : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800'
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {instagramStatus.data.is_configured && instagramStatus.data.is_token_valid ? (
+                {isInstagramReady ? (
                   <>
                     <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
                     <div>
                       <p className="font-semibold text-green-900 dark:text-green-100">Instagram Connected</p>
                       <p className="text-sm text-green-700 dark:text-green-300 opacity-80">
-                        Ready to post! Your posts will be published to Instagram.
+                        Ready to post! Your content will be published to Instagram.
                       </p>
                     </div>
                   </>
@@ -335,7 +251,7 @@ export default function InstagramPostsPage() {
                   </>
                 )}
               </div>
-              {(!instagramStatus.data.is_configured || !instagramStatus.data.is_token_valid) && (
+              {!isInstagramReady && (
                 <Button
                   onClick={() => window.location.href = '/settings?tab=instagram'}
                   size="sm"
@@ -348,317 +264,298 @@ export default function InstagramPostsPage() {
           </motion.div>
         )}
 
-        {/* Post Type Selector */}
-        <div className="card p-5 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                <CameraIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Post Type</label>
-                <p className="text-xs text-muted">Choose between regular posts or stories</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={postType === 'post' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setPostType('post')}
-                className="min-w-[100px]"
-              >
-                <PhotoIcon className="w-4 h-4 mr-2" />
-                Post
-              </Button>
-              <Button
-                variant={postType === 'story' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setPostType('story')}
-                className="min-w-[100px]"
-              >
-                <SparklesIcon className="w-4 h-4 mr-2" />
-                Story
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Selected Products */}
-        <AnimatePresence>
-          {selectedProducts.length > 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">
-                    Selected Products ({selectedProducts.length})
-                  </h2>
-                  <p className="text-sm text-muted mt-1">
-                    Configure each product&apos;s image type and caption before posting
-                  </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column: Product Search & Selection */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Search Bar */}
+            <div className="card p-4">
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                  <Input
+                    placeholder="Search products by title or designer..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-10"
+                  />
                 </div>
-                <Button
-                  onClick={handleBulkPost}
-                  variant="primary"
-                  disabled={isPosting}
-                  isLoading={isPosting}
-                  size="lg"
-                  className="shadow-lg"
-                >
-                  <PaperAirplaneIcon className="w-5 h-5 mr-2" />
-                  Post {postType === 'post' ? 'Posts' : 'Stories'} to Instagram
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {selectedProducts.map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="card p-4 space-y-3 hover:shadow-lg transition-shadow duration-200 border-2 border-transparent hover:border-primary/20"
+                <div className="w-40">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="input-field w-full"
                   >
-                    {/* Image Preview */}
-                    <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 group">
-                      <img
-                        src={getSelectedImageUrl(product)}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="absolute bottom-2 left-2 right-2">
-                          <p className="text-white text-xs font-medium truncate">{product.title}</p>
-                          <p className="text-white/80 text-xs truncate">{product.category}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveProduct(product.id)}
-                        className="absolute top-2 right-2 p-2 bg-error/90 text-white rounded-full hover:bg-error shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove product"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded-lg shadow-lg">
-                        {product.selectedMediaType.toUpperCase()}
-                      </div>
-                    </div>
-
-                    {/* Product Info */}
-                    <div>
-                      <h3 className="font-semibold text-sm truncate mb-1">{product.title}</h3>
-                      <p className="text-xs text-muted mb-3">{product.category}</p>
-                      
-                      {/* Media Type Selector */}
-                      <div className="mb-3">
-                        <label className="text-xs font-medium text-muted mb-2 block">Image Type:</label>
-                        <div className="flex gap-2 flex-wrap">
-                          {getAvailableMediaTypes(product).map((type) => (
-                            <button
-                              key={type}
-                              onClick={() => handleMediaTypeChange(product.id, type)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                product.selectedMediaType === type
-                                  ? 'bg-primary text-white shadow-md'
-                                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                              }`}
-                            >
-                              {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Caption Input */}
-                      <div>
-                        <label className="text-xs font-medium text-muted mb-2 block">
-                          Caption {postType === 'story' ? '(Story)' : '(Post)'}:
-                          {!product.caption.trim() && (
-                            <span className="text-error ml-1">*</span>
-                          )}
-                        </label>
-                        <textarea
-                          value={product.caption}
-                          onChange={(e) => handleCaptionChange(product.id, e.target.value)}
-                          placeholder={`Enter caption for Instagram ${postType}...`}
-                          className="input-field w-full min-h-[100px] text-sm resize-none"
-                          maxLength={postType === 'story' ? 2200 : 2200}
-                        />
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-muted">
-                            {product.caption.length} / 2200 characters
-                          </p>
-                          {!product.caption.trim() && (
-                            <p className="text-xs text-error flex items-center gap-1">
-                              <ExclamationTriangleIcon className="w-3 h-3" />
-                              Required
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="card p-12 text-center"
-            >
-              <div className="max-w-md mx-auto">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-                  <CameraIcon className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+                    {statusFilterOptions.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">No Products Selected</h3>
-                <p className="text-muted mb-6">
-                  Select products from your catalog to create Instagram posts or stories. 
-                  Choose the image type (mockup, JPG, or PNG) and add captions for each.
-                </p>
-                <Button onClick={() => setShowProductSelector(true)} variant="primary" size="lg">
-                  <PlusIcon className="w-5 h-5 mr-2" />
-                  Select Products
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Product Selector Modal */}
-        <Modal
-          isOpen={showProductSelector}
-          onClose={() => {
-            setShowProductSelector(false);
-            setSearchQuery('');
-            setPage(1);
-          }}
-          title="Select Products for Instagram"
-          size="xl"
-        >
-          <div className="space-y-4">
-            {/* Search and Filter */}
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
-                <Input
-                  placeholder="Search products by title or designer..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-10"
-                />
-              </div>
-              <div className="w-48">
-                <Dropdown
-                  options={statusFilterOptions}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  placeholder="Filter by status"
-                />
               </div>
             </div>
 
             {/* Products Grid */}
-            {isLoadingProducts ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto"></div>
-                <p className="text-muted mt-4">Loading products...</p>
-              </div>
-            ) : !productsData?.data || productsData.data.length === 0 ? (
-              <div className="text-center py-12">
-                <PhotoIcon className="w-16 h-16 mx-auto text-muted mb-4 opacity-50" />
-                <p className="text-muted">No products found</p>
-                {searchQuery && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setPage(1);
-                    }}
-                    className="mt-4"
-                  >
-                    Clear Search
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
-                  {productsData.data.map((product: any) => {
-                    const isSelected = selectedProducts.some(p => p.id === product.id);
-                    return (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`card-hover cursor-pointer relative overflow-hidden rounded-xl ${
-                          isSelected ? 'ring-2 ring-primary ring-offset-2' : ''
-                        }`}
-                        onClick={() => !isSelected && handleSelectProduct(product)}
-                      >
-                        <div className="aspect-square rounded-t-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                          <img
-                            src={product.thumbnailUrl}
-                            alt={product.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="p-3">
-                          <p className="text-sm font-medium truncate">{product.title}</p>
-                          <p className="text-xs text-muted truncate">{product.category}</p>
-                        </div>
-                        {isSelected && (
-                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                            <div className="bg-primary text-white rounded-full p-2">
-                              <CheckIcon className="w-6 h-6" />
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
+            <div className="card p-4">
+              {isLoadingProducts ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-muted mt-4">Loading products...</p>
                 </div>
+              ) : !productsData?.data || productsData.data.length === 0 ? (
+                <div className="text-center py-12">
+                  <PhotoIcon className="w-16 h-16 mx-auto text-muted mb-4 opacity-50" />
+                  <p className="text-muted">No products found</p>
+                  {searchQuery && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setPage(1);
+                      }}
+                      className="mt-4"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
+                    {productsData.data.map((product: any) => {
+                      const isSelected = selectedProduct?.id === product.id;
+                      return (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`card-hover cursor-pointer relative overflow-hidden rounded-xl transition-all ${
+                            isSelected 
+                              ? 'ring-2 ring-primary ring-offset-2 shadow-lg' 
+                              : 'hover:shadow-md'
+                          }`}
+                          onClick={() => handleSelectProduct(product)}
+                        >
+                          <div className="aspect-square rounded-t-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            <img
+                              src={product.thumbnailUrl}
+                              alt={product.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm font-medium truncate">{product.title}</p>
+                            <p className="text-xs text-muted truncate">{product.category}</p>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-sm">
+                              <div className="bg-primary text-white rounded-full p-2 shadow-lg">
+                                <CheckCircleIcon className="w-6 h-6" />
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
 
-                {/* Pagination */}
-                {productsData?.pagination && productsData.pagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <p className="text-sm text-muted">
-                      Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, productsData.pagination.total)} of {productsData.pagination.total}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={page >= productsData.pagination.totalPages}
-                      >
-                        Next
-                      </Button>
+                  {/* Pagination */}
+                  {productsData?.pagination && productsData.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+                      <p className="text-sm text-muted">
+                        Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, productsData.pagination.total)} of {productsData.pagination.total}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => p + 1)}
+                          disabled={page >= productsData.pagination.totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Post Configuration */}
+          <div className="space-y-4">
+            <AnimatePresence mode="wait">
+              {selectedProduct ? (
+                <motion.div
+                  key="selected"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="card p-6 space-y-6"
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold">Post Configuration</h2>
+                    <button
+                      onClick={handleClearSelection}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors"
+                      title="Clear selection"
+                    >
+                      <XMarkIcon className="w-5 h-5 text-muted" />
+                    </button>
+                  </div>
+
+                  {/* Product Preview */}
+                  <div className="space-y-3">
+                    <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 group">
+                      <img
+                        src={getSelectedImageUrl()}
+                        alt={selectedProduct.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded-lg shadow-lg">
+                        {selectedProduct.selectedMediaType.toUpperCase()}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">{selectedProduct.title}</h3>
+                      <p className="text-xs text-muted">{selectedProduct.category}</p>
                     </div>
                   </div>
-                )}
-              </>
-            )}
+
+                  {/* Media Type Selector */}
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Image Type
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {getAvailableMediaTypes().map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => handleMediaTypeChange(type)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedProduct.selectedMediaType === type
+                              ? 'bg-primary text-white shadow-md scale-105'
+                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Post Type Selector */}
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Post Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setPostType('post')}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          postType === 'post'
+                            ? 'border-primary bg-primary/10 shadow-md'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <PhotoIcon className={`w-6 h-6 mx-auto mb-2 ${postType === 'post' ? 'text-primary' : 'text-muted'}`} />
+                        <p className={`text-sm font-medium ${postType === 'post' ? 'text-primary' : 'text-muted'}`}>
+                          Post
+                        </p>
+                      </button>
+                      <button
+                        onClick={() => setPostType('story')}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          postType === 'story'
+                            ? 'border-primary bg-primary/10 shadow-md'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <SparklesIcon className={`w-6 h-6 mx-auto mb-2 ${postType === 'story' ? 'text-primary' : 'text-muted'}`} />
+                        <p className={`text-sm font-medium ${postType === 'story' ? 'text-primary' : 'text-muted'}`}>
+                          Story
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Caption Input */}
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Caption <span className="text-error">*</span>
+                    </label>
+                    <textarea
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value)}
+                      placeholder={`Enter caption for Instagram ${postType}...`}
+                      className="input-field w-full min-h-[120px] text-sm resize-none"
+                      maxLength={2200}
+                    />
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs text-muted">
+                        {caption.length} / 2200 characters
+                      </p>
+                      {!caption.trim() && (
+                        <p className="text-xs text-error flex items-center gap-1">
+                          <ExclamationTriangleIcon className="w-3 h-3" />
+                          Required
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Post Button */}
+                  <Button
+                    onClick={handlePost}
+                    variant="primary"
+                    disabled={isPosting || !isInstagramReady || !caption.trim()}
+                    isLoading={isPosting}
+                    size="lg"
+                    className="w-full shadow-lg"
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5 mr-2" />
+                    {isPosting ? 'Posting...' : `Post ${postType === 'post' ? 'Post' : 'Story'} to Instagram`}
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="card p-12 text-center"
+                >
+                  <div className="max-w-sm mx-auto">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
+                      <CameraIcon className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">No Product Selected</h3>
+                    <p className="text-muted mb-6">
+                      Search and select a product from the left to create an Instagram post or story.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </Modal>
+        </div>
       </div>
     </DashboardLayout>
   );
 }
-
