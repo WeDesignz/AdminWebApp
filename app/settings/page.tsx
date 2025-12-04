@@ -1601,8 +1601,8 @@ export default function SettingsPage() {
               Delete Board
             </Button>
           </div>
-          </div>
-        </Modal>
+        </div>
+      </Modal>
 
       {/* Instagram Integration */}
       <div id="instagram-section" className="card mt-6">
@@ -1783,6 +1783,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-      </DashboardLayout>
-    );
-  }
+    </DashboardLayout>
+  );
+}
