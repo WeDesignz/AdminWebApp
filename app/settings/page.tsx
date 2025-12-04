@@ -79,6 +79,10 @@ export default function SettingsPage() {
   });
   const [showBoardActions, setShowBoardActions] = useState<string | null>(null);
 
+  // Instagram state
+  const [instagramStatus, setInstagramStatus] = useState<any>(null);
+  const [isLoadingInstagram, setIsLoadingInstagram] = useState(false);
+
   const { data: adminData } = useQuery({
     queryKey: ['admin-profile'],
     queryFn: () => API.getAdminProfile(),
@@ -90,11 +94,23 @@ export default function SettingsPage() {
     enabled: true,
   });
 
+  const { data: instagramStatusData, refetch: refetchInstagram } = useQuery({
+    queryKey: ['instagram-status'],
+    queryFn: () => API.getInstagramStatus(),
+    enabled: true,
+  });
+
   useEffect(() => {
     if (pinterestStatusData?.data) {
       setPinterestStatus(pinterestStatusData.data);
     }
   }, [pinterestStatusData]);
+
+  useEffect(() => {
+    if (instagramStatusData?.data) {
+      setInstagramStatus(instagramStatusData.data);
+    }
+  }, [instagramStatusData]);
 
   // Auto-load boards when token becomes valid
   useEffect(() => {
@@ -113,6 +129,15 @@ export default function SettingsPage() {
       // Scroll to Pinterest section after a brief delay
       setTimeout(() => {
         const element = document.getElementById('pinterest-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else if (tab === 'instagram') {
+      setActiveTab('instagram');
+      // Scroll to Instagram section after a brief delay
+      setTimeout(() => {
+        const element = document.getElementById('instagram-section');
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -1576,8 +1601,188 @@ export default function SettingsPage() {
               Delete Board
             </Button>
           </div>
+          </div>
+        </Modal>
+
+      {/* Instagram Integration */}
+      <div id="instagram-section" className="card mt-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold">Instagram Integration</h3>
+            <p className="text-sm text-muted mt-1">
+              Post designs to Instagram automatically
+            </p>
+          </div>
         </div>
-      </Modal>
-    </DashboardLayout>
-  );
-}
+        
+        {instagramStatus ? (
+          <div className="space-y-6">
+            {/* Connection Status Card */}
+            <div className={`p-5 rounded-xl border-2 ${
+              instagramStatus.is_configured && instagramStatus.is_token_valid
+                ? 'bg-success/5 border-success/30'
+                : 'bg-warning/5 border-warning/30'
+            }`}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {instagramStatus.is_configured && instagramStatus.is_token_valid ? (
+                    <div className="p-2 bg-success/20 rounded-lg">
+                      <CheckCircleIcon className="w-6 h-6 text-success" />
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-warning/20 rounded-lg">
+                      <ExclamationTriangleIcon className="w-6 h-6 text-warning" />
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-semibold text-lg">
+                      {instagramStatus.is_configured && instagramStatus.is_token_valid
+                        ? 'Instagram Connected'
+                        : 'Instagram Not Connected'}
+                    </h4>
+                    <p className="text-sm text-muted">
+                      {instagramStatus.is_configured && instagramStatus.is_token_valid
+                        ? 'Your account is connected and ready to post designs'
+                        : 'Connect your Instagram account to start posting designs'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {(!instagramStatus.is_configured || !instagramStatus.is_token_valid) ? (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingInstagram(true);
+                        try {
+                          await API.authorizeInstagram();
+                        } catch (error) {
+                          toast.error('Failed to initiate Instagram authorization');
+                          setIsLoadingInstagram(false);
+                        }
+                      }}
+                      disabled={isLoadingInstagram}
+                      className="flex items-center gap-2"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      {isLoadingInstagram ? 'Connecting...' : 'Connect Instagram'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingInstagram(true);
+                        try {
+                          await API.authorizeInstagram();
+                        } catch (error) {
+                          toast.error('Failed to re-authorize Instagram');
+                          setIsLoadingInstagram(false);
+                        }
+                      }}
+                      variant="outline"
+                      disabled={isLoadingInstagram}
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      Re-authorize
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Details Grid */}
+              {instagramStatus.is_configured && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border/50">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Status</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        instagramStatus.is_enabled 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {instagramStatus.is_enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Token</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        instagramStatus.is_token_valid 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-error/20 text-error'
+                      }`}>
+                        {instagramStatus.is_token_valid ? 'Valid' : 'Expired'}
+                      </span>
+                    </div>
+                  </div>
+                  {instagramStatus.last_successful_post && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Last Post</div>
+                      <div className="text-sm font-medium">
+                        {new Date(instagramStatus.last_successful_post).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                  {instagramStatus.username && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Username</div>
+                      <div className="text-sm font-medium truncate" title={instagramStatus.username}>
+                        @{instagramStatus.username}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Error Display */}
+              {instagramStatus.last_error && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-error mb-1">Last Error</div>
+                      <div className="text-xs text-error/80">{instagramStatus.last_error}</div>
+                      {instagramStatus.last_error_at && (
+                        <div className="text-xs text-error/60 mt-1">
+                          {new Date(instagramStatus.last_error_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Instructions for Not Connected */}
+            {(!instagramStatus.is_configured || !instagramStatus.is_token_valid) && (
+              <div className="p-5 bg-muted/10 rounded-xl border border-border/50">
+                <div className="flex items-start gap-3">
+                  <InformationCircleIcon className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-2">Connect Instagram Account</p>
+                    <p className="text-sm text-muted mb-3">
+                      Click &quot;Connect Instagram&quot; to authorize access to your Instagram Business or Creator account.
+                      You&apos;ll be redirected to Facebook to complete the authorization.
+                    </p>
+                    <div className="text-xs text-muted space-y-1">
+                      <p><strong>Requirements:</strong></p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Instagram Business or Creator account</li>
+                        <li>Facebook Page linked to your Instagram account</li>
+                        <li>Facebook App with Instagram permissions</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted">Loading Instagram status...</p>
+          </div>
+        )}
+      </div>
+      </DashboardLayout>
+    );
+  }

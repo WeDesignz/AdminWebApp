@@ -918,6 +918,70 @@ export const DesignsAPI = {
 /**
  * Pinterest API
  */
+export const InstagramAPI = {
+  /**
+   * Get Instagram integration status
+   */
+  async getStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    username: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return apiClient.get('api/common/instagram/status/');
+  },
+
+  /**
+   * Initiate Instagram OAuth
+   */
+  async authorize(): Promise<void> {
+    // This redirects, so we handle it differently
+    // Use API_CONFIG.baseURL directly since we're building the full URL ourselves
+    const baseUrl = API_CONFIG.baseURL || '';
+    if (!baseUrl) {
+      throw new Error('API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in .env.local');
+    }
+    // Remove trailing slash if present
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    window.location.href = `${cleanBaseUrl}/api/common/instagram/authorize/`;
+  },
+
+  /**
+   * Post to Instagram (supports bulk posting)
+   */
+  async postToInstagram(posts: Array<{
+    productId: string;
+    mediaType: 'mockup' | 'jpg' | 'png';
+    caption: string;
+    postType: 'post' | 'story';
+  }>): Promise<ApiResponse<{
+    message: string;
+    posts_queued: number;
+    post_ids: number[];
+  }>> {
+    return apiClient.post('api/common/instagram/post/', { posts });
+  },
+
+  /**
+   * Get Instagram posts history
+   */
+  async getInstagramPosts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<ApiResponse<any>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.status) queryParams.append('status', params.status);
+    const query = queryParams.toString();
+    return apiClient.get(`api/common/instagram/posts/${query ? `?${query}` : ''}`);
+  },
+};
+
 export const PinterestAPI = {
   /**
    * Get Pinterest integration status
@@ -2375,6 +2439,7 @@ export const API = {
   customers: CustomersAPI,
   designs: DesignsAPI,
   pinterest: PinterestAPI,
+  instagram: InstagramAPI,
   orders: OrdersAPI,
   customOrders: CustomOrdersAPI,
   orderComments: OrderCommentsAPI,

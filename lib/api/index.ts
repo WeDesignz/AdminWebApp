@@ -288,6 +288,36 @@ class RealAPI {
     return API.designs.resolveFlag(designId);
   }
 
+  // Instagram methods
+  static async getInstagramStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    username: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return API.instagram.getStatus();
+  }
+
+  static async authorizeInstagram(): Promise<void> {
+    return API.instagram.authorize();
+  }
+
+  static async postToInstagram(posts: Array<{
+    productId: string;
+    mediaType: 'mockup' | 'jpg' | 'png';
+    caption: string;
+    postType: 'post' | 'story';
+  }>): Promise<ApiResponse<{
+    message: string;
+    posts_queued: number;
+    post_ids: number[];
+  }>> {
+    return API.instagram.postToInstagram(posts);
+  }
+
   // Pinterest methods
   static async getPinterestStatus(): Promise<ApiResponse<{
     is_enabled: boolean;
