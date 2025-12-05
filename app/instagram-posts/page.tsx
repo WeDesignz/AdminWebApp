@@ -35,7 +35,9 @@ interface SelectedProduct {
 }
 
 export default function InstagramPostsPage() {
+  const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single');
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [postType, setPostType] = useState<'post' | 'story'>('post');
   const [caption, setCaption] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -43,6 +45,17 @@ export default function InstagramPostsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('approved');
   const queryClient = useQueryClient();
+
+  // Bulk upload state
+  const [bulkPostType, setBulkPostType] = useState<'post' | 'story'>('post');
+  const [bulkCaption, setBulkCaption] = useState('');
+  const [bulkMediaType, setBulkMediaType] = useState<'mockup' | 'jpg' | 'png'>('mockup');
+  const [isBulkPosting, setIsBulkPosting] = useState(false);
+  const [bulkPostProgress, setBulkPostProgress] = useState<{
+    total: number;
+    completed: number;
+    failed: number;
+  }>({ total: 0, completed: 0, failed: 0 });
 
   // Wait for auth store to hydrate
   const { isAuthenticated, accessToken } = useAuthStore();
@@ -116,9 +129,22 @@ export default function InstagramPostsPage() {
       selectedMediaType: defaultMediaType,
     };
 
-    setSelectedProduct(newProduct);
-    setCaption(''); // Reset caption when selecting new product
-    toast.success('Product selected');
+    if (uploadMode === 'single') {
+      setSelectedProduct(newProduct);
+      setCaption(''); // Reset caption when selecting new product
+      toast.success('Product selected');
+    } else {
+      // Bulk mode: add to selected products list
+      setSelectedProducts(prev => {
+        // Check if already selected
+        if (prev.find(p => p.id === newProduct.id)) {
+          toast.error('Product already selected');
+          return prev;
+        }
+        toast.success('Product added to bulk upload');
+        return [...prev, newProduct];
+      });
+    }
   };
 
   const handleClearSelection = () => {
@@ -174,6 +200,105 @@ export default function InstagramPostsPage() {
     }
   };
 
+  const handleBulkPost = async () => {
+    if (selectedProducts.length === 0) {
+      toast.error('Please select at least one product');
+      return;
+    }
+
+    if (bulkPostType === 'post' && !bulkCaption.trim()) {
+      toast.error('Please add a caption for Instagram posts');
+      return;
+    }
+
+    setIsBulkPosting(true);
+    setBulkPostProgress({
+      total: selectedProducts.length,
+      completed: 0,
+      failed: 0,
+    });
+
+    const results: { success: boolean; productId: string; error?: string }[] = [];
+
+    // Post each product sequentially (to avoid rate limiting)
+    for (let i = 0; i < selectedProducts.length; i++) {
+      const product = selectedProducts[i];
+      
+      try {
+        const post = {
+          productId: product.id,
+          mediaType: bulkMediaType, // Use global media type
+          caption: bulkPostType === 'post' ? bulkCaption.trim() : '',
+          postType: bulkPostType,
+        };
+
+        const response = await API.postToInstagram(post);
+        
+        if (response.success) {
+          results.push({ success: true, productId: product.id });
+          setBulkPostProgress(prev => ({
+            ...prev,
+            completed: prev.completed + 1,
+          }));
+        } else {
+          results.push({
+            success: false,
+            productId: product.id,
+            error: response.error || 'Unknown error',
+          });
+          setBulkPostProgress(prev => ({
+            ...prev,
+            failed: prev.failed + 1,
+          }));
+        }
+      } catch (error: any) {
+        results.push({
+          success: false,
+          productId: product.id,
+          error: error.message || 'An error occurred',
+        });
+        setBulkPostProgress(prev => ({
+          ...prev,
+          failed: prev.failed + 1,
+        }));
+      }
+
+      // Small delay between posts to avoid rate limiting
+      if (i < selectedProducts.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    setIsBulkPosting(false);
+
+    // Show summary
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    if (successCount === selectedProducts.length) {
+      toast.success(`Successfully queued all ${successCount} posts!`, {
+        icon: '✅',
+        duration: 5000,
+      });
+    } else if (successCount > 0) {
+      toast.success(
+        `Queued ${successCount} posts successfully. ${failCount} failed.`,
+        {
+          icon: '⚠️',
+          duration: 5000,
+        }
+      );
+    } else {
+      toast.error('All posts failed. Please try again.', {
+        duration: 5000,
+      });
+    }
+
+    // Clear selections and refresh
+    setSelectedProducts([]);
+    queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
+  };
+
   const getSelectedImageUrl = () => {
     if (!selectedProduct) return '';
     const mediaFile = selectedProduct.mediaFiles.find(f => f.type === selectedProduct.selectedMediaType);
@@ -213,6 +338,45 @@ export default function InstagramPostsPage() {
               Instagram Posts
             </h1>
             <p className="text-muted mt-1">Create and share your designs on Instagram</p>
+          </div>
+        </div>
+
+        {/* Upload Mode Toggle */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-1">Upload Mode</h3>
+              <p className="text-xs text-muted">Choose between single or bulk upload</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setUploadMode('single');
+                  setSelectedProducts([]);
+                  setSelectedProduct(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  uploadMode === 'single'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Single Upload
+              </button>
+              <button
+                onClick={() => {
+                  setUploadMode('bulk');
+                  setSelectedProduct(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  uploadMode === 'bulk'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Bulk Upload
+              </button>
+            </div>
           </div>
         </div>
 
@@ -330,7 +494,9 @@ export default function InstagramPostsPage() {
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
                     {productsData.data.map((product: any) => {
-                      const isSelected = selectedProduct?.id === product.id;
+                      const isSelected = uploadMode === 'single'
+                        ? selectedProduct?.id === product.id
+                        : selectedProducts.some(p => p.id === product.id);
                       return (
                         <motion.div
                           key={product.id}
@@ -356,11 +522,16 @@ export default function InstagramPostsPage() {
                             <p className="text-sm font-medium truncate">{product.title}</p>
                             <p className="text-xs text-muted truncate">{product.category}</p>
                           </div>
-                          {isSelected && (
+                          {isSelected && uploadMode === 'single' && (
                             <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-sm">
                               <div className="bg-primary text-white rounded-full p-2 shadow-lg">
                                 <CheckCircleIcon className="w-6 h-6" />
                               </div>
+                            </div>
+                          )}
+                          {isSelected && uploadMode === 'bulk' && (
+                            <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1.5 shadow-lg z-10">
+                              <CheckCircleIcon className="w-4 h-4" />
                             </div>
                           )}
                         </motion.div>
@@ -401,8 +572,9 @@ export default function InstagramPostsPage() {
 
           {/* Right Column: Post Configuration */}
           <div className="space-y-4">
-            <AnimatePresence mode="wait">
-              {selectedProduct ? (
+            {uploadMode === 'single' ? (
+              <AnimatePresence mode="wait">
+                {selectedProduct ? (
                 <motion.div
                   key="selected"
                   initial={{ opacity: 0, x: 20 }}
@@ -572,8 +744,226 @@ export default function InstagramPostsPage() {
                     </p>
                   </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
+                )}
+              </AnimatePresence>
+            ) : (
+              // Bulk Upload UI
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="card p-6 space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold">Bulk Upload Configuration</h2>
+                  <div className="text-sm text-muted">
+                    {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''} selected
+                  </div>
+                </div>
+
+                {/* Global Settings for Bulk Upload */}
+                <div className="space-y-4 p-4 bg-muted/30 rounded-xl">
+                  <h3 className="text-sm font-semibold">Global Settings</h3>
+                  
+                  {/* Post Type */}
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Post Type
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setBulkPostType('post')}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          bulkPostType === 'post'
+                            ? 'border-primary bg-primary/10 shadow-md'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <PhotoIcon className={`w-5 h-5 mx-auto mb-1 ${bulkPostType === 'post' ? 'text-primary' : 'text-muted'}`} />
+                        <p className={`text-xs font-medium ${bulkPostType === 'post' ? 'text-primary' : 'text-muted'}`}>
+                          Post
+                        </p>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setBulkPostType('story');
+                          setBulkCaption(''); // Clear caption for stories
+                        }}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          bulkPostType === 'story'
+                            ? 'border-primary bg-primary/10 shadow-md'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <SparklesIcon className={`w-5 h-5 mx-auto mb-1 ${bulkPostType === 'story' ? 'text-primary' : 'text-muted'}`} />
+                        <p className={`text-xs font-medium ${bulkPostType === 'story' ? 'text-primary' : 'text-muted'}`}>
+                          Story
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Media Type */}
+                  <div>
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Default Media Type
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['mockup', 'png', 'jpg'].map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => setBulkMediaType(type as 'mockup' | 'jpg' | 'png')}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            bulkMediaType === type
+                              ? 'bg-primary text-white shadow-md scale-105'
+                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Caption (only for posts) */}
+                  {bulkPostType === 'post' && (
+                    <div>
+                      <label className="text-sm font-semibold text-foreground mb-2 block">
+                        Default Caption <span className="text-error">*</span>
+                      </label>
+                      <textarea
+                        value={bulkCaption}
+                        onChange={(e) => setBulkCaption(e.target.value)}
+                        placeholder="Enter default caption for all posts..."
+                        className="input-field w-full min-h-[100px] text-sm resize-none"
+                        maxLength={2200}
+                      />
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-muted">
+                          {bulkCaption.length} / 2200 characters
+                        </p>
+                        {!bulkCaption.trim() && (
+                          <p className="text-xs text-error flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" />
+                            Required for posts
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {bulkPostType === 'story' && (
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-blue-900 dark:text-blue-100">
+                        <SparklesIcon className="w-4 h-4 inline mr-2" />
+                        Stories don&apos;t support captions.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Products List */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold">Selected Products</h3>
+                    {selectedProducts.length > 0 && (
+                      <button
+                        onClick={() => setSelectedProducts([])}
+                        className="text-xs text-error hover:underline"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                  
+                  {selectedProducts.length === 0 ? (
+                    <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
+                      <PhotoIcon className="w-12 h-12 mx-auto text-muted mb-3 opacity-50" />
+                      <p className="text-sm text-muted">No products selected</p>
+                      <p className="text-xs text-muted mt-1">
+                        Select products from the grid to add them to bulk upload
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                      {selectedProducts.map((product) => (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                            <img
+                              src={product.thumbnailUrl}
+                              alt={product.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{product.title}</p>
+                            <p className="text-xs text-muted truncate">{product.category}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedProducts(prev => prev.filter(p => p.id !== product.id));
+                            }}
+                            className="p-1.5 hover:bg-error/10 rounded-lg transition-colors flex-shrink-0"
+                            title="Remove"
+                          >
+                            <XMarkIcon className="w-4 h-4 text-error" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Bulk Post Button */}
+                <Button
+                  onClick={handleBulkPost}
+                  variant="primary"
+                  disabled={
+                    isBulkPosting ||
+                    !isInstagramReady ||
+                    selectedProducts.length === 0 ||
+                    (bulkPostType === 'post' && !bulkCaption.trim())
+                  }
+                  isLoading={isBulkPosting}
+                  size="lg"
+                  className="w-full shadow-lg"
+                >
+                  <PaperAirplaneIcon className="w-5 h-5 mr-2" />
+                  {isBulkPosting
+                    ? `Posting... (${bulkPostProgress.completed}/${bulkPostProgress.total})`
+                    : `Post ${selectedProducts.length} ${bulkPostType === 'post' ? 'Post' : 'Story'}${selectedProducts.length !== 1 ? 's' : ''} to Instagram`}
+                </Button>
+
+                {/* Progress Indicator */}
+                {isBulkPosting && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted">Progress</span>
+                      <span className="font-medium">
+                        {bulkPostProgress.completed} / {bulkPostProgress.total} completed
+                        {bulkPostProgress.failed > 0 && (
+                          <span className="text-error ml-2">
+                            ({bulkPostProgress.failed} failed)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(bulkPostProgress.completed / bulkPostProgress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
