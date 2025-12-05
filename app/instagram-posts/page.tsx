@@ -747,64 +747,95 @@ export default function InstagramPostsPage() {
                 )}
               </AnimatePresence>
             ) : (
-              // Bulk Upload UI
+              // Bulk Upload UI - Enhanced
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="card p-6 space-y-6"
               >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">Bulk Upload Configuration</h2>
-                  <div className="text-sm text-muted">
-                    {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''} selected
+                {/* Header with Badge */}
+                <div className="flex items-center justify-between pb-4 border-b border-border">
+                  <div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                      Bulk Upload Configuration
+                    </h2>
+                    <p className="text-xs text-muted mt-1">Configure settings for multiple posts at once</p>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-primary/10 to-pink-500/10 rounded-full border border-primary/20">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                    <span className="text-sm font-semibold text-primary">
+                      {selectedProducts.length} {selectedProducts.length === 1 ? 'Product' : 'Products'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Global Settings for Bulk Upload */}
-                <div className="space-y-4 p-4 bg-muted/30 rounded-xl">
-                  <h3 className="text-sm font-semibold">Global Settings</h3>
+                {/* Global Settings for Bulk Upload - Enhanced */}
+                <div className="space-y-5 p-5 bg-gradient-to-br from-muted/40 via-muted/20 to-muted/40 rounded-2xl border border-border/50 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-5 bg-gradient-to-b from-primary to-pink-500 rounded-full"></div>
+                    <h3 className="text-base font-bold text-foreground">Global Settings</h3>
+                    <span className="text-xs text-muted ml-auto">Applied to all selected products</span>
+                  </div>
                   
-                  {/* Post Type */}
+                  {/* Post Type - Enhanced */}
                   <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                    <label className="text-sm font-bold text-foreground mb-3 block flex items-center gap-2">
+                      <PhotoIcon className="w-4 h-4 text-primary" />
                       Post Type
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setBulkPostType('post')}
-                        className={`p-3 rounded-xl border-2 transition-all ${
+                        className={`group relative p-4 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
                           bulkPostType === 'post'
-                            ? 'border-primary bg-primary/10 shadow-md'
-                            : 'border-border hover:border-primary/50'
+                            ? 'border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg shadow-primary/20 scale-[1.02]'
+                            : 'border-border hover:border-primary/50 bg-card hover:bg-muted/50'
                         }`}
                       >
-                        <PhotoIcon className={`w-5 h-5 mx-auto mb-1 ${bulkPostType === 'post' ? 'text-primary' : 'text-muted'}`} />
-                        <p className={`text-xs font-medium ${bulkPostType === 'post' ? 'text-primary' : 'text-muted'}`}>
-                          Post
-                        </p>
+                        {bulkPostType === 'post' && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
+                        )}
+                        <div className="relative">
+                          <PhotoIcon className={`w-6 h-6 mx-auto mb-2 ${bulkPostType === 'post' ? 'text-primary' : 'text-muted'} transition-colors`} />
+                          <p className={`text-sm font-semibold ${bulkPostType === 'post' ? 'text-primary' : 'text-muted-foreground'}`}>
+                            Post
+                          </p>
+                          {bulkPostType === 'post' && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-background"></div>
+                          )}
+                        </div>
                       </button>
                       <button
                         onClick={() => {
                           setBulkPostType('story');
-                          setBulkCaption(''); // Clear caption for stories
+                          setBulkCaption('');
                         }}
-                        className={`p-3 rounded-xl border-2 transition-all ${
+                        className={`group relative p-4 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
                           bulkPostType === 'story'
-                            ? 'border-primary bg-primary/10 shadow-md'
-                            : 'border-border hover:border-primary/50'
+                            ? 'border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg shadow-primary/20 scale-[1.02]'
+                            : 'border-border hover:border-primary/50 bg-card hover:bg-muted/50'
                         }`}
                       >
-                        <SparklesIcon className={`w-5 h-5 mx-auto mb-1 ${bulkPostType === 'story' ? 'text-primary' : 'text-muted'}`} />
-                        <p className={`text-xs font-medium ${bulkPostType === 'story' ? 'text-primary' : 'text-muted'}`}>
-                          Story
-                        </p>
+                        {bulkPostType === 'story' && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
+                        )}
+                        <div className="relative">
+                          <SparklesIcon className={`w-6 h-6 mx-auto mb-2 ${bulkPostType === 'story' ? 'text-primary' : 'text-muted'} transition-colors`} />
+                          <p className={`text-sm font-semibold ${bulkPostType === 'story' ? 'text-primary' : 'text-muted-foreground'}`}>
+                            Story
+                          </p>
+                          {bulkPostType === 'story' && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full border-2 border-background"></div>
+                          )}
+                        </div>
                       </button>
                     </div>
                   </div>
 
-                  {/* Media Type */}
+                  {/* Media Type - Enhanced */}
                   <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                    <label className="text-sm font-bold text-foreground mb-3 block flex items-center gap-2">
+                      <PhotoIcon className="w-4 h-4 text-primary" />
                       Default Media Type
                     </label>
                     <div className="flex gap-2 flex-wrap">
@@ -812,39 +843,54 @@ export default function InstagramPostsPage() {
                         <button
                           key={type}
                           onClick={() => setBulkMediaType(type as 'mockup' | 'jpg' | 'png')}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          className={`relative px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                             bulkMediaType === type
-                              ? 'bg-primary text-white shadow-md scale-105'
-                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                              ? 'bg-gradient-to-r from-primary to-pink-500 text-white shadow-lg shadow-primary/30 scale-105'
+                              : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:scale-105 border border-border'
                           }`}
                         >
                           {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                          {bulkMediaType === type && (
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></div>
+                          )}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Caption (only for posts) */}
+                  {/* Caption (only for posts) - Enhanced */}
                   {bulkPostType === 'post' && (
                     <div>
-                      <label className="text-sm font-semibold text-foreground mb-2 block">
-                        Default Caption <span className="text-error">*</span>
+                      <label className="text-sm font-bold text-foreground mb-3 block flex items-center gap-2">
+                        <span>Default Caption</span>
+                        <span className="text-error text-xs">*</span>
                       </label>
-                      <textarea
-                        value={bulkCaption}
-                        onChange={(e) => setBulkCaption(e.target.value)}
-                        placeholder="Enter default caption for all posts..."
-                        className="input-field w-full min-h-[100px] text-sm resize-none"
-                        maxLength={2200}
-                      />
+                      <div className="relative">
+                        <textarea
+                          value={bulkCaption}
+                          onChange={(e) => setBulkCaption(e.target.value)}
+                          placeholder="Enter default caption for all posts..."
+                          className="input-field w-full min-h-[110px] text-sm resize-none pr-12 focus:ring-2 focus:ring-primary/20 transition-all"
+                          maxLength={2200}
+                        />
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                          <div className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            bulkCaption.length > 2000 
+                              ? 'bg-error/10 text-error' 
+                              : bulkCaption.length > 1500 
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {bulkCaption.length} / 2200
+                          </div>
+                        </div>
+                      </div>
                       <div className="flex items-center justify-between mt-2">
-                        <p className="text-xs text-muted">
-                          {bulkCaption.length} / 2200 characters
-                        </p>
+                        <p className="text-xs text-muted">This caption will be used for all posts</p>
                         {!bulkCaption.trim() && (
-                          <p className="text-xs text-error flex items-center gap-1">
-                            <ExclamationTriangleIcon className="w-3 h-3" />
-                            Required for posts
+                          <p className="text-xs text-error flex items-center gap-1 font-medium">
+                            <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                            Required
                           </p>
                         )}
                       </div>
@@ -852,65 +898,90 @@ export default function InstagramPostsPage() {
                   )}
 
                   {bulkPostType === 'story' && (
-                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                      <p className="text-sm text-blue-900 dark:text-blue-100">
-                        <SparklesIcon className="w-4 h-4 inline mr-2" />
-                        Stories don&apos;t support captions.
-                      </p>
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                          <SparklesIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                            Instagram Stories
+                          </p>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Stories don&apos;t support captions. Your images will be posted as stories.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Selected Products List */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold">Selected Products</h3>
+                {/* Selected Products List - Enhanced */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                      <CheckCircleIcon className="w-5 h-5 text-primary" />
+                      Selected Products
+                    </h3>
                     {selectedProducts.length > 0 && (
                       <button
                         onClick={() => setSelectedProducts([])}
-                        className="text-xs text-error hover:underline"
+                        className="text-xs font-medium text-error hover:text-error/80 hover:underline transition-colors flex items-center gap-1 px-2 py-1 rounded-md hover:bg-error/10"
                       >
+                        <XMarkIcon className="w-3.5 h-3.5" />
                         Clear All
                       </button>
                     )}
                   </div>
                   
                   {selectedProducts.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
-                      <PhotoIcon className="w-12 h-12 mx-auto text-muted mb-3 opacity-50" />
-                      <p className="text-sm text-muted">No products selected</p>
-                      <p className="text-xs text-muted mt-1">
+                    <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl bg-gradient-to-br from-muted/20 to-muted/10">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/10 to-pink-500/10 flex items-center justify-center">
+                        <PhotoIcon className="w-8 h-8 text-primary opacity-60" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground mb-1">No products selected</p>
+                      <p className="text-xs text-muted">
                         Select products from the grid to add them to bulk upload
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-                      {selectedProducts.map((product) => (
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin">
+                      {selectedProducts.map((product, index) => (
                         <motion.div
                           key={product.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="group flex items-center gap-3 p-3.5 bg-gradient-to-r from-card to-muted/30 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-200"
                         >
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                          <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0 ring-2 ring-border group-hover:ring-primary/30 transition-all">
                             <img
                               src={product.thumbnailUrl}
                               alt={product.title}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{product.title}</p>
-                            <p className="text-xs text-muted truncate">{product.category}</p>
+                            <p className="text-sm font-semibold text-foreground truncate">{product.title}</p>
+                            <p className="text-xs text-muted truncate mt-0.5">{product.category}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-md font-medium">
+                                {bulkMediaType === 'mockup' ? '📱 Mockup' : bulkMediaType.toUpperCase()}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
+                                {bulkPostType === 'post' ? 'Post' : 'Story'}
+                              </span>
+                            </div>
                           </div>
                           <button
                             onClick={() => {
                               setSelectedProducts(prev => prev.filter(p => p.id !== product.id));
                             }}
-                            className="p-1.5 hover:bg-error/10 rounded-lg transition-colors flex-shrink-0"
+                            className="p-2 hover:bg-error/10 rounded-lg transition-all duration-200 flex-shrink-0 group/btn"
                             title="Remove"
                           >
-                            <XMarkIcon className="w-4 h-4 text-error" />
+                            <XMarkIcon className="w-4 h-4 text-error group-hover/btn:scale-110 transition-transform" />
                           </button>
                         </motion.div>
                       ))}
@@ -918,50 +989,68 @@ export default function InstagramPostsPage() {
                   )}
                 </div>
 
-                {/* Bulk Post Button */}
-                <Button
-                  onClick={handleBulkPost}
-                  variant="primary"
-                  disabled={
-                    isBulkPosting ||
-                    !isInstagramReady ||
-                    selectedProducts.length === 0 ||
-                    (bulkPostType === 'post' && !bulkCaption.trim())
-                  }
-                  isLoading={isBulkPosting}
-                  size="lg"
-                  className="w-full shadow-lg"
-                >
-                  <PaperAirplaneIcon className="w-5 h-5 mr-2" />
-                  {isBulkPosting
-                    ? `Posting... (${bulkPostProgress.completed}/${bulkPostProgress.total})`
-                    : `Post ${selectedProducts.length} ${bulkPostType === 'post' ? 'Post' : 'Story'}${selectedProducts.length !== 1 ? 's' : ''} to Instagram`}
-                </Button>
+                {/* Bulk Post Button - Enhanced */}
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <Button
+                    onClick={handleBulkPost}
+                    variant="primary"
+                    disabled={
+                      isBulkPosting ||
+                      !isInstagramReady ||
+                      selectedProducts.length === 0 ||
+                      (bulkPostType === 'post' && !bulkCaption.trim())
+                    }
+                    isLoading={isBulkPosting}
+                    size="lg"
+                    className="w-full shadow-lg bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90 transition-all duration-200"
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5 mr-2" />
+                    {isBulkPosting
+                      ? `Posting... (${bulkPostProgress.completed}/${bulkPostProgress.total})`
+                      : `Post ${selectedProducts.length} ${bulkPostType === 'post' ? 'Post' : 'Story'}${selectedProducts.length !== 1 ? 's' : ''} to Instagram`}
+                  </Button>
 
-                {/* Progress Indicator */}
-                {isBulkPosting && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted">Progress</span>
-                      <span className="font-medium">
-                        {bulkPostProgress.completed} / {bulkPostProgress.total} completed
-                        {bulkPostProgress.failed > 0 && (
-                          <span className="text-error ml-2">
-                            ({bulkPostProgress.failed} failed)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${(bulkPostProgress.completed / bulkPostProgress.total) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
+                  {/* Progress Indicator - Enhanced */}
+                  {isBulkPosting && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-3 p-4 bg-gradient-to-r from-primary/5 to-pink-500/5 rounded-xl border border-primary/20"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-foreground flex items-center gap-2">
+                          <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                          Progress
+                        </span>
+                        <span className="font-bold">
+                          <span className="text-primary">{bulkPostProgress.completed}</span>
+                          <span className="text-muted"> / </span>
+                          <span className="text-foreground">{bulkPostProgress.total}</span>
+                          {bulkPostProgress.failed > 0 && (
+                            <span className="text-error ml-2">
+                              ({bulkPostProgress.failed} failed)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted/60 rounded-full h-3 overflow-hidden shadow-inner">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-primary to-pink-500 rounded-full shadow-lg"
+                          initial={{ width: 0 }}
+                          animate={{
+                            width: `${(bulkPostProgress.completed / bulkPostProgress.total) * 100}%`,
+                          }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                        />
+                      </div>
+                      {bulkPostProgress.completed > 0 && (
+                        <p className="text-xs text-muted text-center">
+                          {Math.round((bulkPostProgress.completed / bulkPostProgress.total) * 100)}% complete
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
               </motion.div>
             )}
           </div>
