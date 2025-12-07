@@ -8,7 +8,7 @@ import { approveDesignXHR } from '@/lib/api/approveDesignXHR';
 import { useState, useEffect } from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils/cn';
 import { Button } from '@/components/common/Button';
-import { Squares2X2Icon, ListBulletIcon, MagnifyingGlassIcon, PhotoIcon, CheckCircleIcon, ClockIcon, ArrowUpIcon, ArrowDownIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, FlagIcon, ShieldCheckIcon, ChartBarIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { Squares2X2Icon, ListBulletIcon, MagnifyingGlassIcon, PhotoIcon, CheckCircleIcon, ClockIcon, ArrowUpIcon, ArrowDownIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, FlagIcon, ShieldCheckIcon, ChartBarIcon, StarIcon, ChevronLeftIcon, ChevronRightIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { KpiCard } from '@/components/common/KpiCard';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
@@ -791,82 +791,170 @@ export default function DesignsPage() {
                 )}
               </div>
             </div>
-            {/* Design Previews - Only JPG, PNG, and Mockup files */}
+            {/* Design Files - Images and Downloads */}
             {(() => {
-              // Get preview files from backend (JPG, PNG, and mockup files only)
+              // Get all files from backend
+              const allFiles = (designDetail.data as any)?.media_files || designDetail.data.files || [];
               const previewFiles = (designDetail.data as any)?.preview_files || [];
               
-              if (previewFiles.length === 0) return null;
+              // Helper function to get file extension
+              const getFileExtension = (fileName: string): string => {
+                if (!fileName) return '';
+                const parts = fileName.toLowerCase().split('.');
+                return parts.length > 1 ? parts[parts.length - 1] : '';
+              };
               
-              // Collect all preview URLs for navigation
-              const allPreviewUrls = previewFiles.map((file: any) => file.url || file.file).filter(Boolean);
+              // Helper function to get base name (without extension)
+              const getBaseName = (fileName: string): string => {
+                if (!fileName) return '';
+                const parts = fileName.split('.');
+                return parts.length > 1 ? parts.slice(0, -1).join('.') : fileName;
+              };
+              
+              // Categorize files
+              const imageFiles: any[] = [];
+              const downloadFiles: any[] = [];
+              
+              // Process preview files (these are already filtered to be images)
+              previewFiles.forEach((file: any) => {
+                const fileUrl = file.url || file.file;
+                if (fileUrl) {
+                  imageFiles.push({
+                    ...file,
+                    url: fileUrl,
+                    fileName: file.file_name || fileUrl.split('/').pop() || 'image',
+                  });
+                }
+              });
+              
+              // Process all files to find EPS and CDR
+              allFiles.forEach((file: any) => {
+                const fileUrl = file.url || file.file;
+                if (!fileUrl) return;
+                
+                const fileName = file.name || file.file_name || fileUrl.split('/').pop() || '';
+                const extension = getFileExtension(fileName);
+                const baseName = getBaseName(fileName).toLowerCase();
+                
+                // Check if it's EPS or CDR
+                if (extension === 'eps' || extension === 'cdr') {
+                  downloadFiles.push({
+                    id: file.id || fileUrl,
+                    name: fileName,
+                    url: fileUrl,
+                    type: extension.toUpperCase(),
+                    size: file.size || 0,
+                    uploadedAt: file.uploadedAt || file.created_at || new Date().toISOString(),
+                  });
+                }
+              });
+              
+              // Collect all image URLs for navigation
+              const allPreviewUrls = imageFiles.map((file: any) => file.url).filter(Boolean);
+              
+              // Don't render if no files
+              if (imageFiles.length === 0 && downloadFiles.length === 0) return null;
               
               return (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold border-b border-border pb-2">Design Previews</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    {previewFiles.map((previewFile: any, idx: number) => {
-                      const previewUrl = previewFile.url || previewFile.file;
-                      if (!previewUrl) return null;
-                      
-                      return (
-                        <div 
-                          key={previewFile.id || idx} 
-                          className="aspect-video rounded-lg overflow-hidden border border-border relative group cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAllDesignImages(allPreviewUrls);
-                            setCurrentPreviewIndex(idx);
-                            setFullPreviewImage(previewUrl);
-                          }}
-                        >
-                          <img 
-                            src={previewUrl} 
-                            alt={previewFile.is_mockup ? 'Mockup' : `Preview ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          {previewFile.is_mockup && (
-                            <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded">
-                              Mockup
+                <div className="space-y-6">
+                  {/* Image Previews Section */}
+                  {imageFiles.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-semibold border-b border-border pb-2">Design Images</h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        {imageFiles.map((previewFile: any, idx: number) => {
+                          const previewUrl = previewFile.url;
+                          if (!previewUrl) return null;
+                          
+                          const isMockup = previewFile.is_mockup || getBaseName(previewFile.fileName).toLowerCase() === 'mockup';
+                          const fileName = previewFile.fileName || 'image';
+                          const extension = getFileExtension(fileName);
+                          const fileLabel = isMockup 
+                            ? 'Mockup' 
+                            : extension === 'jpg' || extension === 'jpeg' 
+                              ? 'JPG' 
+                              : extension === 'png' 
+                                ? 'PNG' 
+                                : 'Image';
+                          
+                          return (
+                            <div 
+                              key={previewFile.id || idx} 
+                              className="relative rounded-lg overflow-hidden border border-border group cursor-pointer hover:border-primary transition-colors bg-muted/5"
+                              style={{ minHeight: '200px' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAllDesignImages(allPreviewUrls);
+                                setCurrentPreviewIndex(idx);
+                                setFullPreviewImage(previewUrl);
+                              }}
+                            >
+                              <div className="w-full h-full flex items-center justify-center p-2">
+                                <img 
+                                  src={previewUrl} 
+                                  alt={fileLabel}
+                                  className="max-w-full max-h-[200px] w-auto h-auto object-contain rounded"
+                                  onError={(e) => {
+                                    // Hide broken images
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                              <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded z-10">
+                                {fileLabel}
+                              </div>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                <EyeIcon className="w-8 h-8 text-white" />
+                              </div>
                             </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <EyeIcon className="w-8 h-8 text-white" />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Download Files Section (EPS, CDR) */}
+                  {downloadFiles.length > 0 && (
+                    <div className="space-y-4 border-t border-border pt-4">
+                      <h3 className="text-xl font-semibold border-b border-border pb-2">Design Files</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {downloadFiles.map((file) => (
+                          <div 
+                            key={file.id} 
+                            className="p-4 bg-muted/10 rounded-lg border border-border hover:border-primary transition-colors flex items-center justify-between group"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded">
+                                  {file.type}
+                                </div>
+                                <p className="font-medium text-sm truncate">{file.name}</p>
+                              </div>
+                              {file.size > 0 && (
+                                <p className="text-xs text-muted">
+                                  {formatFileSize(file.size)}
+                                </p>
+                              )}
+                            </div>
+                            <a 
+                              href={file.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              download
+                              className="ml-3 p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 group-hover:scale-105 transition-transform"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ArrowDownTrayIcon className="w-4 h-4" />
+                              <span className="text-sm font-medium">Download</span>
+                            </a>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
-
-            {/* Uploaded Files */}
-            {designDetail.data.files && designDetail.data.files.length > 0 && (
-              <div className="space-y-4 border-t border-border pt-4">
-                <h3 className="text-xl font-semibold border-b border-border pb-2">Uploaded Files</h3>
-                <div className="space-y-2">
-                  {designDetail.data.files.map((file) => (
-                    <div key={file.id} className="p-3 bg-muted/10 rounded-lg flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{file.name}</p>
-                        <p className="text-sm text-muted">
-                          {file.type} • {formatFileSize(file.size)} • {formatDate(file.uploadedAt)}
-                        </p>
-                      </div>
-                      <a 
-                        href={file.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline text-sm"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Metadata */}
             {designDetail.data.metadata && (
@@ -1038,7 +1126,7 @@ export default function DesignsPage() {
         static={false}
       >
         {fullPreviewImage && allDesignImages.length > 0 && (
-          <div className="relative">
+          <div className="relative w-full h-full flex items-center justify-center bg-muted/5 rounded-lg overflow-hidden" style={{ minHeight: '400px', maxHeight: '80vh' }}>
             {/* Close Button */}
             <button
               onClick={(e) => {
@@ -1090,12 +1178,24 @@ export default function DesignsPage() {
               </div>
             )}
             
-            {/* Image */}
-            <img 
-              src={fullPreviewImage} 
-              alt={`Design Preview ${currentPreviewIndex + 1}`}
-              className="w-full h-auto rounded-lg"
-            />
+            {/* Image Container */}
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img 
+                src={fullPreviewImage} 
+                alt={`Design Preview ${currentPreviewIndex + 1}`}
+                className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
+                style={{ maxHeight: 'calc(80vh - 32px)' }}
+                onError={(e) => {
+                  // Show error message if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const errorDiv = document.createElement('div');
+                  errorDiv.className = 'text-center text-muted p-8';
+                  errorDiv.textContent = 'Failed to load image';
+                  target.parentElement?.appendChild(errorDiv);
+                }}
+              />
+            </div>
           </div>
         )}
       </Modal>

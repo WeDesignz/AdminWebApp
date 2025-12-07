@@ -497,6 +497,7 @@ export interface ActivityLog {
 export interface SystemConfig {
   commissionRate: number; // Platform commission percentage (0-100)
   gstPercentage: number; // GST percentage
+  designPrice: number; // Global price per design (all paid designs will use this price)
   customOrderTimeSlot: number; // Custom order time slot in hours (default 1 hr)
   minimumRequiredDesigns: number; // Minimum required designs to onboard (default 50)
   maintenanceMode: boolean;

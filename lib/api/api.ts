@@ -826,6 +826,11 @@ export const DesignsAPI = {
         transformed.designer = productData.designer;
       }
       
+      // Include raw backend data for file access (preview_files, media_files)
+      // This allows the UI to access the full file structure
+      (transformed as any).preview_files = productData.preview_files || [];
+      (transformed as any).media_files = productData.media_files || [];
+      
       return {
         success: true,
         data: transformed,
@@ -1799,6 +1804,7 @@ export const SystemConfigAPI = {
         data: {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
+          designPrice: response.data.design_price || 50,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
@@ -1831,6 +1837,7 @@ export const SystemConfigAPI = {
     const backendData: any = {
       commission_rate: data.commissionRate,
       gst_percentage: data.gstPercentage,
+      design_price: data.designPrice,
       custom_order_time_slot_hours: data.customOrderTimeSlot,
       minimum_required_designs: data.minimumRequiredDesigns,
       maintenance_mode: data.maintenanceMode,
@@ -1850,6 +1857,7 @@ export const SystemConfigAPI = {
         data: {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
+          designPrice: response.data.design_price || 50,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
