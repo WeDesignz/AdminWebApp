@@ -105,7 +105,7 @@ export function SystemConfigsPageClient() {
   }, [businessConfigData]);
 
   // Get active designs for selection
-  const activeDesigns = designsData?.data?.designs || [];
+  const activeDesigns = designsData?.data || [];
 
   const handleSave = async () => {
     // Validation
@@ -238,7 +238,9 @@ export function SystemConfigsPageClient() {
     setFormData(prev => ({
       ...prev,
       landingPageStats: {
-        ...(prev.landingPageStats || {}),
+        totalClients: prev.landingPageStats?.totalClients ?? 0,
+        totalDesigners: prev.landingPageStats?.totalDesigners ?? 0,
+        totalDesignAssets: prev.landingPageStats?.totalDesignAssets ?? 0,
         [key]: value,
       },
     }));

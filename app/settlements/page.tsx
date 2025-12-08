@@ -79,18 +79,18 @@ export default function SettlementsPage() {
   // Month options
   const monthOptions = [
     { value: '', label: 'All Months' },
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
   ];
 
   // Fetch settlements
@@ -352,7 +352,7 @@ export default function SettlementsPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Month</label>
               <Dropdown
-                value={monthFilter}
+                value={monthFilter === '' ? '' : String(monthFilter)}
                 onChange={(value) => setMonthFilter(value === '' ? '' : Number(value))}
                 options={monthOptions}
               />
@@ -360,11 +360,11 @@ export default function SettlementsPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Year</label>
               <Dropdown
-                value={yearFilter}
+                value={yearFilter === '' ? '' : String(yearFilter)}
                 onChange={(value) => setYearFilter(value === '' ? '' : Number(value))}
                 options={[
                   { value: '', label: 'All Years' },
-                  ...yearOptions.map(year => ({ value: year, label: String(year) })),
+                  ...yearOptions.map(year => ({ value: String(year), label: String(year) })),
                 ]}
               />
             </div>

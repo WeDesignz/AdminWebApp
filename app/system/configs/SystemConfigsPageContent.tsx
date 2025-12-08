@@ -121,9 +121,8 @@ export default function SystemConfigsPageContent() {
     return null;
   }
 
-  // MockAPI returns { data: { data: [...], pagination: {...} } }
-  // RealAPI returns { data: [...], pagination: {...} }
-  const designsArray = designsData?.data?.data || designsData?.data || [];
+  // MockAPI (which is RealAPI) returns { data: [...], pagination: {...} }
+  const designsArray = designsData?.data || [];
   const activeDesigns = Array.isArray(designsArray) 
     ? designsArray.filter((d: Design) => d.status === 'approved')
     : [];
