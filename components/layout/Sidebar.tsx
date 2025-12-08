@@ -70,7 +70,13 @@ const navigationCategories = [
         icon: ShoppingCartIcon,
         restrictedTo: ['Super Admin'],
       },
-  { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
+      { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
+      { 
+        name: 'Settlements', 
+        href: '/settlements', 
+        icon: CreditCardIcon,
+        restrictedTo: ['Super Admin'],
+      },
     ],
   },
   {

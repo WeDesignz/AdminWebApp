@@ -339,7 +339,6 @@ class MockAPI {
     ApiResponse<{
       totalDesigners: number;
       pendingApproval: number;
-      razorpayPending: number;
       rejected: number;
     }>
   > {
@@ -350,7 +349,6 @@ class MockAPI {
       data: {
         totalDesigners: 150,
         pendingApproval: 12,
-        razorpayPending: 5,
         rejected: 8,
       },
     };

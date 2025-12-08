@@ -199,8 +199,7 @@ class RealAPI {
     ApiResponse<{
       totalDesigners: number;
       pendingApproval: number;
-      razorpayPending: number;
-      rejected: number;
+      rejected: number
     }>
   > {
     return API.designers.getDesignerStats();
