@@ -127,6 +127,7 @@ export default function SettlementsPage() {
         format: downloadFormat,
         status: statusFilter || undefined,
         period_start: periodStartForDownload || undefined,
+        search: search || undefined,
       });
       
       // Create download link

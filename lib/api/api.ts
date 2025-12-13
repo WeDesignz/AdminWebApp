@@ -2447,12 +2447,14 @@ export const SettlementAPI = {
     status?: string;
     period_start?: string;
     settlement_date?: string;
+    search?: string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     if (params.format) queryParams.append('format', params.format);
     if (params.status) queryParams.append('status', params.status);
     if (params.period_start) queryParams.append('period_start', params.period_start);
     if (params.settlement_date) queryParams.append('settlement_date', params.settlement_date);
+    if (params.search) queryParams.append('search', params.search);
     
     // Only append query string if there are parameters
     const queryString = queryParams.toString();
