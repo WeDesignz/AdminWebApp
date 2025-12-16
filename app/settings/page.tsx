@@ -21,6 +21,13 @@ import {
   LinkIcon,
   ClockIcon,
   InformationCircleIcon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  LockClosedIcon,
+  GlobeAltIcon,
+  Squares2X2Icon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -55,6 +62,26 @@ export default function SettingsPage() {
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [selectedBoardId, setSelectedBoardId] = useState('');
   const [showBoardSelector, setShowBoardSelector] = useState(false);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [showEditBoardModal, setShowEditBoardModal] = useState(false);
+  const [editingBoard, setEditingBoard] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingBoardId, setDeletingBoardId] = useState<string>('');
+  const [newBoardData, setNewBoardData] = useState({
+    name: '',
+    description: '',
+    privacy: 'PUBLIC' as 'PUBLIC' | 'SECRET',
+  });
+  const [editBoardData, setEditBoardData] = useState({
+    name: '',
+    description: '',
+    privacy: 'PUBLIC' as 'PUBLIC' | 'SECRET',
+  });
+  const [showBoardActions, setShowBoardActions] = useState<string | null>(null);
+
+  // Instagram state
+  const [instagramStatus, setInstagramStatus] = useState<any>(null);
+  const [isLoadingInstagram, setIsLoadingInstagram] = useState(false);
 
   const { data: adminData } = useQuery({
     queryKey: ['admin-profile'],
@@ -67,11 +94,31 @@ export default function SettingsPage() {
     enabled: true,
   });
 
+  const { data: instagramStatusData, refetch: refetchInstagram } = useQuery({
+    queryKey: ['instagram-status'],
+    queryFn: () => API.getInstagramStatus(),
+    enabled: true,
+  });
+
   useEffect(() => {
     if (pinterestStatusData?.data) {
       setPinterestStatus(pinterestStatusData.data);
     }
   }, [pinterestStatusData]);
+
+  useEffect(() => {
+    if (instagramStatusData?.data) {
+      setInstagramStatus(instagramStatusData.data);
+    }
+  }, [instagramStatusData]);
+
+  // Auto-load boards when token becomes valid
+  useEffect(() => {
+    if (pinterestStatus?.is_token_valid && boards.length === 0 && !loadingBoards && !showBoardSelector) {
+      fetchBoards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinterestStatus?.is_token_valid]);
 
   // Handle tab from URL
   useEffect(() => {
@@ -82,6 +129,15 @@ export default function SettingsPage() {
       // Scroll to Pinterest section after a brief delay
       setTimeout(() => {
         const element = document.getElementById('pinterest-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else if (tab === 'instagram') {
+      setActiveTab('instagram');
+      // Scroll to Instagram section after a brief delay
+      setTimeout(() => {
+        const element = document.getElementById('instagram-section');
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -107,16 +163,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSetBoard = async () => {
-    if (!selectedBoardId) {
+  const handleSetBoard = async (boardId?: string) => {
+    const targetBoardId = boardId || selectedBoardId;
+    
+    if (!targetBoardId) {
       toast.error('Please select a board');
       return;
     }
 
     setIsLoadingPinterest(true);
+    setSelectedBoardId(targetBoardId);
     try {
-      const selectedBoard = boards.find(b => String(b.id) === String(selectedBoardId));
-      const response = await API.setPinterestBoard(selectedBoardId, selectedBoard?.name);
+      const selectedBoard = boards.find(b => String(b.id) === String(targetBoardId));
+      const response = await API.setPinterestBoard(targetBoardId, selectedBoard?.name);
       
       if (response.success) {
         toast.success(`Board "${response.data?.board_name}" set successfully!`);
@@ -128,6 +187,88 @@ export default function SettingsPage() {
       }
     } catch (error) {
       toast.error('Failed to set Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleCreateBoard = async () => {
+    if (!newBoardData.name.trim()) {
+      toast.error('Board name is required');
+      return;
+    }
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.createPinterestBoard(newBoardData);
+      if (response.success) {
+        toast.success(`Board "${response.data?.board.name}" created successfully!`);
+        setShowCreateBoardModal(false);
+        setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to create board');
+      }
+    } catch (error) {
+      toast.error('Failed to create Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleEditBoard = (board: any) => {
+    setEditingBoard(board);
+    setEditBoardData({
+      name: board.name || '',
+      description: board.description || '',
+      privacy: board.privacy || 'PUBLIC',
+    });
+    setShowEditBoardModal(true);
+  };
+
+  const handleUpdateBoard = async () => {
+    if (!editingBoard || !editBoardData.name.trim()) {
+      toast.error('Board name is required');
+      return;
+    }
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.updatePinterestBoard(editingBoard.id, editBoardData);
+      if (response.success) {
+        toast.success(`Board "${response.data?.board.name}" updated successfully!`);
+        setShowEditBoardModal(false);
+        setEditingBoard(null);
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to update board');
+      }
+    } catch (error) {
+      toast.error('Failed to update Pinterest board');
+    } finally {
+      setIsLoadingPinterest(false);
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!deletingBoardId) return;
+
+    setIsLoadingPinterest(true);
+    try {
+      const response = await API.deletePinterestBoard(deletingBoardId);
+      if (response.success) {
+        toast.success('Board deleted successfully');
+        setShowDeleteConfirm(false);
+        setDeletingBoardId('');
+        await fetchBoards();
+        await refetchPinterest();
+      } else {
+        toast.error(response.error || 'Failed to delete board');
+      }
+    } catch (error) {
+      toast.error('Failed to delete Pinterest board');
     } finally {
       setIsLoadingPinterest(false);
     }
@@ -989,195 +1130,233 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Board Selection Section */}
+            {/* Enhanced Board Management Section */}
             {pinterestStatus.is_token_valid && (
-              <div className="p-5 rounded-xl border border-border bg-card">
-                <div className="flex items-center justify-between mb-4">
+              <div className="p-6 rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <h4 className="font-semibold text-base flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5" />
-                      Pinterest Board
+                    <h4 className="font-semibold text-lg flex items-center gap-2 mb-1">
+                      <Squares2X2Icon className="w-5 h-5 text-primary" />
+                      Pinterest Boards
                     </h4>
-                    <p className="text-sm text-muted mt-1">
-                      Select the board where approved designs will be posted
+                    <p className="text-sm text-muted">
+                      Manage your Pinterest boards and select where designs will be posted
                     </p>
                   </div>
+                  <Button
+                    onClick={() => setShowCreateBoardModal(true)}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Create Board
+                  </Button>
                 </div>
 
-                {!pinterestStatus.has_board ? (
-                  <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <InformationCircleIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-warning mb-2">
-                          No board selected
-                        </p>
-                        <p className="text-xs text-muted mb-3">
-                          You need to select a Pinterest board before designs can be automatically posted.
-                        </p>
-                        {!showBoardSelector ? (
-                          <Button
-                            onClick={fetchBoards}
-                            disabled={loadingBoards}
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            {loadingBoards ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Loading boards...
-                              </>
-                            ) : (
-                              <>
-                                <LinkIcon className="w-4 h-4" />
-                                Select Board
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-2">
-                                Choose a board
-                              </label>
-                              <select
-                                value={selectedBoardId}
-                                onChange={(e) => setSelectedBoardId(e.target.value)}
-                                className="select select-bordered w-full"
-                                disabled={isLoadingPinterest}
-                              >
-                                <option value="">Select a board...</option>
-                                {boards.map((board) => (
-                                  <option key={board.id} value={board.id}>
-                                    {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={handleSetBoard}
-                                disabled={!selectedBoardId || isLoadingPinterest}
-                                size="sm"
-                                className="flex items-center gap-2"
-                              >
-                                {isLoadingPinterest ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    Setting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckIcon className="w-4 h-4" />
-                                    Set Board
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  setShowBoardSelector(false);
-                                  setSelectedBoardId('');
-                                }}
-                                variant="outline"
-                                size="sm"
-                                disabled={isLoadingPinterest}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                {/* Active Board Display */}
+                {pinterestStatus.has_board && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/20 rounded-lg">
+                          <CheckCircleIcon className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Active Board</p>
+                          <p className="text-xs text-muted font-medium">{pinterestStatus.board_name}</p>
+                        </div>
                       </div>
+                      <Button
+                        onClick={fetchBoards}
+                        disabled={loadingBoards}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2 border-primary/30 hover:bg-primary/10"
+                      >
+                        <ArrowPathIcon className={`w-4 h-4 ${loadingBoards ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-success/10 border border-success/30 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CheckCircleIcon className="w-5 h-5 text-success" />
-                          <div>
-                            <p className="text-sm font-medium">Board Selected</p>
-                            <p className="text-xs text-muted">{pinterestStatus.board_name}</p>
+                )}
+
+                {/* Boards List */}
+                {loadingBoards ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="p-4 rounded-lg border border-border bg-card animate-pulse">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="h-4 bg-muted/20 rounded w-2/3 mb-2"></div>
+                            <div className="h-3 bg-muted/20 rounded w-1/2"></div>
                           </div>
+                          <div className="h-8 w-20 bg-muted/20 rounded"></div>
                         </div>
-                        {!showBoardSelector && (
+                      </div>
+                    ))}
+                  </div>
+                ) : boards.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {boards.map((board) => {
+                        const isSelected = String(pinterestStatus?.board_id) === String(board.id);
+                        return (
+                          <div
+                            key={board.id}
+                            className={`group p-4 rounded-lg border transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-primary/5 border-primary/30 shadow-sm'
+                                : 'bg-card border-border hover:border-primary/20 hover:shadow-sm'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start gap-3 mb-2">
+                                  <div className={`p-1.5 rounded-md flex-shrink-0 ${
+                                    isSelected ? 'bg-primary/20' : 'bg-muted/10'
+                                  }`}>
+                                    <Squares2X2Icon className={`w-4 h-4 ${
+                                      isSelected ? 'text-primary' : 'text-muted'
+                                    }`} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h5 className="font-semibold text-sm truncate">{board.name}</h5>
+                                      {isSelected && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary text-white flex-shrink-0">
+                                          Active
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-muted">
+                                      {board.privacy === 'SECRET' ? (
+                                        <span className="inline-flex items-center gap-1">
+                                          <LockClosedIcon className="w-3 h-3" />
+                                          Secret
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1">
+                                          <GlobeAltIcon className="w-3 h-3" />
+                                          Public
+                                        </span>
+                                      )}
+                                      {board.pin_count !== undefined && (
+                                        <span>{board.pin_count.toLocaleString()} pins</span>
+                                      )}
+                                    </div>
+                                    {board.description && (
+                                      <p className="text-xs text-muted mt-1.5 line-clamp-1">{board.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {!isSelected ? (
+                                  <>
+                                    <Button
+                                      onClick={() => handleSetBoard(board.id)}
+                                      size="sm"
+                                      disabled={isLoadingPinterest}
+                                      className="flex items-center gap-1.5 text-xs"
+                                    >
+                                      {isLoadingPinterest && selectedBoardId === board.id ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                          Setting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckIcon className="w-3.5 h-3.5" />
+                                          Select
+                                        </>
+                                      )}
+                                    </Button>
+                                    <div className="relative">
+                                      <Button
+                                        onClick={() => setShowBoardActions(showBoardActions === board.id ? null : board.id)}
+                                        variant="outline"
+                                        size="sm"
+                                        className="p-1.5"
+                                        title="More options"
+                                      >
+                                        <EllipsisVerticalIcon className="w-4 h-4" />
+                                      </Button>
+                                      {showBoardActions === board.id && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setShowBoardActions(null)}
+                                          />
+                                          <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-gray-800 border border-border rounded-lg shadow-xl py-1 min-w-[140px]">
+                                            <button
+                                              onClick={() => {
+                                                handleEditBoard(board);
+                                                setShowBoardActions(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                                            >
+                                              <PencilIcon className="w-4 h-4" />
+                                              Edit
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                setDeletingBoardId(board.id);
+                                                setShowDeleteConfirm(true);
+                                                setShowBoardActions(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                                            >
+                                              <TrashIcon className="w-4 h-4" />
+                                              Delete
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20">
+                                    <CheckCircleIcon className="w-3.5 h-3.5 text-primary" />
+                                    <span className="text-xs font-medium text-primary">Active</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="p-3 rounded-full bg-muted/10">
+                        <Squares2X2Icon className="w-8 h-8 text-muted" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">No boards loaded yet</p>
+                        <p className="text-xs text-muted mb-4">
+                          Create your first board or refresh to load existing boards
+                        </p>
+                        <div className="flex items-center gap-2 justify-center">
                           <Button
                             onClick={fetchBoards}
-                            disabled={loadingBoards}
+                            size="sm"
                             variant="outline"
+                            className="flex items-center gap-2"
+                          >
+                            <ArrowPathIcon className="w-4 h-4" />
+                            Refresh
+                          </Button>
+                          <Button
+                            onClick={() => setShowCreateBoardModal(true)}
                             size="sm"
                             className="flex items-center gap-2"
                           >
-                            {loadingBoards ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                <ArrowPathIcon className="w-4 h-4" />
-                                Change Board
-                              </>
-                            )}
+                            <PlusIcon className="w-4 h-4" />
+                            Create Board
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
-
-                    {showBoardSelector && (
-                      <div className="p-4 bg-card border border-border rounded-lg space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-foreground mb-2">
-                            Select a different board
-                          </label>
-                          <select
-                            value={selectedBoardId}
-                            onChange={(e) => setSelectedBoardId(e.target.value)}
-                            className="select select-bordered w-full"
-                            disabled={isLoadingPinterest}
-                          >
-                            <option value="">Select a board...</option>
-                            {boards.map((board) => (
-                              <option key={board.id} value={board.id}>
-                                {board.name} {board.pin_count !== undefined ? `(${board.pin_count} pins)` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={handleSetBoard}
-                            disabled={!selectedBoardId || isLoadingPinterest}
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            {isLoadingPinterest ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Updating...
-                              </>
-                            ) : (
-                              <>
-                                <CheckIcon className="w-4 h-4" />
-                                Update Board
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setShowBoardSelector(false);
-                              setSelectedBoardId('');
-                            }}
-                            variant="outline"
-                            size="sm"
-                            disabled={isLoadingPinterest}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1237,6 +1416,370 @@ export default function SettingsPage() {
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted">Loading Pinterest status...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Create Board Modal */}
+      <Modal
+        isOpen={showCreateBoardModal}
+        onClose={() => {
+          setShowCreateBoardModal(false);
+          setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        }}
+        title="Create New Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Board Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={newBoardData.name}
+              onChange={(e) => setNewBoardData({ ...newBoardData, name: e.target.value })}
+              placeholder="Enter board name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <textarea
+              value={newBoardData.description}
+              onChange={(e) => setNewBoardData({ ...newBoardData, description: e.target.value })}
+              placeholder="Enter board description (optional)"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Privacy</label>
+            <select
+              value={newBoardData.privacy}
+              onChange={(e) => setNewBoardData({ ...newBoardData, privacy: e.target.value as 'PUBLIC' | 'SECRET' })}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="PUBLIC">Public</option>
+              <option value="SECRET">Secret</option>
+            </select>
+            <p className="text-xs text-muted mt-1">
+              Public boards are visible to everyone. Secret boards are only visible to you.
+            </p>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateBoardModal(false);
+                setNewBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateBoard}
+              isLoading={isLoadingPinterest}
+              disabled={!newBoardData.name.trim()}
+              className="flex-1"
+            >
+              Create Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Board Modal */}
+      <Modal
+        isOpen={showEditBoardModal}
+        onClose={() => {
+          setShowEditBoardModal(false);
+          setEditingBoard(null);
+          setEditBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+        }}
+        title="Edit Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Board Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={editBoardData.name}
+              onChange={(e) => setEditBoardData({ ...editBoardData, name: e.target.value })}
+              placeholder="Enter board name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <textarea
+              value={editBoardData.description}
+              onChange={(e) => setEditBoardData({ ...editBoardData, description: e.target.value })}
+              placeholder="Enter board description (optional)"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Privacy</label>
+            <select
+              value={editBoardData.privacy}
+              onChange={(e) => setEditBoardData({ ...editBoardData, privacy: e.target.value as 'PUBLIC' | 'SECRET' })}
+              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="PUBLIC">Public</option>
+              <option value="SECRET">Secret</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditBoardModal(false);
+                setEditingBoard(null);
+                setEditBoardData({ name: '', description: '', privacy: 'PUBLIC' });
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateBoard}
+              isLoading={isLoadingPinterest}
+              disabled={!editBoardData.name.trim()}
+              className="flex-1"
+            >
+              Update Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingBoardId('');
+        }}
+        title="Delete Pinterest Board"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-error mb-1">Warning</p>
+                <p className="text-sm text-muted">
+                  Deleting a board will permanently remove it and all its pins from Pinterest. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeletingBoardId('');
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteBoard}
+              isLoading={isLoadingPinterest}
+              className="flex-1"
+            >
+              Delete Board
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Instagram Integration */}
+      <div id="instagram-section" className="card mt-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold">Instagram Integration</h3>
+            <p className="text-sm text-muted mt-1">
+              Post designs to Instagram automatically
+            </p>
+          </div>
+        </div>
+        
+        {instagramStatus ? (
+          <div className="space-y-6">
+            {/* Connection Status Card */}
+            <div className={`p-5 rounded-xl border-2 ${
+              instagramStatus.is_configured && instagramStatus.is_token_valid
+                ? 'bg-success/5 border-success/30'
+                : 'bg-warning/5 border-warning/30'
+            }`}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {instagramStatus.is_configured && instagramStatus.is_token_valid ? (
+                    <div className="p-2 bg-success/20 rounded-lg">
+                      <CheckCircleIcon className="w-6 h-6 text-success" />
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-warning/20 rounded-lg">
+                      <ExclamationTriangleIcon className="w-6 h-6 text-warning" />
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-semibold text-lg">
+                      {instagramStatus.is_configured && instagramStatus.is_token_valid
+                        ? 'Instagram Connected'
+                        : 'Instagram Not Connected'}
+                    </h4>
+                    <p className="text-sm text-muted">
+                      {instagramStatus.is_configured && instagramStatus.is_token_valid
+                        ? 'Your account is connected and ready to post designs'
+                        : 'Connect your Instagram account to start posting designs'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {(!instagramStatus.is_configured || !instagramStatus.is_token_valid) ? (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingInstagram(true);
+                        try {
+                          await API.authorizeInstagram();
+                        } catch (error) {
+                          toast.error('Failed to initiate Instagram authorization');
+                          setIsLoadingInstagram(false);
+                        }
+                      }}
+                      disabled={isLoadingInstagram}
+                      className="flex items-center gap-2"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      {isLoadingInstagram ? 'Connecting...' : 'Connect Instagram'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        setIsLoadingInstagram(true);
+                        try {
+                          await API.authorizeInstagram();
+                        } catch (error) {
+                          toast.error('Failed to re-authorize Instagram');
+                          setIsLoadingInstagram(false);
+                        }
+                      }}
+                      variant="outline"
+                      disabled={isLoadingInstagram}
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      Re-authorize
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Details Grid */}
+              {instagramStatus.is_configured && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border/50">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Status</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        instagramStatus.is_enabled 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {instagramStatus.is_enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted font-medium">Token</div>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        instagramStatus.is_token_valid 
+                          ? 'bg-success/20 text-success' 
+                          : 'bg-error/20 text-error'
+                      }`}>
+                        {instagramStatus.is_token_valid ? 'Valid' : 'Expired'}
+                      </span>
+                    </div>
+                  </div>
+                  {instagramStatus.last_successful_post && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Last Post</div>
+                      <div className="text-sm font-medium">
+                        {new Date(instagramStatus.last_successful_post).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                  {instagramStatus.username && (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted font-medium">Username</div>
+                      <div className="text-sm font-medium truncate" title={instagramStatus.username}>
+                        @{instagramStatus.username}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Error Display */}
+              {instagramStatus.last_error && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-error mb-1">Last Error</div>
+                      <div className="text-xs text-error/80">{instagramStatus.last_error}</div>
+                      {instagramStatus.last_error_at && (
+                        <div className="text-xs text-error/60 mt-1">
+                          {new Date(instagramStatus.last_error_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Instructions for Not Connected */}
+            {(!instagramStatus.is_configured || !instagramStatus.is_token_valid) && (
+              <div className="p-5 bg-muted/10 rounded-xl border border-border/50">
+                <div className="flex items-start gap-3">
+                  <InformationCircleIcon className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-2">Connect Instagram Account</p>
+                    <p className="text-sm text-muted mb-3">
+                      Click &quot;Connect Instagram&quot; to authorize access to your Instagram Business or Creator account.
+                      You&apos;ll be redirected to Facebook to complete the authorization.
+                    </p>
+                    <div className="text-xs text-muted space-y-1">
+                      <p><strong>Requirements:</strong></p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Instagram Business or Creator account</li>
+                        <li>Facebook Page linked to your Instagram account</li>
+                        <li>Facebook App with Instagram permissions</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted">Loading Instagram status...</p>
           </div>
         )}
       </div>

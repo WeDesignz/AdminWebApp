@@ -22,6 +22,7 @@ import {
   ChatBubbleLeftRightIcon,
   ShieldCheckIcon,
   LockClosedIcon,
+  CameraIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -48,6 +49,11 @@ const navigationCategories = [
   { name: 'Designs', href: '/designs', icon: PhotoIcon },
   { name: 'Coupons', href: '/coupons', icon: TicketIcon },
       { 
+        name: 'Instagram Posts', 
+        href: '/instagram-posts', 
+        icon: CameraIcon,
+      },
+      { 
         name: 'Plans', 
         href: '/plans', 
         icon: CubeIcon,
@@ -64,7 +70,13 @@ const navigationCategories = [
         icon: ShoppingCartIcon,
         restrictedTo: ['Super Admin'],
       },
-  { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
+      { name: 'Custom Orders', href: '/custom-orders', icon: WrenchScrewdriverIcon },
+      { 
+        name: 'Settlements', 
+        href: '/settlements', 
+        icon: CreditCardIcon,
+        restrictedTo: ['Super Admin'],
+      },
     ],
   },
   {

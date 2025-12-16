@@ -26,12 +26,10 @@ export default function DesignersPage() {
   const [onboardingStatusFilter, setOnboardingStatusFilter] = useState('');
   const [selectedDesigner, setSelectedDesigner] = useState<Designer | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRejectModalFromTable, setShowRejectModalFromTable] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [approvingDesignerId, setApprovingDesignerId] = useState<string | null>(null);
@@ -129,25 +127,6 @@ export default function DesignersPage() {
     setPage(1); // Reset to first page when page size changes
   };
 
-  const handleCreateRazorpayAccount = () => {
-    // Keep the view modal open, just open the Razorpay modal
-    setShowRazorpayModal(true);
-  };
-
-  const handleCloseRazorpayModal = () => {
-    setShowRazorpayModal(false);
-  };
-
-  const handleCreateAccount = async () => {
-    if (!selectedDesigner) return;
-    setIsCreatingAccount(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsCreatingAccount(false);
-    setShowRazorpayModal(false);
-    setSelectedDesigner(null);
-    // In real app, you would call the API here
-  };
 
   const handleRejectFromTable = (designer: Designer) => {
     // Check permission before proceeding
@@ -440,11 +419,6 @@ export default function DesignersPage() {
               title="Pending Approval"
               value={statsData.data.pendingApproval}
               icon={<ClockIcon className="w-6 h-6" />}
-            />
-            <KpiCard
-              title="Razorpay Pending"
-              value={statsData.data.razorpayPending}
-              icon={<CreditCardIcon className="w-6 h-6" />}
             />
             <KpiCard
               title="Rejected"
@@ -894,12 +868,6 @@ export default function DesignersPage() {
                 <XMarkIcon className="w-4 h-4 mr-2" />
                 Close
               </Button>
-              {!onboardingData.data.razorpay_account_verified && (
-                <Button variant="primary" onClick={handleCreateRazorpayAccount} title="Create Razorpay Linked Account">
-                  <PlusIcon className="w-4 h-4 mr-2" />
-                  Create Razorpay Account
-                </Button>
-              )}
             </div>
           </div>
         ) : (
@@ -911,133 +879,6 @@ export default function DesignersPage() {
               <XMarkIcon className="w-4 h-4 mr-2" />
               Close
             </Button>
-          </div>
-        )}
-      </Modal>
-
-      {/* Razorpay Account Creation Modal */}
-      <Modal
-        isOpen={showRazorpayModal}
-        onClose={handleCloseRazorpayModal}
-        title="Create Razorpay Linked Account"
-        size="lg"
-      >
-        {onboardingData?.data && selectedDesigner ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted mb-4">
-              Review the following details before creating the Razorpay linked account. All fields are for display only.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Name</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.designer_name || selectedDesigner.name || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.designer_email || selectedDesigner.email || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step1?.phone || onboardingData.data.contact_phone || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Business Name</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.legal_business_name || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Business Type</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.business_type || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">PAN Number</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.pan_number || 'N/A'}
-                </p>
-              </div>
-              {onboardingData.data.step2?.gst_number && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">GST Number</label>
-                  <p className="text-muted bg-muted/10 p-2 rounded-lg">{onboardingData.data.step2.gst_number}</p>
-                </div>
-              )}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2">Street Address</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.street_address || onboardingData.data.contact_address || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">City</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.city || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">State</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.state || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Pincode</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.pincode || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Country</label>
-                <p className="text-muted bg-muted/10 p-2 rounded-lg">
-                  {onboardingData.data.step2?.country || 'India'}
-                </p>
-              </div>
-              {onboardingData.data.bank_account_holder_name && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Bank Account Holder Name</label>
-                  <p className="text-muted bg-muted/10 p-2 rounded-lg">{onboardingData.data.bank_account_holder_name}</p>
-                </div>
-              )}
-              {onboardingData.data.bank_account_number && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Bank Account Number</label>
-                  <p className="text-muted bg-muted/10 p-2 rounded-lg font-mono">{onboardingData.data.bank_account_number}</p>
-                </div>
-              )}
-              {onboardingData.data.bank_ifsc_code && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Bank IFSC Code</label>
-                  <p className="text-muted bg-muted/10 p-2 rounded-lg font-mono">{onboardingData.data.bank_ifsc_code}</p>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" onClick={handleCloseRazorpayModal} title="Cancel">
-                <XMarkIcon className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button 
-                variant="primary" 
-                onClick={handleCreateAccount}
-                isLoading={isCreatingAccount}
-                title="Create Razorpay Account"
-              >
-                <CheckIcon className="w-4 h-4 mr-2" />
-                Create Account
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center">
-            <p className="text-muted">Loading designer details...</p>
           </div>
         )}
       </Modal>

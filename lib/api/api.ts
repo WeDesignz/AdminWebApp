@@ -442,14 +442,12 @@ export const DesignersAPI = {
     ApiResponse<{
       totalDesigners: number;
       pendingApproval: number;
-      razorpayPending: number;
       rejected: number;
     }>
   > {
     const response = await apiClient.get<{
       total_designers?: number;
       pending_approval?: number;
-      razorpay_pending?: number;
       rejected?: number;
     }>('api/coreadmin/designers/analytics/');
 
@@ -459,7 +457,6 @@ export const DesignersAPI = {
         data: {
           totalDesigners: response.data.total_designers || 0,
           pendingApproval: response.data.pending_approval || 0,
-          razorpayPending: response.data.razorpay_pending || 0,
           rejected: response.data.rejected || 0,
         },
       };
@@ -826,6 +823,11 @@ export const DesignsAPI = {
         transformed.designer = productData.designer;
       }
       
+      // Include raw backend data for file access (preview_files, media_files)
+      // This allows the UI to access the full file structure
+      (transformed as any).preview_files = productData.preview_files || [];
+      (transformed as any).media_files = productData.media_files || [];
+      
       return {
         success: true,
         data: transformed,
@@ -918,6 +920,72 @@ export const DesignsAPI = {
 /**
  * Pinterest API
  */
+export const InstagramAPI = {
+  /**
+   * Get Instagram integration status
+   */
+  async getStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    username: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return apiClient.get('api/common/instagram/status/');
+  },
+
+  /**
+   * Initiate Instagram OAuth
+   */
+  async authorize(): Promise<void> {
+    // This redirects, so we handle it differently
+    // Use API_CONFIG.baseURL directly since we're building the full URL ourselves
+    const baseUrl = API_CONFIG.baseURL || '';
+    if (!baseUrl) {
+      throw new Error('API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in .env.local');
+    }
+    // Remove trailing slash if present
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    window.location.href = `${cleanBaseUrl}/api/common/instagram/authorize/`;
+  },
+
+  /**
+   * Post to Instagram (single post)
+   */
+  async postToInstagram(post: {
+    productId: string;
+    mediaType: 'mockup' | 'jpg' | 'png';
+    caption: string;
+    postType: 'post' | 'story';
+  }): Promise<ApiResponse<{
+    message: string;
+    post_id: number;
+    product_id: string;
+    task_id: string;
+    status: string;
+  }>> {
+    return apiClient.post('api/common/instagram/post/', { post });
+  },
+
+  /**
+   * Get Instagram posts history
+   */
+  async getInstagramPosts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<ApiResponse<any>> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.status) queryParams.append('status', params.status);
+    const query = queryParams.toString();
+    return apiClient.get(`api/common/instagram/posts/${query ? `?${query}` : ''}`);
+  },
+};
+
 export const PinterestAPI = {
   /**
    * Get Pinterest integration status
@@ -976,6 +1044,54 @@ export const PinterestAPI = {
       board_id: boardId,
       board_name: boardName,
     });
+  },
+
+  /**
+   * Create a new Pinterest board
+   */
+  async createBoard(data: {
+    name: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return apiClient.post('api/pinterest/create-board/', data);
+  },
+
+  /**
+   * Update a Pinterest board
+   */
+  async updateBoard(boardId: string, data: {
+    name?: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return apiClient.patch('api/pinterest/update-board/', {
+      board_id: boardId,
+      ...data,
+    });
+  },
+
+  /**
+   * Delete a Pinterest board
+   */
+  async deleteBoard(boardId: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`api/pinterest/delete-board/${boardId}/`);
   },
 };
 
@@ -1685,6 +1801,7 @@ export const SystemConfigAPI = {
         data: {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
+          designPrice: response.data.design_price || 50,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
@@ -1717,6 +1834,7 @@ export const SystemConfigAPI = {
     const backendData: any = {
       commission_rate: data.commissionRate,
       gst_percentage: data.gstPercentage,
+      design_price: data.designPrice,
       custom_order_time_slot_hours: data.customOrderTimeSlot,
       minimum_required_designs: data.minimumRequiredDesigns,
       maintenance_mode: data.maintenanceMode,
@@ -1736,6 +1854,7 @@ export const SystemConfigAPI = {
         data: {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
+          designPrice: response.data.design_price || 50,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
@@ -2317,6 +2436,119 @@ export const FAQAPI = {
 };
 
 /**
+ * Settlement Management API
+ */
+export const SettlementAPI = {
+  /**
+   * Download Settlement Sheet
+   */
+  async downloadSettlementSheet(params: {
+    format?: 'csv' | 'xlsx';
+    status?: string;
+    period_start?: string;
+    settlement_date?: string;
+    search?: string;
+  }): Promise<Blob> {
+    const queryParams = new URLSearchParams();
+    if (params.format) queryParams.append('format', params.format);
+    if (params.status) queryParams.append('status', params.status);
+    if (params.period_start) queryParams.append('period_start', params.period_start);
+    if (params.settlement_date) queryParams.append('settlement_date', params.settlement_date);
+    if (params.search) queryParams.append('search', params.search);
+    
+    // Only append query string if there are parameters
+    const queryString = queryParams.toString();
+    const url = queryString 
+      ? `api/wallet/admin/settlement-sheet/?${queryString}`
+      : `api/wallet/admin/settlement-sheet/`;  // Add trailing slash when no params
+    
+    // Use fetch directly for blob response
+    const { getApiUrl } = await import('./config');
+    const { useAuthStore } = await import('@/store/authStore');
+    const state = useAuthStore.getState();
+    
+    if (!state.accessToken) {
+      throw new Error('Authentication required. Please login again.');
+    }
+    
+    const response = await fetch(getApiUrl(url), {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${state.accessToken}`,
+      },
+    });
+    
+    if (!response.ok) {
+      // Try to get error message from response
+      let errorMessage = response.statusText;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        // If response is not JSON, use statusText
+      }
+      throw new Error(`Failed to download settlement sheet: ${errorMessage}`);
+    }
+    
+    return await response.blob();
+  },
+
+  /**
+   * List Settlements
+   */
+  async listSettlements(params: {
+    status?: string;
+    period_start?: string;
+    settlement_date?: string;
+    designer_id?: number;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<PaginatedResponse<any>>> {
+    const queryParams = new URLSearchParams();
+    if (params.status) queryParams.append('status', params.status);
+    if (params.period_start) queryParams.append('period_start', params.period_start);
+    if (params.settlement_date) queryParams.append('settlement_date', params.settlement_date);
+    if (params.designer_id) queryParams.append('designer_id', params.designer_id.toString());
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+    
+    const response = await apiClient.get<any>(`api/wallet/admin/settlements/?${queryParams.toString()}`);
+    return response as ApiResponse<PaginatedResponse<any>>;
+  },
+
+  /**
+   * Update Settlement Status
+   */
+  async updateSettlementStatus(
+    settlementId: number,
+    data: {
+      status: 'processing' | 'completed' | 'failed';
+      failure_reason?: string;
+      manual_reference_id?: string;
+      admin_notes?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    const response = await apiClient.put<any>(`api/wallet/admin/settlements/${settlementId}/status/`, data);
+    return response as ApiResponse<any>;
+  },
+
+  /**
+   * Bulk Update Settlement Status
+   */
+  async bulkUpdateSettlementStatus(data: {
+    settlement_ids: number[];
+    status: 'processing' | 'completed' | 'failed';
+    failure_reason?: string;
+    manual_reference_ids?: Record<string, string>;
+    admin_notes?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await apiClient.post<any>('api/wallet/admin/settlements/bulk-update/', data);
+    return response as ApiResponse<any>;
+  },
+};
+
+/**
  * Export all APIs as a single object for easy import
  */
 export const API = {
@@ -2327,6 +2559,7 @@ export const API = {
   customers: CustomersAPI,
   designs: DesignsAPI,
   pinterest: PinterestAPI,
+  instagram: InstagramAPI,
   orders: OrdersAPI,
   customOrders: CustomOrdersAPI,
   orderComments: OrderCommentsAPI,
@@ -2341,6 +2574,7 @@ export const API = {
   adminUsers: AdminUsersAPI,
   permissionGroups: PermissionGroupsAPI,
   faq: FAQAPI,
+  settlement: SettlementAPI,
 };
 
 // For backward compatibility, export as default

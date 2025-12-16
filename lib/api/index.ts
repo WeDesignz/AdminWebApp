@@ -199,8 +199,7 @@ class RealAPI {
     ApiResponse<{
       totalDesigners: number;
       pendingApproval: number;
-      razorpayPending: number;
-      rejected: number;
+      rejected: number
     }>
   > {
     return API.designers.getDesignerStats();
@@ -288,6 +287,38 @@ class RealAPI {
     return API.designs.resolveFlag(designId);
   }
 
+  // Instagram methods
+  static async getInstagramStatus(): Promise<ApiResponse<{
+    is_enabled: boolean;
+    is_configured: boolean;
+    is_token_valid: boolean;
+    username: string | null;
+    last_successful_post: string | null;
+    last_error: string | null;
+    last_error_at: string | null;
+  }>> {
+    return API.instagram.getStatus();
+  }
+
+  static async authorizeInstagram(): Promise<void> {
+    return API.instagram.authorize();
+  }
+
+  static async postToInstagram(post: {
+    productId: string;
+    mediaType: 'mockup' | 'jpg' | 'png';
+    caption: string;
+    postType: 'post' | 'story';
+  }): Promise<ApiResponse<{
+    message: string;
+    post_id: number;
+    product_id: string;
+    task_id: string;
+    status: string;
+  }>> {
+    return API.instagram.postToInstagram(post);
+  }
+
   // Pinterest methods
   static async getPinterestStatus(): Promise<ApiResponse<{
     is_enabled: boolean;
@@ -323,6 +354,42 @@ class RealAPI {
     message: string;
   }>> {
     return API.pinterest.setBoard(boardId, boardName);
+  }
+
+  static async createPinterestBoard(data: {
+    name: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return API.pinterest.createBoard(data);
+  }
+
+  static async updatePinterestBoard(boardId: string, data: {
+    name?: string;
+    description?: string;
+    privacy?: 'PUBLIC' | 'SECRET';
+  }): Promise<ApiResponse<{
+    board: {
+      id: string;
+      name: string;
+      description: string;
+      privacy: string;
+      pin_count: number;
+    };
+  }>> {
+    return API.pinterest.updateBoard(boardId, data);
+  }
+
+  static async deletePinterestBoard(boardId: string): Promise<ApiResponse<void>> {
+    return API.pinterest.deleteBoard(boardId);
   }
 
   // Customer methods
