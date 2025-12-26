@@ -52,8 +52,11 @@ export default function SettlementsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState<number | ''>('');
-  const [yearFilter, setYearFilter] = useState<number | ''>('');
+  
+  // Set default to current month and year
+  const currentDate = new Date();
+  const [monthFilter, setMonthFilter] = useState<number | ''>(currentDate.getMonth() + 1);
+  const [yearFilter, setYearFilter] = useState<number | ''>(currentDate.getFullYear());
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
@@ -108,6 +111,39 @@ export default function SettlementsPage() {
   const settlements = data?.data?.data || [];
   const totalCount = data?.data?.pagination?.total || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Check if current month settlements are pending
+  const isCurrentMonthPending = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentYear = today.getFullYear();
+    const currentDay = today.getDate();
+    
+    // If today is before Day 6, current month settlements are pending
+    if (currentDay < 6) {
+      return true;
+    }
+    
+    // Check if viewing current month
+    if (monthFilter && yearFilter && monthFilter === currentMonth && yearFilter === currentYear) {
+      return true;
+    }
+    
+    // If no filter is set, check if we're viewing current month data
+    if (!monthFilter && !yearFilter) {
+      // Check if any settlement in the list is from current month
+      const hasCurrentMonthSettlement = settlements.some((s: Settlement) => {
+        const settlementDate = new Date(s.settlement_period_start);
+        return settlementDate.getMonth() + 1 === currentMonth && settlementDate.getFullYear() === currentYear;
+      });
+      return hasCurrentMonthSettlement && currentDay < 6;
+    }
+    
+    return false;
+  };
+
+  // Disable download button for current month
+  const canDownloadSheet = !isCurrentMonthPending();
 
   // Calculate stats
   const stats = {
@@ -285,16 +321,25 @@ export default function SettlementsPage() {
                 { value: 'csv', label: 'CSV (.csv)' },
               ]}
             />
-            <Button
-              variant="primary"
-              onClick={() => downloadSheetMutation.mutate()}
-              disabled={downloadSheetMutation.isPending}
-              isLoading={downloadSheetMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              Download Sheet
-            </Button>
+            <div className="relative group">
+              <Button
+                variant="primary"
+                onClick={() => downloadSheetMutation.mutate()}
+                disabled={downloadSheetMutation.isPending || !canDownloadSheet}
+                isLoading={downloadSheetMutation.isPending}
+                className="flex items-center gap-2"
+                title={!canDownloadSheet ? 'Current month settlements are pending. Download will be available after Day 6.' : ''}
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Download Sheet
+              </Button>
+              {!canDownloadSheet && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  Current month settlements are pending. Download will be available after Day 6.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              )}
+            </div>
             {selectedSettlements.length > 0 && (
               <Button
                 variant="primary"

@@ -23,6 +23,7 @@ import {
   ShieldCheckIcon,
   LockClosedIcon,
   CameraIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -75,6 +76,12 @@ const navigationCategories = [
         name: 'Settlements', 
         href: '/settlements', 
         icon: CreditCardIcon,
+        restrictedTo: ['Super Admin'],
+      },
+      { 
+        name: 'TDS', 
+        href: '/tds', 
+        icon: DocumentTextIcon,
         restrictedTo: ['Super Admin'],
       },
     ],

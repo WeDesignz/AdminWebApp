@@ -2546,6 +2546,25 @@ export const SettlementAPI = {
     const response = await apiClient.post<any>('api/wallet/admin/settlements/bulk-update/', data);
     return response as ApiResponse<any>;
   },
+
+  /**
+   * List TDS Records
+   */
+  async listTDSRecords(params: {
+    month?: number;
+    year?: number;
+    page?: number;
+    page_size?: number;
+  }): Promise<ApiResponse<PaginatedResponse<any>>> {
+    const queryParams = new URLSearchParams();
+    if (params.month) queryParams.append('month', params.month.toString());
+    if (params.year) queryParams.append('year', params.year.toString());
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+    
+    const response = await apiClient.get<any>(`api/wallet/admin/tds/?${queryParams.toString()}`);
+    return response as ApiResponse<PaginatedResponse<any>>;
+  },
 };
 
 /**
