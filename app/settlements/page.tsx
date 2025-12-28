@@ -52,11 +52,8 @@ export default function SettlementsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  
-  // Set default to current month and year
-  const currentDate = new Date();
-  const [monthFilter, setMonthFilter] = useState<number | ''>(currentDate.getMonth() + 1);
-  const [yearFilter, setYearFilter] = useState<number | ''>(currentDate.getFullYear());
+  const [monthFilter, setMonthFilter] = useState<number | ''>('');
+  const [yearFilter, setYearFilter] = useState<number | ''>('');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
