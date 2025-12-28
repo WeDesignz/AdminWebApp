@@ -69,11 +69,22 @@ export default function LoginPage() {
           }
         }
       } else {
-        toast.error(response.error || 'Login failed');
+        // Extract error message from response
+        const errorMessage = response.error || 'Invalid email or password. Please check your credentials and try again.';
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('An error occurred during login');
+      // Extract error message from caught error
+      let errorMessage = 'An error occurred during login. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || errorMessage;
+      } else if (typeof error === 'object' && error !== null && 'error' in error) {
+        errorMessage = (error as any).error || errorMessage;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
