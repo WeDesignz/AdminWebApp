@@ -175,12 +175,12 @@ export default function LoginPage() {
               <img 
                 src="/Logos/ONLY LOGO.png" 
                 alt="WeDesignz Logo" 
-                className={`h-12 w-12 ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+                className={`h-12 w-12 object-contain ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
               />
               <img 
                 src="/Logos/ONLY TEXT.png" 
                 alt="WeDesignz" 
-                className={`h-8 w-auto ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+                className={`h-8 w-auto object-contain ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
               />
             </div>
             <p className="text-xl font-semibold mb-1">Admin Panel</p>
