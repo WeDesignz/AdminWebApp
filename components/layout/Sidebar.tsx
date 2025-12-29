@@ -191,7 +191,7 @@ export function Sidebar() {
             <img
               src="/Logos/ONLY LOGO.png"
               alt="WeDesignz Logo"
-              className={`h-8 w-8 ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-8 w-auto ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
             <img
               src="/Logos/ONLY TEXT.png"
@@ -204,7 +204,7 @@ export function Sidebar() {
             <img
               src="/Logos/ONLY LOGO.png"
               alt="WeDesignz"
-              className={`w-8 h-8 object-contain ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+              className={`h-8 w-auto object-contain ${displayTheme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
             />
           </div>
         )}

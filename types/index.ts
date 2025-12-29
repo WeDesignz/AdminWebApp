@@ -577,3 +577,27 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+export interface Category {
+  id: number;
+  name: string;
+  parent?: string | null;
+  parent_id?: number | null;
+  subcategories?: Category[];
+  products_count?: number;
+  subcategories_count?: number;
+  created_by?: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  created_at?: string;
+  updated_by?: {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  updated_at?: string;
+}

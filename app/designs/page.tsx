@@ -33,7 +33,7 @@ export default function DesignsPage() {
   const [fullPreviewImage, setFullPreviewImage] = useState<string | null>(null);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [allDesignImages, setAllDesignImages] = useState<string[]>([]);
-  const [showFlagModal, setShowFlagModal] = useState(false);
+  const [flaggingDesignId, setFlaggingDesignId] = useState<string | null>(null);
   const [flagReason, setFlagReason] = useState('');
   const [isFlagging, setIsFlagging] = useState(false);
   const [isResolvingFlag, setIsResolvingFlag] = useState(false);
@@ -230,33 +230,39 @@ export default function DesignsPage() {
       toast.error('You do not have permission to flag designs');
       return;
     }
-    setSelectedDesign(design);
-    setShowFlagModal(true);
+    // Toggle flag input - if already open for this design, close it
+    if (flaggingDesignId === design.id) {
+      setFlaggingDesignId(null);
+      setFlagReason('');
+    } else {
+      setFlaggingDesignId(design.id);
+      setFlagReason('');
+    }
   };
 
-  const handleCloseFlagModal = () => {
-    setShowFlagModal(false);
+  const handleCancelFlag = () => {
+    setFlaggingDesignId(null);
     setFlagReason('');
   };
 
-  const handleSubmitFlag = async () => {
-    if (!selectedDesign || !flagReason.trim()) {
+  const handleSubmitFlag = async (design: Design) => {
+    const reason = flagReason.trim();
+    if (!reason) {
       toast.error('Please provide a reason for flagging');
       return;
     }
     setIsFlagging(true);
-    const flaggedDesignId = selectedDesign.id;
     try {
-      const response = await API.flagDesign(selectedDesign.id, flagReason);
+      const response = await API.flagDesign(design.id, reason);
       if (response.success) {
-        toast.success(`Design "${selectedDesign.title}" flagged successfully`);
-        setShowFlagModal(false);
+        toast.success(`Design "${design.title}" flagged successfully and hidden from feed`);
+        setFlaggingDesignId(null);
         setFlagReason('');
         
         // Invalidate and refetch all related queries
         await Promise.all([
           queryClient.refetchQueries({ queryKey: ['designs'] }),
-          queryClient.refetchQueries({ queryKey: ['design', flaggedDesignId] }),
+          queryClient.refetchQueries({ queryKey: ['design', design.id] }),
         ]);
         
         setIsFlagging(false);
@@ -783,13 +789,51 @@ export default function DesignsPage() {
                     size="sm"
                     onClick={() => handleFlagDesign(designDetail.data!)}
                     className="flex items-center gap-2"
-                    title="Flag Design"
+                    title={flaggingDesignId === designDetail.data!.id ? "Cancel Flag" : "Flag Design"}
                   >
                     <FlagIcon className="w-4 h-4" />
-                    Flag Design
+                    {flaggingDesignId === designDetail.data!.id ? "Cancel" : "Flag Design"}
                   </PermissionButton>
                 )}
               </div>
+              
+              {/* Inline Flag Input */}
+              {flaggingDesignId === designDetail.data!.id && (
+                <div className="mt-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
+                  <label className="block text-sm font-medium mb-2 text-warning">
+                    Flag Reason <span className="text-error">*</span>
+                  </label>
+                  <textarea
+                    value={flagReason}
+                    onChange={(e) => setFlagReason(e.target.value)}
+                    className="input-field w-full min-h-[100px] resize-none"
+                    placeholder="Enter the reason for flagging this design (e.g., content violation, copied design)..."
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2 mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelFlag}
+                      disabled={isFlagging}
+                      title="Cancel"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="warning" 
+                      size="sm"
+                      onClick={() => handleSubmitFlag(designDetail.data!)}
+                      disabled={!flagReason.trim() || isFlagging}
+                      isLoading={isFlagging}
+                      title="Submit Flag"
+                    >
+                      <FlagIcon className="w-4 h-4" />
+                      Flag Design
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             {/* Design Files - Images and Downloads */}
             {(() => {
@@ -1200,42 +1244,6 @@ export default function DesignsPage() {
         )}
       </Modal>
 
-      {/* Flag Design Modal */}
-      <Modal
-        isOpen={showFlagModal}
-        onClose={handleCloseFlagModal}
-        title="Flag Design"
-        size="md"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted">
-            Please provide a reason for flagging this design (e.g., content violation, copied design).
-          </p>
-          <div>
-            <label className="block text-sm font-medium mb-2">Flag Reason</label>
-            <textarea
-              value={flagReason}
-              onChange={(e) => setFlagReason(e.target.value)}
-              className="input-field w-full min-h-[120px] resize-none"
-              placeholder="Enter the reason for flagging this design..."
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" onClick={handleCloseFlagModal} title="Cancel">
-              <XMarkIcon className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="warning" 
-              onClick={handleSubmitFlag}
-              disabled={!flagReason.trim() || isFlagging}
-              isLoading={isFlagging}
-              title="Flag Design"
-            >
-              <FlagIcon className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Activity Statistics Modal */}
       <Modal
