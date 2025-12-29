@@ -73,15 +73,22 @@ export default function LoginPage() {
         const errorMessage = response.error || 'Invalid email or password. Please check your credentials and try again.';
         toast.error(errorMessage);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      // Extract error message from caught error
-      let errorMessage = 'An error occurred during login. Please try again.';
+      // Extract error message from various possible formats
+      let errorMessage = 'An error occurred during login';
       
-      if (error instanceof Error) {
-        errorMessage = error.message || errorMessage;
-      } else if (typeof error === 'object' && error !== null && 'error' in error) {
-        errorMessage = (error as any).error || errorMessage;
+      if (error?.error) {
+        // Direct error property
+        errorMessage = error.error;
+      } else if (error?.message) {
+        // Error message property
+        errorMessage = error.message;
+      } else if (error?.response?.error) {
+        // Nested response error
+        errorMessage = error.response.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
       }
       
       toast.error(errorMessage);
@@ -110,11 +117,26 @@ export default function LoginPage() {
         toast.success('Login successful!');
         router.push('/dashboard');
       } else {
-        toast.error(response.error || '2FA verification failed');
+        // Extract error message from response
+        const errorMessage = response.error || 'Invalid 2FA code. Please try again.';
+        toast.error(errorMessage);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('2FA verification error:', error);
-      toast.error('An error occurred during verification');
+      // Extract error message from various possible formats
+      let errorMessage = 'An error occurred during verification';
+      
+      if (error?.error) {
+        errorMessage = error.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.error) {
+        errorMessage = error.response.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -184,14 +206,14 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
               <img 
-                src="/Logos/ONLY LOGO.png" 
+                src="/Logos/ONLY LOGO.svg" 
                 alt="WeDesignz Logo" 
-                className={`h-12 w-12 object-contain ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+                className={`h-12 w-12 ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
               />
               <img 
-                src="/Logos/ONLY TEXT.png" 
+                src="/Logos/ONLY TEXT.svg" 
                 alt="WeDesignz" 
-                className={`h-8 w-auto object-contain ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
+                className={`h-8 w-auto ${mounted && theme === 'dark' ? 'brightness-0 invert' : 'brightness-0'}`}
               />
             </div>
             <p className="text-xl font-semibold mb-1">Admin Panel</p>
