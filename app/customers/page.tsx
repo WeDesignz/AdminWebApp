@@ -405,11 +405,11 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Phone Number</label>
-                  <p className="text-muted">{selectedCustomer.phoneNumber || 'N/A'}</p>
+                  <p className="text-muted">{selectedCustomer.phone_number || selectedCustomer.phoneNumber || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Joined Date</label>
-                  <p className="text-muted">{formatDate(selectedCustomer.joinedAt)}</p>
+                  <p className="text-muted">{formatDate(selectedCustomer.date_joined || selectedCustomer.joinedAt)}</p>
                 </div>
                 {selectedCustomer.address && (
                   <>
