@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MockAPI, API } from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { SystemConfig, Design } from '@/types';
+import { SystemConfig, Design, Category } from '@/types';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
@@ -18,8 +18,10 @@ import {
   PhotoIcon,
   MagnifyingGlassIcon,
   EyeIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/common/Modal';
+import { Dropdown } from '@/components/common/Dropdown';
 import { API_CONFIG } from '@/lib/api/config';
 
 export default function SystemConfigsPageContent() {
@@ -35,6 +37,16 @@ export default function SystemConfigsPageContent() {
   const [designsDisplayLimit, setDesignsDisplayLimit] = useState(60);
   const [designsPerPage, setDesignsPerPage] = useState(50);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showAddSubcategoryModal, setShowAddSubcategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<Category | null>(null);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isCreatingSubcategory, setIsCreatingSubcategory] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState<number | null>(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{ id: number; name: string } | null>(null);
 
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['system-config'],
@@ -50,6 +62,11 @@ export default function SystemConfigsPageContent() {
   const { data: designsData } = useQuery({
     queryKey: ['designs-for-config'],
     queryFn: () => MockAPI.getDesigns({ status: 'approved', limit: 1000 }),
+  });
+
+  const { data: categoriesData, isLoading: isLoadingCategories, refetch: refetchCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => API.categories.getCategories(),
   });
 
   const [formData, setFormData] = useState<Partial<SystemConfig>>({
@@ -297,6 +314,91 @@ export default function SystemConfigsPageContent() {
     });
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast.error('Please enter a category name');
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const response = await API.categories.createCategory(newCategoryName.trim());
+      if (response.success) {
+        toast.success('Category created successfully');
+        setNewCategoryName('');
+        setShowAddCategoryModal(false);
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      } else {
+        toast.error(response.error || 'Failed to create category');
+      }
+    } catch (error) {
+      toast.error('An error occurred while creating category');
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
+  const handleAddSubcategory = async () => {
+    if (!newSubcategoryName.trim()) {
+      toast.error('Please enter a subcategory name');
+      return;
+    }
+    if (!selectedCategoryForSubcategory) {
+      toast.error('Please select a category');
+      return;
+    }
+
+    setIsCreatingSubcategory(true);
+    try {
+      const response = await API.categories.createSubcategory(
+        selectedCategoryForSubcategory!.id,
+        newSubcategoryName.trim()
+      );
+      if (response.success) {
+        toast.success('Subcategory created successfully');
+        setNewSubcategoryName('');
+        setSelectedCategoryForSubcategory(null);
+        setShowAddSubcategoryModal(false);
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      } else {
+        toast.error(response.error || 'Failed to create subcategory');
+      }
+    } catch (error) {
+      toast.error('An error occurred while creating subcategory');
+    } finally {
+      setIsCreatingSubcategory(false);
+    }
+  };
+
+  const categories = categoriesData?.data || [];
+  
+
+  const handleDeleteCategoryClick = (categoryId: number, categoryName: string) => {
+    setCategoryToDelete({ id: categoryId, name: categoryName });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+
+    setIsDeletingCategory(categoryToDelete.id);
+    try {
+      const response = await API.categories.deleteCategory(categoryToDelete.id);
+      if (response.success) {
+        toast.success('Category deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+        setShowDeleteConfirmModal(false);
+        setCategoryToDelete(null);
+      } else {
+        toast.error(response.error || 'Failed to delete category');
+      }
+    } catch (error) {
+      toast.error('An error occurred while deleting category');
+    } finally {
+      setIsDeletingCategory(null);
+    }
+  };
+
   const getSelectedDesigns = (type: 'hero_section' | 'featured' | 'dome_gallery') => {
     const list = 
       type === 'hero_section' ? formData.heroSectionDesigns || [] :
@@ -515,6 +617,147 @@ export default function SystemConfigsPageContent() {
                 <p className="text-xs text-muted mt-1">Minimum designs required for designer onboarding (default: 50)</p>
               </div>
             </div>
+          </div>
+
+          {/* Categories & Subcategories Management */}
+          <div className="card">
+            <h3 className="text-xl font-bold mb-4">Categories & Subcategories</h3>
+            <p className="text-sm text-muted mb-6">Manage product categories and their subcategories</p>
+
+            <div className="flex items-center gap-3 mb-6">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAddCategoryModal(true)}
+                className="flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Category
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (categories.length === 0) {
+                    toast.error('Please create a category first');
+                    return;
+                  }
+                  setShowAddSubcategoryModal(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Subcategory
+              </Button>
+            </div>
+
+            {isLoadingCategories ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-muted flex items-center justify-center">
+                  <PlusIcon className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted font-medium">No categories added</p>
+                <p className="text-xs text-muted mt-1">Click &quot;Add Category&quot; to create your first category</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="p-4 border border-border rounded-lg bg-background hover:border-primary/50 transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-semibold">{category.name}</h4>
+                          {category.products_count !== undefined && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-primary/20 text-primary rounded-full">
+                              {category.products_count} product{category.products_count !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                        {category.created_at && (
+                          <p className="text-xs text-muted">
+                            Created {new Date(category.created_at).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCategoryForSubcategory(category);
+                            setShowAddSubcategoryModal(true);
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                          Add Subcategory
+                        </Button>
+                        <button
+                          onClick={() => handleDeleteCategoryClick(category.id, category.name)}
+                          disabled={isDeletingCategory === category.id}
+                          className="flex-shrink-0 p-1.5 text-error hover:bg-error/10 rounded transition-colors disabled:opacity-50"
+                          title="Delete category"
+                        >
+                          {isDeletingCategory === category.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-error"></div>
+                          ) : (
+                            <TrashIcon className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {category.subcategories && category.subcategories.length > 0 ? (
+                      <div className="mt-4 pl-4 border-l-2 border-primary/30">
+                        <p className="text-xs font-medium text-muted mb-2">
+                          {category.subcategories.length} Subcategor{category.subcategories.length !== 1 ? 'ies' : 'y'}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {category.subcategories.map((subcategory) => (
+                            <div
+                              key={subcategory.id}
+                              className="flex items-center justify-between gap-2 p-2 bg-muted/30 rounded border border-border"
+                            >
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{subcategory.name}</p>
+                                {subcategory.products_count !== undefined && (
+                                  <p className="text-xs text-muted">
+                                    {subcategory.products_count} product{subcategory.products_count !== 1 ? 's' : ''}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleDeleteCategoryClick(subcategory.id, subcategory.name)}
+                                disabled={isDeletingCategory === subcategory.id}
+                                className="flex-shrink-0 p-1 text-error hover:bg-error/10 rounded transition-colors disabled:opacity-50"
+                                title="Delete subcategory"
+                              >
+                                {isDeletingCategory === subcategory.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-error"></div>
+                                ) : (
+                                  <TrashIcon className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 pl-4 border-l-2 border-border">
+                        <p className="text-xs text-muted italic">No subcategories yet</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Landing Page Controls */}
@@ -1269,6 +1512,186 @@ export default function SystemConfigsPageContent() {
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Add Category Modal */}
+      <Modal
+        isOpen={showAddCategoryModal}
+        onClose={() => {
+          setShowAddCategoryModal(false);
+          setNewCategoryName('');
+        }}
+        title="Add Category"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Category Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Enter category name"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddCategory();
+                }
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddCategoryModal(false);
+                setNewCategoryName('');
+              }}
+              className="flex items-center gap-2"
+            >
+              <XMarkIcon className="w-4 h-4" />
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleAddCategory}
+              disabled={isCreatingCategory}
+              isLoading={isCreatingCategory}
+              className="flex items-center gap-2"
+            >
+              <CheckIcon className="w-4 h-4" />
+              Add Category
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Subcategory Modal */}
+      <Modal
+        isOpen={showAddSubcategoryModal}
+        onClose={() => {
+          setShowAddSubcategoryModal(false);
+          setNewSubcategoryName('');
+          setSelectedCategoryForSubcategory(null);
+        }}
+        title="Add Subcategory"
+        size="md"
+      >
+        <div className="space-y-4">
+          {!selectedCategoryForSubcategory && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Select Category <span className="text-error">*</span>
+              </label>
+              <Dropdown
+                options={categories.map((category: Category) => ({
+                  value: String(category.id),
+                  label: category.name,
+                }))}
+                value={selectedCategoryForSubcategory ? String((selectedCategoryForSubcategory as Category).id) : ''}
+                onChange={(value) => {
+                  const category = categories.find((c: Category) => c.id === Number(value));
+                  setSelectedCategoryForSubcategory(category || null);
+                }}
+                placeholder="Select a category"
+              />
+            </div>
+          )}
+          {selectedCategoryForSubcategory && (
+            <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+              <p className="text-xs text-muted mb-1">Parent Category</p>
+              <p className="text-sm font-medium">{selectedCategoryForSubcategory.name}</p>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Subcategory Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={newSubcategoryName}
+              onChange={(e) => setNewSubcategoryName(e.target.value)}
+              placeholder="Enter subcategory name"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && selectedCategoryForSubcategory) {
+                  handleAddSubcategory();
+                }
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddSubcategoryModal(false);
+                setNewSubcategoryName('');
+                setSelectedCategoryForSubcategory(null);
+              }}
+              className="flex items-center gap-2"
+            >
+              <XMarkIcon className="w-4 h-4" />
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleAddSubcategory}
+              disabled={isCreatingSubcategory || !selectedCategoryForSubcategory}
+              isLoading={isCreatingSubcategory}
+              className="flex items-center gap-2"
+            >
+              <CheckIcon className="w-4 h-4" />
+              Add Subcategory
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => {
+          setShowDeleteConfirmModal(false);
+          setCategoryToDelete(null);
+        }}
+        title="Delete Category"
+        size="md"
+      >
+        {categoryToDelete && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-error/10 border border-error/20 rounded-lg">
+              <ExclamationTriangleIcon className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-error mb-1">Warning</p>
+                <p className="text-sm text-muted">
+                  Are you sure you want to delete <strong className="text-foreground">&quot;{categoryToDelete.name}&quot;</strong>? 
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setCategoryToDelete(null);
+                }}
+                className="flex items-center gap-2"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteCategory}
+                disabled={isDeletingCategory !== null}
+                isLoading={isDeletingCategory !== null}
+                className="flex items-center gap-2"
+              >
+                <TrashIcon className="w-4 h-4" />
+                Delete Category
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </DashboardLayout>
   );

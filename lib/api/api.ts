@@ -23,6 +23,7 @@ import type {
   ActivityLog,
   SystemConfig,
   Coupon,
+  Category,
 } from '@/types';
 
 /**
@@ -1925,6 +1926,85 @@ export const ActivityLogsAPI = {
 };
 
 /**
+ * Categories API
+ */
+export const CategoriesAPI = {
+  /**
+   * Get all categories with subcategories
+   */
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    const response = await apiClient.get<{
+      message: string;
+      data: Category[];
+    }>('api/coreadmin/categories/');
+    
+    if (response.success && response.data?.data) {
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    }
+    return response as ApiResponse<Category[]>;
+  },
+
+  /**
+   * Create a new category (parent category)
+   */
+  async createCategory(name: string): Promise<ApiResponse<Category>> {
+    const response = await apiClient.post<{
+      message: string;
+      data: Category;
+    }>('api/coreadmin/categories/create/', { name });
+    
+    if (response.success && response.data?.data) {
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    }
+    return response as ApiResponse<Category>;
+  },
+
+  /**
+   * Create a new subcategory
+   */
+  async createSubcategory(categoryId: number, name: string): Promise<ApiResponse<Category>> {
+    const response = await apiClient.post<{
+      subcategory: Category;
+    }>(`api/catalog/categories/${categoryId}/subcategories/`, { name });
+    
+    if (response.success && response.data?.subcategory) {
+      return {
+        success: true,
+        data: response.data.subcategory,
+      };
+    }
+    return response as ApiResponse<Category>;
+  },
+
+  /**
+   * Delete a category or subcategory
+   */
+  async deleteCategory(categoryId: number): Promise<ApiResponse<{ category_id: number; category_name: string }>> {
+    const response = await apiClient.delete<{
+      message: string;
+      data: {
+        category_id: number;
+        category_name: string;
+      };
+    }>(`api/coreadmin/categories/${categoryId}/delete/`);
+    
+    if (response.success && response.data?.data) {
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    }
+    return response as ApiResponse<{ category_id: number; category_name: string }>;
+  },
+};
+
+/**
  * Settings API
  */
 export const SettingsAPI = {
@@ -2589,6 +2669,7 @@ export const API = {
   transactions: TransactionsAPI,
   systemConfig: SystemConfigAPI,
   activityLogs: ActivityLogsAPI,
+  categories: CategoriesAPI,
   settings: SettingsAPI,
   adminUsers: AdminUsersAPI,
   permissionGroups: PermissionGroupsAPI,
