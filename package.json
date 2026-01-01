@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start -p 5000",
     "lint": "next lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "clean": "rm -rf .next node_modules/.cache",
+    "clean:all": "rm -rf .next node_modules/.cache .swc",
+    "dev:clean": "npm run clean && npm run dev"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",

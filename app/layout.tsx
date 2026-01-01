@@ -58,6 +58,36 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Chunk loading error handler */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Handle chunk loading errors
+                window.addEventListener('error', function(e) {
+                  if (e.message && e.message.includes('Loading chunk') || e.message && e.message.includes('ChunkLoadError')) {
+                    console.warn('Chunk load error detected, reloading page...');
+                    // Reload the page after a short delay
+                    setTimeout(function() {
+                      window.location.reload();
+                    }, 1000);
+                  }
+                }, true);
+                
+                // Handle unhandled promise rejections (chunk loading failures)
+                window.addEventListener('unhandledrejection', function(e) {
+                  if (e.reason && (e.reason.message && e.reason.message.includes('Loading chunk') || e.reason.message && e.reason.message.includes('ChunkLoadError'))) {
+                    console.warn('Chunk load error in promise, reloading page...');
+                    e.preventDefault();
+                    setTimeout(function() {
+                      window.location.reload();
+                    }, 1000);
+                  }
+                });
+              })();
+            `,
+          }}
+        />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
