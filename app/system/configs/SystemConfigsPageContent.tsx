@@ -88,8 +88,51 @@ export default function SystemConfigsPageContent() {
 
   // Update form data when config loads
   useEffect(() => {
-    if (configData?.data) {
+    if (configData?.data && designsData?.data) {
       // Helper to convert IDs to strings (backend returns integers, frontend uses strings)
+      const normalizeIds = (ids: any[]): string[] => {
+        if (!Array.isArray(ids)) return [];
+        return ids.map(id => String(id)).filter(Boolean);
+      };
+
+      // Get active design IDs for validation
+      const activeDesignIds = new Set(
+        (designsData.data || [])
+          .filter((d: Design) => d.status === 'approved')
+          .map((d: Design) => String(d.id))
+      );
+
+      // Filter out inactive designs from saved configs
+      const filterActiveDesigns = (ids: any[]): string[] => {
+        const normalized = normalizeIds(ids);
+        return normalized.filter(id => activeDesignIds.has(id));
+      };
+
+      const heroSectionDesigns = filterActiveDesigns(configData.data.heroSectionDesigns || []);
+      const featuredDesigns = filterActiveDesigns(configData.data.featuredDesigns || []);
+      const domeGalleryDesigns = filterActiveDesigns(configData.data.domeGalleryDesigns || []);
+
+      // Log if any designs were filtered out
+      if (heroSectionDesigns.length !== normalizeIds(configData.data.heroSectionDesigns || []).length ||
+          featuredDesigns.length !== normalizeIds(configData.data.featuredDesigns || []).length ||
+          domeGalleryDesigns.length !== normalizeIds(configData.data.domeGalleryDesigns || []).length) {
+        console.warn('Some saved designs are no longer active and have been filtered out');
+      }
+
+      setFormData({
+        commissionRate: configData.data.commissionRate,
+        gstPercentage: configData.data.gstPercentage,
+        designPrice: configData.data.designPrice || 50,
+        customOrderTimeSlot: configData.data.customOrderTimeSlot,
+        minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
+        heroSectionDesigns,
+        featuredDesigns,
+        domeGalleryDesigns,
+        landingPageStats: configData.data.landingPageStats,
+        clientNames: configData.data.clientNames || [],
+      });
+    } else if (configData?.data) {
+      // If designsData is not loaded yet, just normalize IDs (will be filtered on next render when designsData loads)
       const normalizeIds = (ids: any[]): string[] => {
         if (!Array.isArray(ids)) return [];
         return ids.map(id => String(id)).filter(Boolean);
@@ -108,7 +151,7 @@ export default function SystemConfigsPageContent() {
         clientNames: configData.data.clientNames || [],
       });
     }
-  }, [configData]);
+  }, [configData, designsData]);
 
   // Update business config values from API (these are read-only from environment)
   // Note: designPrice is NOT in businessConfigData - it comes from SystemConfig only
@@ -211,10 +254,10 @@ export default function SystemConfigsPageContent() {
     // Validate hero section designs exist
     if (formData.heroSectionDesigns) {
       const invalidHero = formData.heroSectionDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => d.id === id)
+        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
       );
       if (invalidHero.length > 0) {
-        toast.error('Some hero section designs are not active. Please select active designs only.');
+        toast.error(`Some hero section designs are not active (IDs: ${invalidHero.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
         return;
       }
     }
@@ -222,10 +265,10 @@ export default function SystemConfigsPageContent() {
     // Validate featured designs exist
     if (formData.featuredDesigns) {
       const invalidFeatured = formData.featuredDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => d.id === id)
+        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
       );
       if (invalidFeatured.length > 0) {
-        toast.error('Some featured designs are not active. Please select active designs only.');
+        toast.error(`Some featured designs are not active (IDs: ${invalidFeatured.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
         return;
       }
     }
@@ -233,10 +276,10 @@ export default function SystemConfigsPageContent() {
     // Validate dome gallery designs exist
     if (formData.domeGalleryDesigns) {
       const invalidDome = formData.domeGalleryDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => d.id === id)
+        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
       );
       if (invalidDome.length > 0) {
-        toast.error('Some dome gallery designs are not active. Please select active designs only.');
+        toast.error(`Some dome gallery designs are not active (IDs: ${invalidDome.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
         return;
       }
     }
