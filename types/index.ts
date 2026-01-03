@@ -581,6 +581,7 @@ export interface PaginatedResponse<T> {
 export interface Category {
   id: number;
   name: string;
+  icon_name?: string | null;
   parent?: string | null;
   parent_id?: number | null;
   subcategories?: Category[];

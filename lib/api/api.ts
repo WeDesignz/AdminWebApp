@@ -1973,11 +1973,14 @@ export const CategoriesAPI = {
   /**
    * Create a new category (parent category)
    */
-  async createCategory(name: string): Promise<ApiResponse<Category>> {
+  async createCategory(name: string, iconName?: string | null): Promise<ApiResponse<Category>> {
     const response = await apiClient.post<{
       message: string;
       data: Category;
-    }>('api/coreadmin/categories/create/', { name });
+    }>('api/coreadmin/categories/create/', { 
+      name,
+      icon_name: iconName || null
+    });
     
     if (response.success && response.data?.data) {
       return {
