@@ -10,12 +10,12 @@ export const metadata: Metadata = {
   description: 'Admin panel for WeDesignz platform',
   icons: {
     icon: [
-      { url: "/favicon/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon/favicon.png", sizes: "192x192", type: "image/png" },
     ],
     apple: "/favicon/apple-touch-icon.png",
-    shortcut: "/favicon/favicon.ico",
+    shortcut: "/favicon.ico",
   },
   manifest: "/favicon/site.webmanifest",
 };
