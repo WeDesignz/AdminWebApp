@@ -23,6 +23,7 @@ import {
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
 import { API_CONFIG } from '@/lib/api/config';
+import IconSelector from '@/components/common/IconSelector';
 
 export default function SystemConfigsPageContent() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function SystemConfigsPageContent() {
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [showAddSubcategoryModal, setShowAddSubcategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState<string>('');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<Category | null>(null);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
@@ -365,10 +367,14 @@ export default function SystemConfigsPageContent() {
 
     setIsCreatingCategory(true);
     try {
-      const response = await API.categories.createCategory(newCategoryName.trim());
+      const response = await API.categories.createCategory(
+        newCategoryName.trim(),
+        newCategoryIcon || null
+      );
       if (response.success) {
         toast.success('Category created successfully');
         setNewCategoryName('');
+        setNewCategoryIcon('');
         setShowAddCategoryModal(false);
         queryClient.invalidateQueries({ queryKey: ['categories'] });
       } else {
@@ -1563,6 +1569,7 @@ export default function SystemConfigsPageContent() {
         onClose={() => {
           setShowAddCategoryModal(false);
           setNewCategoryName('');
+          setNewCategoryIcon('');
         }}
         title="Add Category"
         size="md"
@@ -1583,12 +1590,19 @@ export default function SystemConfigsPageContent() {
               }}
             />
           </div>
+          
+          <IconSelector
+            value={newCategoryIcon}
+            onChange={setNewCategoryIcon}
+          />
+          
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               variant="outline"
               onClick={() => {
                 setShowAddCategoryModal(false);
                 setNewCategoryName('');
+                setNewCategoryIcon('');
               }}
               className="flex items-center gap-2"
             >
