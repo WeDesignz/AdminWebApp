@@ -484,7 +484,12 @@ export const DesignersAPI = {
    * Verify Designer Onboarding
    */
   async verifyDesignerOnboarding(designerId: string, approved: boolean, reason?: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`api/coreadmin/designers/${designerId}/onboarding/verify/`, { approved, reason });
+    const verification_type = approved ? 'final_approval' : 'reject';
+    const body: any = { verification_type };
+    if (reason) {
+      body.rejection_reason = reason;
+    }
+    return apiClient.post(`api/coreadmin/designers/${designerId}/onboarding/verify/`, body);
   },
 
   /**

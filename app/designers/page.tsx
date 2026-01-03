@@ -145,16 +145,43 @@ export default function DesignersPage() {
   };
 
   const handleSubmitRejection = async () => {
-    if (!selectedDesigner || !rejectionReason.trim()) return;
+    if (!selectedDesigner || !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    
     setIsRejecting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsRejecting(false);
-    setShowRejectModal(false);
-    setShowRejectModalFromTable(false);
-    setRejectionReason('');
-    setSelectedDesigner(null);
-    // In real app, you would call the API here
+    
+    try {
+      // Call the API to reject the designer with rejection reason
+      const response = await API.designers.verifyDesignerOnboarding(
+        selectedDesigner.id.toString(),
+        false,  // rejected
+        rejectionReason.trim()
+      );
+      
+      if (response.success) {
+        // Refresh the designers list
+        await queryClient.invalidateQueries({ queryKey: ['designers'] });
+        await queryClient.invalidateQueries({ queryKey: ['designerStats'] });
+        await queryClient.refetchQueries({ queryKey: ['designers'] });
+        
+        toast.success('Designer rejected successfully!');
+        
+        // Close modal and reset state
+        setShowRejectModal(false);
+        setShowRejectModalFromTable(false);
+        setRejectionReason('');
+        setSelectedDesigner(null);
+      } else {
+        toast.error(response.error || 'Failed to reject designer');
+      }
+    } catch (error: any) {
+      console.error('Error rejecting designer:', error);
+      toast.error('An error occurred while rejecting the designer');
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleApproveDesigner = (designer: any) => {
@@ -520,10 +547,16 @@ export default function DesignersPage() {
                         <td className="py-3 px-4 text-muted whitespace-nowrap">{designerEmail}</td>
                         <td className="py-3 px-4 text-muted whitespace-nowrap">{joinedDate ? formatDate(joinedDate) : 'N/A'}</td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                            designerStatus === 'active' || designerStatus === 'verified' ? 'bg-success/20 text-success' :
-                            designerStatus === 'pending' ? 'bg-warning/20 text-warning' :
-                            'bg-error/20 text-error'
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium capitalize ${
+                            designerStatus === 'verified' || designerStatus === 'active' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                            designerStatus === 'rejected' 
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                            designerStatus === 'pending' 
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                            designerStatus === 'suspended' 
+                              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                           }`}>
                             {designerStatus}
                           </span>
@@ -563,16 +596,28 @@ export default function DesignersPage() {
                                 Approve
                               </PermissionButton>
                             )}
-                            <PermissionButton
-                              requiredPermission="designers.reject"
-                              size="sm"
-                              variant="danger"
-                              onClick={() => handleRejectFromTable(designer)}
-                              title="Reject Designer"
-                            >
-                              <XMarkIcon className="w-4 h-4 mr-2" />
-                              Reject
-                            </PermissionButton>
+                            {designerStatus === 'rejected' ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                disabled
+                                title="Designer Already Rejected"
+                              >
+                                <XCircleIcon className="w-4 h-4 mr-2" />
+                                Rejected
+                              </Button>
+                            ) : (
+                              <PermissionButton
+                                requiredPermission="designers.reject"
+                                size="sm"
+                                variant="danger"
+                                onClick={() => handleRejectFromTable(designer)}
+                                title="Reject Designer"
+                              >
+                                <XMarkIcon className="w-4 h-4 mr-2" />
+                                Reject
+                              </PermissionButton>
+                            )}
                           </div>
                         </td>
                       </tr>
