@@ -2009,6 +2009,27 @@ export const CategoriesAPI = {
   },
 
   /**
+   * Update a category's name and/or icon
+   */
+  async updateCategory(categoryId: number, name: string, iconName?: string | null): Promise<ApiResponse<Category>> {
+    const response = await apiClient.put<{
+      message: string;
+      data: Category;
+    }>(`api/coreadmin/categories/${categoryId}/update/`, {
+      name,
+      icon_name: iconName || null
+    });
+    
+    if (response.success && response.data?.data) {
+      return {
+        success: true,
+        data: response.data.data,
+      };
+    }
+    return response as ApiResponse<Category>;
+  },
+
+  /**
    * Delete a category or subcategory
    */
   async deleteCategory(categoryId: number): Promise<ApiResponse<{ category_id: number; category_name: string }>> {

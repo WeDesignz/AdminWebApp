@@ -19,6 +19,7 @@ import {
   MagnifyingGlassIcon,
   EyeIcon,
   ExclamationTriangleIcon,
+  PencilIcon,
 } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/common/Modal';
 import { Dropdown } from '@/components/common/Dropdown';
@@ -49,6 +50,11 @@ export default function SystemConfigsPageContent() {
   const [isDeletingCategory, setIsDeletingCategory] = useState<number | null>(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState<Category | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryIcon, setEditCategoryIcon] = useState<string>('');
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
 
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
     queryKey: ['system-config'],
@@ -384,6 +390,44 @@ export default function SystemConfigsPageContent() {
       toast.error('An error occurred while creating category');
     } finally {
       setIsCreatingCategory(false);
+    }
+  };
+
+  const handleEditCategoryClick = (category: Category) => {
+    setCategoryToEdit(category);
+    setEditCategoryName(category.name);
+    setEditCategoryIcon(category.icon_name || '');
+    setShowEditCategoryModal(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!categoryToEdit) return;
+    if (!editCategoryName.trim()) {
+      toast.error('Please enter a category name');
+      return;
+    }
+
+    setIsUpdatingCategory(true);
+    try {
+      const response = await API.categories.updateCategory(
+        categoryToEdit.id,
+        editCategoryName.trim(),
+        editCategoryIcon || null
+      );
+      if (response.success) {
+        toast.success('Category updated successfully');
+        setCategoryToEdit(null);
+        setEditCategoryName('');
+        setEditCategoryIcon('');
+        setShowEditCategoryModal(false);
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      } else {
+        toast.error(response.error || 'Failed to update category');
+      }
+    } catch (error) {
+      toast.error('An error occurred while updating category');
+    } finally {
+      setIsUpdatingCategory(false);
     }
   };
 
@@ -749,6 +793,13 @@ export default function SystemConfigsPageContent() {
                           Add Subcategory
                         </Button>
                         <button
+                          onClick={() => handleEditCategoryClick(category)}
+                          className="flex-shrink-0 p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
+                          title="Edit category"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleDeleteCategoryClick(category.id, category.name)}
                           disabled={isDeletingCategory === category.id}
                           className="flex-shrink-0 p-1.5 text-error hover:bg-error/10 rounded transition-colors disabled:opacity-50"
@@ -782,18 +833,27 @@ export default function SystemConfigsPageContent() {
                                   </p>
                                 )}
                               </div>
-                              <button
-                                onClick={() => handleDeleteCategoryClick(subcategory.id, subcategory.name)}
-                                disabled={isDeletingCategory === subcategory.id}
-                                className="flex-shrink-0 p-1 text-error hover:bg-error/10 rounded transition-colors disabled:opacity-50"
-                                title="Delete subcategory"
-                              >
-                                {isDeletingCategory === subcategory.id ? (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-error"></div>
-                                ) : (
-                                  <TrashIcon className="w-3 h-3" />
-                                )}
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleEditCategoryClick(subcategory)}
+                                  className="flex-shrink-0 p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                                  title="Edit subcategory"
+                                >
+                                  <PencilIcon className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCategoryClick(subcategory.id, subcategory.name)}
+                                  disabled={isDeletingCategory === subcategory.id}
+                                  className="flex-shrink-0 p-1 text-error hover:bg-error/10 rounded transition-colors disabled:opacity-50"
+                                  title="Delete subcategory"
+                                >
+                                  {isDeletingCategory === subcategory.id ? (
+                                    <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-error"></div>
+                                  ) : (
+                                    <TrashIcon className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1618,6 +1678,68 @@ export default function SystemConfigsPageContent() {
             >
               <CheckIcon className="w-4 h-4" />
               Add Category
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Category Modal */}
+      <Modal
+        isOpen={showEditCategoryModal}
+        onClose={() => {
+          setShowEditCategoryModal(false);
+          setCategoryToEdit(null);
+          setEditCategoryName('');
+          setEditCategoryIcon('');
+        }}
+        title="Edit Category"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Category Name <span className="text-error">*</span>
+            </label>
+            <Input
+              value={editCategoryName}
+              onChange={(e) => setEditCategoryName(e.target.value)}
+              placeholder="Enter category name"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleUpdateCategory();
+                }
+              }}
+            />
+          </div>
+          
+          <IconSelector
+            value={editCategoryIcon}
+            onChange={setEditCategoryIcon}
+          />
+          
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditCategoryModal(false);
+                setCategoryToEdit(null);
+                setEditCategoryName('');
+                setEditCategoryIcon('');
+              }}
+              className="flex items-center gap-2"
+            >
+              <XMarkIcon className="w-4 h-4" />
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateCategory}
+              disabled={isUpdatingCategory}
+              isLoading={isUpdatingCategory}
+              className="flex items-center gap-2"
+            >
+              <CheckIcon className="w-4 h-4" />
+              Update Category
             </Button>
           </div>
         </div>
