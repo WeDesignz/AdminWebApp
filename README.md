@@ -182,21 +182,6 @@ The application uses CSS variables for theming. Update `app/globals.css` to cust
 }
 ```
 
-## Replit Configuration
-
-The application is configured to run on Replit:
-
-1. The dev server runs on port 5000 (required for Replit)
-2. All necessary configuration files are included
-3. Environment variables can be set using Replit Secrets
-
-### Required Replit Secrets
-
-Add these in the Replit Secrets tab:
-- `NEXT_PUBLIC_API_BASE` - Backend API URL
-- `NEXT_PUBLIC_WS_URL` - WebSocket URL
-- `NEXTAUTH_SECRET` - JWT secret key
-
 ## Security Notes
 
 - Never commit API keys or secrets to version control
