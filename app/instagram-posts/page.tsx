@@ -88,22 +88,74 @@ export default function InstagramPostsPage() {
   });
 
   const handleSelectProduct = (product: any) => {
+    // Extract media files - check both files and media_files (raw API response)
+    // Also check if there's a preview_files or other file arrays
+    const productFiles = product.files || product.media_files || product.preview_files || [];
+    
     // Extract media files and categorize them
-    const mediaFiles = (product.files || []).map((file: any) => {
+    const mediaFiles = productFiles.map((file: any) => {
       let type: 'mockup' | 'jpg' | 'png' = 'jpg';
-      if (file.isMockup) {
+      
+      // Check if it's a mockup - check multiple sources
+      // Get filename from multiple possible sources
+      let fileName = file.name || file.fileName || file.file_name || '';
+      const fileUrl = file.url || file.file || '';
+      
+      // If filename is empty, try to extract from URL
+      if (!fileName && fileUrl) {
+        const urlParts = fileUrl.split('/');
+        fileName = urlParts[urlParts.length - 1] || '';
+        // Remove query parameters if any
+        fileName = fileName.split('?')[0];
+      }
+      
+      const fileNameLower = fileName.toLowerCase();
+      const urlLower = fileUrl.toLowerCase();
+      
+      // Check isMockup flag (from API) - check both camelCase and snake_case
+      const isMockupFlag = file.isMockup === true || 
+                          file.isMockup === 'true' || 
+                          file.isMockup === 1 ||
+                          file.is_mockup === true ||
+                          file.is_mockup === 'true' ||
+                          file.is_mockup === 1;
+      
+      // Check filename for mockup - handle patterns like "WDG00000002_MOCKUP.jpg"
+      // This should catch: mockup.jpg, WDG00000002_MOCKUP.jpg, product_mockup.png, etc.
+      const baseName = fileNameLower.split('.')[0];
+      // More comprehensive mockup detection - check for various patterns
+      const isMockupFromName = 
+        // Exact match
+        baseName === 'mockup' || 
+        // Ends with _mockup (e.g., WDG00000002_mockup)
+        baseName.endsWith('_mockup') ||
+        // Contains _mockup anywhere (e.g., product_mockup_v2)
+        baseName.includes('_mockup') ||
+        // Full filename contains _mockup. (with extension)
+        fileNameLower.includes('_mockup.') ||
+        // URL path contains mockup (but not in AVIF conversion paths)
+        (urlLower.includes('/mockup') || urlLower.includes('_mockup')) && !urlLower.includes('_mockup.avif') ||
+        // Filename contains "mockup" (but exclude AVIF files and other non-mockup patterns)
+        (fileNameLower.includes('mockup') && 
+         !fileNameLower.includes('avif') && 
+         !fileNameLower.includes('_png') && 
+         !fileNameLower.includes('_jpg'));
+      
+      const isMockup = isMockupFlag || isMockupFromName;
+      
+      if (isMockup) {
         type = 'mockup';
-      } else if (file.name?.toLowerCase().endsWith('.png')) {
+      } else if (fileNameLower.endsWith('.png')) {
         type = 'png';
-      } else if (file.name?.toLowerCase().endsWith('.jpg') || file.name?.toLowerCase().endsWith('.jpeg')) {
+      } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) {
         type = 'jpg';
       }
 
       return {
-        id: file.id,
-        url: file.url,
+        id: file.id || String(file.id),
+        url: file.url || file.file,
         type,
-        fileName: file.name,
+        fileName: fileName,
       };
     }).filter((f: any) => ['mockup', 'jpg', 'png'].includes(f.type));
 
@@ -120,9 +172,12 @@ export default function InstagramPostsPage() {
 
     // Determine default media type (prefer mockup, then jpg)
     let defaultMediaType: 'mockup' | 'jpg' = 'jpg';
-    if (finalMediaFiles.find((f: any) => f.type === 'mockup')) {
+    const hasMockup = finalMediaFiles.find((f: any) => f.type === 'mockup');
+    const hasJpg = finalMediaFiles.find((f: any) => f.type === 'jpg');
+    
+    if (hasMockup) {
       defaultMediaType = 'mockup';
-    } else if (finalMediaFiles.find((f: any) => f.type === 'jpg')) {
+    } else if (hasJpg) {
       defaultMediaType = 'jpg';
     }
 
