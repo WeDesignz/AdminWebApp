@@ -630,19 +630,22 @@ export default function InstagramPostsPage() {
                       {(['mockup', 'jpg'] as const).map((type) => {
                         // Check if this type is available in the product's media files
                         const isAvailable = selectedProduct.mediaFiles.some(f => f.type === type);
-                        if (!isAvailable) return null;
                         
                         return (
                           <button
                             key={type}
                             onClick={() => handleMediaTypeChange(type)}
+                            disabled={!isAvailable}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               selectedProduct.selectedMediaType === type
                                 ? 'bg-primary text-white shadow-md scale-105'
-                                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                                : isAvailable
+                                ? 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                                : 'bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-50'
                             }`}
+                            title={!isAvailable ? `${type === 'mockup' ? 'Mockup' : 'JPG'} not available for this product` : ''}
                           >
-                            {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                            {type === 'mockup' ? '📱 Mockup' : 'JPG'}
                           </button>
                         );
                       })}
