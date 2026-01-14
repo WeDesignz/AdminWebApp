@@ -92,16 +92,6 @@ export default function InstagramPostsPage() {
     // Also check if there's a preview_files or other file arrays
     const productFiles = product.files || product.media_files || product.preview_files || [];
     
-    // Debug: Log the raw product data to see what we're working with
-    console.log('=== PRODUCT SELECTED ===');
-    console.log('Product ID:', product.id);
-    console.log('Product title:', product.title);
-    console.log('Product files:', productFiles);
-    console.log('Product.files:', product.files);
-    console.log('Product.media_files:', product.media_files);
-    console.log('Product.preview_files:', product.preview_files);
-    console.log('All product keys:', Object.keys(product));
-    
     // Extract media files and categorize them
     const mediaFiles = productFiles.map((file: any) => {
       let type: 'mockup' | 'jpg' | 'png' = 'jpg';
@@ -121,17 +111,6 @@ export default function InstagramPostsPage() {
       
       const fileNameLower = fileName.toLowerCase();
       const urlLower = fileUrl.toLowerCase();
-      
-      // Debug: Log file info
-      console.log('File:', {
-        id: file.id,
-        name: fileName,
-        url: fileUrl,
-        isMockup: file.isMockup,
-        is_mockup: file.is_mockup,
-        fileNameLower,
-        urlLower
-      });
       
       // Check isMockup flag (from API) - check both camelCase and snake_case
       const isMockupFlag = file.isMockup === true || 
@@ -166,12 +145,10 @@ export default function InstagramPostsPage() {
       
       if (isMockup) {
         type = 'mockup';
-        console.log('✅ Detected as MOCKUP:', fileName);
       } else if (fileNameLower.endsWith('.png')) {
         type = 'png';
       } else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) {
         type = 'jpg';
-        console.log('✅ Detected as JPG:', fileName);
       }
 
       return {
@@ -184,11 +161,6 @@ export default function InstagramPostsPage() {
 
     // Filter to only include mockup and jpg files
     const filteredMediaFiles = mediaFiles.filter((f: any) => f.type === 'mockup' || f.type === 'jpg');
-    
-    console.log('Categorized mediaFiles:', mediaFiles);
-    console.log('Filtered mediaFiles (mockup/jpg):', filteredMediaFiles);
-    console.log('Mockup files found:', filteredMediaFiles.filter(f => f.type === 'mockup').length);
-    console.log('JPG files found:', filteredMediaFiles.filter(f => f.type === 'jpg').length);
     
     if (filteredMediaFiles.length === 0) {
       toast.error('This product has no suitable images (mockup or jpg)');
@@ -208,10 +180,6 @@ export default function InstagramPostsPage() {
     } else if (hasJpg) {
       defaultMediaType = 'jpg';
     }
-    
-    console.log('Default media type:', defaultMediaType);
-    console.log('Has mockup:', !!hasMockup);
-    console.log('Has JPG:', !!hasJpg);
 
     const newProduct: SelectedProduct = {
       id: product.id,
