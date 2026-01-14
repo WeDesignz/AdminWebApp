@@ -31,7 +31,7 @@ interface SelectedProduct {
     type: 'mockup' | 'jpg' | 'png';
     fileName: string;
   }[];
-  selectedMediaType: 'mockup' | 'jpg' | 'png';
+  selectedMediaType: 'mockup' | 'jpg';
 }
 
 export default function InstagramPostsPage() {
@@ -49,7 +49,7 @@ export default function InstagramPostsPage() {
   // Bulk upload state
   const [bulkPostType, setBulkPostType] = useState<'post' | 'story'>('post');
   const [bulkCaption, setBulkCaption] = useState('');
-  const [bulkMediaType, setBulkMediaType] = useState<'mockup' | 'jpg' | 'png'>('mockup');
+  const [bulkMediaType, setBulkMediaType] = useState<'mockup' | 'jpg'>('mockup');
   const [isBulkPosting, setIsBulkPosting] = useState(false);
   const [bulkPostProgress, setBulkPostProgress] = useState<{
     total: number;
@@ -107,17 +107,23 @@ export default function InstagramPostsPage() {
       };
     }).filter((f: any) => ['mockup', 'jpg', 'png'].includes(f.type));
 
-    if (mediaFiles.length === 0) {
-      toast.error('This product has no suitable images (mockup, jpg, or png)');
+    // Filter to only include mockup and jpg files
+    const filteredMediaFiles = mediaFiles.filter((f: any) => f.type === 'mockup' || f.type === 'jpg');
+    
+    if (filteredMediaFiles.length === 0) {
+      toast.error('This product has no suitable images (mockup or jpg)');
       return;
     }
+    
+    // Use filtered media files
+    const finalMediaFiles = filteredMediaFiles;
 
-    // Determine default media type (prefer mockup, then png, then jpg)
-    let defaultMediaType: 'mockup' | 'jpg' | 'png' = 'jpg';
-    if (mediaFiles.find((f: any) => f.type === 'mockup')) {
+    // Determine default media type (prefer mockup, then jpg)
+    let defaultMediaType: 'mockup' | 'jpg' = 'jpg';
+    if (finalMediaFiles.find((f: any) => f.type === 'mockup')) {
       defaultMediaType = 'mockup';
-    } else if (mediaFiles.find((f: any) => f.type === 'png')) {
-      defaultMediaType = 'png';
+    } else if (finalMediaFiles.find((f: any) => f.type === 'jpg')) {
+      defaultMediaType = 'jpg';
     }
 
     const newProduct: SelectedProduct = {
@@ -125,7 +131,7 @@ export default function InstagramPostsPage() {
       title: product.title,
       thumbnailUrl: product.thumbnailUrl,
       category: product.category,
-      mediaFiles,
+      mediaFiles: finalMediaFiles,
       selectedMediaType: defaultMediaType,
     };
 
@@ -153,7 +159,7 @@ export default function InstagramPostsPage() {
     setPostType('post'); // Reset to post type
   };
 
-  const handleMediaTypeChange = (mediaType: 'mockup' | 'jpg' | 'png') => {
+  const handleMediaTypeChange = (mediaType: 'mockup' | 'jpg') => {
     if (selectedProduct) {
       setSelectedProduct({ ...selectedProduct, selectedMediaType: mediaType });
     }
@@ -308,7 +314,10 @@ export default function InstagramPostsPage() {
   const getAvailableMediaTypes = () => {
     if (!selectedProduct) return [];
     const types = new Set(selectedProduct.mediaFiles.map(f => f.type));
-    return Array.from(types) as ('mockup' | 'jpg' | 'png')[];
+    // Filter to only show mockup and jpg options (exclude png)
+    const availableTypes = Array.from(types).filter(t => t === 'mockup' || t === 'jpg') as ('mockup' | 'jpg')[];
+    // If no mockup or jpg available, return empty array
+    return availableTypes;
   };
 
   const statusFilterOptions = [
@@ -603,7 +612,7 @@ export default function InstagramPostsPage() {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded-lg shadow-lg">
-                        {selectedProduct.selectedMediaType.toUpperCase()}
+                        {selectedProduct.selectedMediaType === 'mockup' ? '📱 Mockup' : 'JPG'}
                       </div>
                     </div>
                     <div>
@@ -618,19 +627,25 @@ export default function InstagramPostsPage() {
                       Image Type
                     </label>
                     <div className="flex gap-2 flex-wrap">
-                      {getAvailableMediaTypes().map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => handleMediaTypeChange(type)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedProduct.selectedMediaType === type
-                              ? 'bg-primary text-white shadow-md scale-105'
-                              : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
-                        </button>
-                      ))}
+                      {(['mockup', 'jpg'] as const).map((type) => {
+                        // Check if this type is available in the product's media files
+                        const isAvailable = selectedProduct.mediaFiles.some(f => f.type === type);
+                        if (!isAvailable) return null;
+                        
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => handleMediaTypeChange(type)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                              selectedProduct.selectedMediaType === type
+                                ? 'bg-primary text-white shadow-md scale-105'
+                                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -839,10 +854,10 @@ export default function InstagramPostsPage() {
                       Default Media Type
                     </label>
                     <div className="flex gap-2 flex-wrap">
-                      {['mockup', 'png', 'jpg'].map((type) => (
+                      {(['mockup', 'jpg'] as const).map((type) => (
                         <button
                           key={type}
-                          onClick={() => setBulkMediaType(type as 'mockup' | 'jpg' | 'png')}
+                          onClick={() => setBulkMediaType(type)}
                           className={`relative px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                             bulkMediaType === type
                               ? 'bg-gradient-to-r from-primary to-pink-500 text-white shadow-lg shadow-primary/30 scale-105'
@@ -967,7 +982,7 @@ export default function InstagramPostsPage() {
                             <p className="text-xs text-muted truncate mt-0.5">{product.category}</p>
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-md font-medium">
-                                {bulkMediaType === 'mockup' ? '📱 Mockup' : bulkMediaType.toUpperCase()}
+                                {bulkMediaType === 'mockup' ? '📱 Mockup' : 'JPG'}
                               </span>
                               <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
                                 {bulkPostType === 'post' ? 'Post' : 'Story'}
