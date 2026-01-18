@@ -620,6 +620,7 @@ export default function DesignsPage() {
                 <thead>
                   <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">SR No</th>
+                      <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Product No</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Design</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Designer</th>
                       <th className="text-left py-3 px-4 font-medium whitespace-nowrap">Category</th>
@@ -633,13 +634,13 @@ export default function DesignsPage() {
                 <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-8">
+                        <td colSpan={10} className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                         </td>
                       </tr>
                     ) : !data?.data || data.data.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-8 text-muted">
+                        <td colSpan={10} className="text-center py-8 text-muted">
                           No designs found
                         </td>
                       </tr>
@@ -650,6 +651,9 @@ export default function DesignsPage() {
                         return (
                     <tr key={design.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{serialNumber}</td>
+                          <td className="py-3 px-4 text-muted whitespace-nowrap">
+                            {design.productNumber || '-'}
+                          </td>
                           <td className="py-3 px-4 font-medium whitespace-nowrap">{design.title}</td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{design.designerName}</td>
                           <td className="py-3 px-4 text-muted whitespace-nowrap">{design.category}</td>

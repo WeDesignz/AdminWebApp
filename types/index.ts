@@ -259,6 +259,7 @@ export interface Design {
   designerId: string;
   designerName: string;
   category: string;
+  productNumber?: string;
   thumbnailUrl: string;
   status: 'pending' | 'approved' | 'rejected';
   featured: boolean;

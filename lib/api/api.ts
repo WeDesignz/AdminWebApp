@@ -717,12 +717,19 @@ function transformProductToDesign(product: any): Design {
     };
   });
 
+  const productNumber =
+    product.product_number ||
+    product.productNumber ||
+    product.product_no ||
+    product.platform_id;
+
   return {
     id: String(product.id),
     title: product.title || 'Untitled Design',
     designerId: String(product.created_by || ''),
     designerName: product.designer_name || 'Unknown Designer',
     category: product.category_name || product.category || 'Uncategorized',
+    productNumber,
     thumbnailUrl,
     status: statusMap[product.status] || 'pending',
     featured: false,
