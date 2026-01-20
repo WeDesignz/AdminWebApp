@@ -81,6 +81,7 @@ export default function SystemConfigsPageContent() {
     commissionRate: 15,
     gstPercentage: 18,
     designPrice: 50,
+    customOrderPrice: 0,
     customOrderTimeSlot: 1,
     minimumRequiredDesigns: 50,
     heroSectionDesigns: [],
@@ -131,6 +132,7 @@ export default function SystemConfigsPageContent() {
         commissionRate: configData.data.commissionRate,
         gstPercentage: configData.data.gstPercentage,
         designPrice: configData.data.designPrice || 50,
+        customOrderPrice: configData.data.customOrderPrice ?? 0,
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         heroSectionDesigns,
@@ -150,6 +152,7 @@ export default function SystemConfigsPageContent() {
         commissionRate: configData.data.commissionRate,
         gstPercentage: configData.data.gstPercentage,
         designPrice: configData.data.designPrice || 50,
+        customOrderPrice: configData.data.customOrderPrice ?? 0,
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         heroSectionDesigns: normalizeIds(configData.data.heroSectionDesigns || []),
@@ -259,6 +262,11 @@ export default function SystemConfigsPageContent() {
       return;
     }
 
+    if (formData.customOrderPrice !== undefined && formData.customOrderPrice < 0) {
+      toast.error('Custom order price cannot be negative');
+      return;
+    }
+
     // Validate hero section designs exist
     if (formData.heroSectionDesigns) {
       const invalidHero = formData.heroSectionDesigns.filter(
@@ -292,9 +300,20 @@ export default function SystemConfigsPageContent() {
       }
     }
 
+    // Ensure all required fields have default values if undefined
+    const dataToSave: Partial<SystemConfig> = {
+      ...formData,
+      customOrderPrice: formData.customOrderPrice !== undefined ? formData.customOrderPrice : 0,
+      designPrice: formData.designPrice !== undefined ? formData.designPrice : 50,
+      commissionRate: formData.commissionRate !== undefined ? formData.commissionRate : 15,
+      gstPercentage: formData.gstPercentage !== undefined ? formData.gstPercentage : 18,
+      customOrderTimeSlot: formData.customOrderTimeSlot !== undefined ? formData.customOrderTimeSlot : 1,
+      minimumRequiredDesigns: formData.minimumRequiredDesigns !== undefined ? formData.minimumRequiredDesigns : 50,
+    };
+
     setIsSaving(true);
     try {
-      const response = await API.systemConfig.updateSystemConfig(formData);
+      const response = await API.systemConfig.updateSystemConfig(dataToSave);
       if (response.success) {
         toast.success('System configuration updated successfully');
         queryClient.invalidateQueries({ queryKey: ['system-config'] });
@@ -618,13 +637,32 @@ export default function SystemConfigsPageContent() {
                   min="0"
                   max="100"
                   step="0.01"
-                  value={formData.commissionRate || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      commissionRate: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  value={formData.commissionRate ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        commissionRate: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          commissionRate: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.commissionRate === undefined || formData.commissionRate === null) {
+                      setFormData({
+                        ...formData,
+                        commissionRate: 0,
+                      });
+                    }
+                  }}
                   placeholder="0-100"
                 />
                 <p className="text-xs text-muted mt-1">Platform commission percentage (0-100%)</p>
@@ -639,13 +677,32 @@ export default function SystemConfigsPageContent() {
                   min="0"
                   max="100"
                   step="0.01"
-                  value={formData.gstPercentage || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      gstPercentage: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  value={formData.gstPercentage ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        gstPercentage: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          gstPercentage: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.gstPercentage === undefined || formData.gstPercentage === null) {
+                      setFormData({
+                        ...formData,
+                        gstPercentage: 0,
+                      });
+                    }
+                  }}
                   placeholder="0-100"
                 />
                 <p className="text-xs text-muted mt-1">GST percentage applied to transactions</p>
@@ -659,16 +716,74 @@ export default function SystemConfigsPageContent() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.designPrice || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      designPrice: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  value={formData.designPrice ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        designPrice: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          designPrice: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.designPrice === undefined || formData.designPrice === null) {
+                      setFormData({
+                        ...formData,
+                        designPrice: 0,
+                      });
+                    }
+                  }}
                   placeholder="50.00"
                 />
                 <p className="text-xs text-muted mt-1">Global price per design (all paid designs will use this price)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Custom Order Price (INR) <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.customOrderPrice ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        customOrderPrice: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          customOrderPrice: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.customOrderPrice === undefined || formData.customOrderPrice === null) {
+                      setFormData({
+                        ...formData,
+                        customOrderPrice: 0,
+                      });
+                    }
+                  }}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted mt-1">Default price for custom orders (minimum charge)</p>
               </div>
 
               <div>
@@ -679,13 +794,32 @@ export default function SystemConfigsPageContent() {
                   type="number"
                   min="0.5"
                   step="0.5"
-                  value={formData.customOrderTimeSlot || 1}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      customOrderTimeSlot: parseFloat(e.target.value) || 1,
-                    })
-                  }
+                  value={formData.customOrderTimeSlot ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        customOrderTimeSlot: undefined,
+                      });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          customOrderTimeSlot: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.customOrderTimeSlot === undefined || formData.customOrderTimeSlot === null) {
+                      setFormData({
+                        ...formData,
+                        customOrderTimeSlot: 1,
+                      });
+                    }
+                  }}
                   placeholder="1"
                 />
                 <p className="text-xs text-muted mt-1">Default time slot for custom orders (default: 1 hour)</p>
@@ -698,13 +832,32 @@ export default function SystemConfigsPageContent() {
                 <Input
                   type="number"
                   min="1"
-                  value={formData.minimumRequiredDesigns || 50}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      minimumRequiredDesigns: parseInt(e.target.value) || 50,
-                    })
-                  }
+                  value={formData.minimumRequiredDesigns ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        minimumRequiredDesigns: undefined,
+                      });
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          minimumRequiredDesigns: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.minimumRequiredDesigns === undefined || formData.minimumRequiredDesigns === null) {
+                      setFormData({
+                        ...formData,
+                        minimumRequiredDesigns: 50,
+                      });
+                    }
+                  }}
                   placeholder="50"
                 />
                 <p className="text-xs text-muted mt-1">Minimum designs required for designer onboarding (default: 50)</p>
