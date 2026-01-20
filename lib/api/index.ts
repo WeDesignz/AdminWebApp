@@ -517,7 +517,12 @@ class RealAPI {
         completedAt: order.completed_at || order.completedAt || undefined,
         designTitle: order.title || undefined,
         specification: order.description || undefined,
-        referenceFiles: [], // TODO: Map from media if needed
+        referenceFiles: (order.reference_files || []).map((f: any) => ({
+          id: String(f.id),
+          fileName: f.fileName || f.file_name || 'file',
+          url: f.url || f.file_url || '',
+          uploadedAt: f.uploadedAt || f.uploaded_at || new Date().toISOString(),
+        })),
         deliverables: (order.deliverables || []).map((d: any) => ({
           id: String(d.id),
           fileName: d.fileName || d.file_name || 'file',

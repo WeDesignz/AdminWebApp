@@ -1253,19 +1253,17 @@ export const CustomOrdersAPI = {
   > {
     // Call analytics endpoint with group_by=status to get status counts
     const response = await apiClient.get<{
-      data?: {
-        total?: number;
-        total_orders?: number;
-        pending?: number;
-        in_progress?: number;
-        completed?: number;
-        completed_orders?: number;
-        group_data?: Record<string, number>;
-      };
+      total?: number;
+      total_orders?: number;
+      pending?: number;
+      in_progress?: number;
+      completed?: number;
+      completed_orders?: number;
+      group_data?: Record<string, number>;
     }>('api/coreadmin/custom-orders/analytics/?group_by=status');
 
-    if (response.success && response.data?.data) {
-      const data = response.data.data;
+    if (response.success && response.data) {
+      const data = response.data;
       
       // Extract stats from response - use direct fields or group_data
       let total = data.total || data.total_orders || 0;
