@@ -1072,6 +1072,7 @@ class MockAPI {
       commissionRate: 15,
       gstPercentage: 18,
       designPrice: 100, // Global price per design
+      customOrderPrice: 0, // Default price for custom orders (minimum charge)
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
@@ -1095,12 +1096,13 @@ class MockAPI {
     await delay(800);
 
     // Destructure array fields from data to avoid duplicate properties
-    const { heroSectionDesigns, featuredDesigns, domeGalleryDesigns, designPrice, ...restData } = data || {};
+    const { heroSectionDesigns, featuredDesigns, domeGalleryDesigns, designPrice, customOrderPrice, ...restData } = data || {};
 
     const config: SystemConfig = {
       commissionRate: 15,
       gstPercentage: 18,
       designPrice: designPrice ?? 100, // Default to 100 if not provided
+      customOrderPrice: customOrderPrice ?? 0, // Default to 0 if not provided
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
       maintenanceMode: false,
