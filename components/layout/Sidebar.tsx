@@ -28,6 +28,8 @@ import {
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils/cn';
+import { useQuery } from '@tanstack/react-query';
+import { API } from '@/lib/api';
 
 // Categorized navigation structure
 const navigationCategories = [
@@ -143,6 +145,23 @@ export function Sidebar() {
   const { sidebarCollapsed, theme } = useUIStore();
   const { hasRole } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+
+  // Fetch pending custom orders count
+  const { data: customOrderStats } = useQuery({
+    queryKey: ['custom-orders-stats'],
+    queryFn: async () => {
+      const response = await API.customOrders.getCustomOrderStats();
+      if (!response.success) {
+        return { pending: 0 };
+      }
+      // The response.data should already contain { pending, total, inProgress, completed }
+      return response.data || { pending: 0 };
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 2, // Retry failed requests
+  });
+
+  const pendingCustomOrdersCount = customOrderStats?.pending || 0;
 
   // Ensure consistent initial render to prevent hydration mismatch
   useEffect(() => {
@@ -298,7 +317,20 @@ export function Sidebar() {
                         isActive ? 'text-white' : 'group-hover:scale-110'
                       )} />
                       {!displayCollapsed && (
-                        <span className="truncate text-sm font-medium">{item.name}</span>
+                        <>
+                          <span className="truncate text-sm font-medium flex-1">{item.name}</span>
+                          {/* Show count badge for Custom Orders */}
+                          {item.href === '/custom-orders' && pendingCustomOrdersCount > 0 && (
+                            <span className={cn(
+                              'flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold',
+                              isActive
+                                ? 'bg-white/20 text-white'
+                                : 'bg-primary text-white'
+                            )}>
+                              {pendingCustomOrdersCount > 99 ? '99+' : pendingCustomOrdersCount}
+                            </span>
+                          )}
+                        </>
                       )}
                     </Link>
                   );

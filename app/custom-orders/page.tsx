@@ -54,9 +54,9 @@ function CustomOrderCardWithUnread({
   getTimeRemainingShort,
   formatCurrency,
   formatDate,
+  onPreviewImage,
   isExpanded,
   onToggleExpand,
-  onPreviewImage,
   onDownloadFile,
 }: {
   order: CustomOrder;
@@ -72,9 +72,9 @@ function CustomOrderCardWithUnread({
   getTimeRemainingShort: (deadline: string, status: string, createdAt: string, completedAt?: string) => string;
   formatCurrency: (amount: number) => string;
   formatDate: (date: string) => string;
+  onPreviewImage: (url: string, fileName: string, allImages: Array<{ url: string; fileName: string }>, index: number) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onPreviewImage: (url: string, fileName: string, allImages: Array<{ url: string; fileName: string }>, index: number) => void;
   onDownloadFile?: (url: string, fileName: string) => void;
 }) {
   const unreadCount = useUnreadMessages(orderIdForUnread, undefined);
@@ -85,9 +85,6 @@ function CustomOrderCardWithUnread({
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h3 className="font-bold text-lg">Order #{order.id}</h3>
-            {order.designTitle && (
-              <span className="text-muted text-sm">• {order.designTitle}</span>
-            )}
             <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
               order.status === 'completed' ? 'bg-success/20 text-success' :
               order.status === 'in_progress' ? 'bg-primary/20 text-primary' :
@@ -107,6 +104,16 @@ function CustomOrderCardWithUnread({
             )}
             <span className="font-bold">{formatCurrency(order.budget)}</span>
           </div>
+          
+          {/* Reference Files Section */}
+          {order.referenceFiles && order.referenceFiles.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <PaperClipIcon className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Reference Files ({order.referenceFiles.length})</span>
+              </div>
+            </div>
+          )}
           
           {/* Deliverables Section */}
           {order.deliverables && order.deliverables.length > 0 && (
@@ -614,7 +621,9 @@ export default function CustomOrdersPage() {
   const downloadFile = async (url: string, fileName: string) => {
     try {
       const token = getAuthToken();
-      const response = await fetch(url, {
+      // If url is a relative path, prepend API base URL
+      const fullUrl = url.startsWith('http') ? url : `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${url}`;
+      const response = await fetch(fullUrl, {
         method: 'GET',
         headers: token ? {
           'Authorization': `Bearer ${token}`,
@@ -637,6 +646,41 @@ export default function CustomOrdersPage() {
     } catch (error) {
       console.error('Error downloading file:', error);
       toast.error('Failed to download file. Please try again.');
+    }
+  };
+
+  // Download all reference files for an order
+  const downloadReferenceFiles = async (orderId: string) => {
+    try {
+      // Find the order in the current data or use selectedOrder if available
+      const orders = data?.data || [];
+      let order = orders.find((o: CustomOrder) => o.id === orderId || o.orderId === orderId);
+      
+      // If not found in data, check if selectedOrder matches
+      if (!order && selectedOrder && (selectedOrder.id === orderId || selectedOrder.orderId === orderId)) {
+        order = selectedOrder;
+      }
+      
+      if (!order || !order.referenceFiles || order.referenceFiles.length === 0) {
+        toast.error('No reference files found for this order');
+        return;
+      }
+
+      // Download each file with a small delay between downloads to avoid browser blocking
+      for (let i = 0; i < order.referenceFiles.length; i++) {
+        const file = order.referenceFiles[i];
+        await downloadFile(file.url, file.fileName);
+        
+        // Add a small delay between downloads (except for the last one)
+        if (i < order.referenceFiles.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      toast.success(`Downloaded ${order.referenceFiles.length} reference file(s)`);
+    } catch (error) {
+      console.error('Error downloading reference files:', error);
+      toast.error('Failed to download reference files. Please try again.');
     }
   };
 
@@ -808,9 +852,9 @@ export default function CustomOrdersPage() {
                   getTimeRemainingShort={getTimeRemainingShort}
                   formatCurrency={formatCurrency}
                   formatDate={formatDate}
+                  onPreviewImage={(url, fileName, allImages, index) => handlePreviewImage(url, fileName, allImages, index)}
                   isExpanded={isExpanded}
                   onToggleExpand={() => handleToggleExpandDeliverables(order.id)}
-                  onPreviewImage={(url, fileName, allImages, index) => handlePreviewImage(url, fileName, allImages, index)}
                   onDownloadFile={downloadFile}
                 />
               );
@@ -914,12 +958,25 @@ export default function CustomOrdersPage() {
                 <h3 className="text-xl font-semibold border-b border-border pb-2">Reference Files</h3>
                 <div className="space-y-2">
                   {selectedOrder.referenceFiles.map((file) => (
-                    <div key={file.id} className="flex items-center gap-2 text-sm">
-                      <PaperClipIcon className="w-4 h-4 text-muted" />
-                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        {file.fileName}
-                      </a>
-                      <span className="text-muted text-xs">({formatDate(file.uploadedAt)})</span>
+                    <div key={file.id} className="flex items-center justify-between gap-2 text-sm p-2 hover:bg-muted/10 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2 flex-1">
+                        <PaperClipIcon className="w-4 h-4 text-muted flex-shrink-0" />
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex-1">
+                          {file.fileName}
+                        </a>
+                        <span className="text-muted text-xs flex-shrink-0">({formatDate(file.uploadedAt)})</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          downloadFile(file.url, file.fileName);
+                        }}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-primary/10 text-primary hover:text-primary transition-colors flex-shrink-0"
+                        title={`Download ${file.fileName}`}
+                      >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>

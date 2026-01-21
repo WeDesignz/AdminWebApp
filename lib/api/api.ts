@@ -717,12 +717,19 @@ function transformProductToDesign(product: any): Design {
     };
   });
 
+  const productNumber =
+    product.product_number ||
+    product.productNumber ||
+    product.product_no ||
+    product.platform_id;
+
   return {
     id: String(product.id),
     title: product.title || 'Untitled Design',
     designerId: String(product.created_by || ''),
     designerName: product.designer_name || 'Unknown Designer',
     category: product.category_name || product.category || 'Uncategorized',
+    productNumber,
     thumbnailUrl,
     status: statusMap[product.status] || 'pending',
     featured: false,
@@ -1246,19 +1253,17 @@ export const CustomOrdersAPI = {
   > {
     // Call analytics endpoint with group_by=status to get status counts
     const response = await apiClient.get<{
-      data?: {
-        total?: number;
-        total_orders?: number;
-        pending?: number;
-        in_progress?: number;
-        completed?: number;
-        completed_orders?: number;
-        group_data?: Record<string, number>;
-      };
+      total?: number;
+      total_orders?: number;
+      pending?: number;
+      in_progress?: number;
+      completed?: number;
+      completed_orders?: number;
+      group_data?: Record<string, number>;
     }>('api/coreadmin/custom-orders/analytics/?group_by=status');
 
-    if (response.success && response.data?.data) {
-      const data = response.data.data;
+    if (response.success && response.data) {
+      const data = response.data;
       
       // Extract stats from response - use direct fields or group_data
       let total = data.total || data.total_orders || 0;
@@ -1826,6 +1831,7 @@ export const SystemConfigAPI = {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
           designPrice: response.data.design_price || 50,
+          customOrderPrice: response.data.custom_order_price ?? 0,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
@@ -1859,6 +1865,7 @@ export const SystemConfigAPI = {
       commission_rate: data.commissionRate,
       gst_percentage: data.gstPercentage,
       design_price: data.designPrice,
+      custom_order_price: data.customOrderPrice !== undefined ? data.customOrderPrice : 0,
       custom_order_time_slot_hours: data.customOrderTimeSlot,
       minimum_required_designs: data.minimumRequiredDesigns,
       maintenance_mode: data.maintenanceMode,
@@ -1879,6 +1886,7 @@ export const SystemConfigAPI = {
           commissionRate: response.data.commission_rate,
           gstPercentage: response.data.gst_percentage,
           designPrice: response.data.design_price || 50,
+          customOrderPrice: response.data.custom_order_price ?? 0,
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           maintenanceMode: response.data.maintenance_mode,
