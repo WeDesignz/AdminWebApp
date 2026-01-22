@@ -124,35 +124,9 @@ export function SystemConfigsPageClient() {
       return;
     }
 
-    // Validate hero section designs (should be 3-5)
-    if (formData.heroSectionDesigns && formData.heroSectionDesigns.length > 0) {
-      if (formData.heroSectionDesigns.length < 3 || formData.heroSectionDesigns.length > 5) {
-        toast.error('Hero section must have between 3 and 5 designs');
-        return;
-      }
-    }
-
-    // Validate featured designs
-    if (formData.featuredDesigns && formData.featuredDesigns.length > 0) {
-      const invalidFeatured = formData.featuredDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => d.id === id)
-      );
-      if (invalidFeatured.length > 0) {
-        toast.error('Some featured designs are not active. Please select active designs only.');
-        return;
-      }
-    }
-
-    // Validate dome gallery designs exist
-    if (formData.domeGalleryDesigns) {
-      const invalidDome = formData.domeGalleryDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => d.id === id)
-      );
-      if (invalidDome.length > 0) {
-        toast.error('Some dome gallery designs are not active. Please select active designs only.');
-        return;
-      }
-    }
+    // Note: Design validation is handled by the backend
+    // The backend will validate that designs have status='active' and visibility_status='show'
+    // and return appropriate error messages if validation fails
 
     setIsSaving(true);
     try {
