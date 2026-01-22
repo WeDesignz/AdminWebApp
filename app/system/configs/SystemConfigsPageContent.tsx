@@ -267,38 +267,9 @@ export default function SystemConfigsPageContent() {
       return;
     }
 
-    // Validate hero section designs exist
-    if (formData.heroSectionDesigns) {
-      const invalidHero = formData.heroSectionDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
-      );
-      if (invalidHero.length > 0) {
-        toast.error(`Some hero section designs are not active (IDs: ${invalidHero.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
-        return;
-      }
-    }
-
-    // Validate featured designs exist
-    if (formData.featuredDesigns) {
-      const invalidFeatured = formData.featuredDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
-      );
-      if (invalidFeatured.length > 0) {
-        toast.error(`Some featured designs are not active (IDs: ${invalidFeatured.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
-        return;
-      }
-    }
-
-    // Validate dome gallery designs exist
-    if (formData.domeGalleryDesigns) {
-      const invalidDome = formData.domeGalleryDesigns.filter(
-        (id) => !activeDesigns.find((d: Design) => String(d.id) === String(id))
-      );
-      if (invalidDome.length > 0) {
-        toast.error(`Some dome gallery designs are not active (IDs: ${invalidDome.join(', ')}). Please ensure they have status='active' and visibility_status='show', or select only active designs.`);
-        return;
-      }
-    }
+    // Note: Design validation is handled by the backend
+    // The backend will validate that designs have status='active' and visibility_status='show'
+    // and return appropriate error messages if validation fails
 
     // Ensure all required fields have default values if undefined
     const dataToSave: Partial<SystemConfig> = {
