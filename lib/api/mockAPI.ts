@@ -1075,6 +1075,7 @@ class MockAPI {
       customOrderPrice: 0, // Default price for custom orders (minimum charge)
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
+      freeMockPdfDownloadsNoPlanPerMonth: 999,
       maintenanceMode: false,
       heroSectionDesigns: [],
       featuredDesigns: ['design_1', 'design_2', 'design_3'],
@@ -1105,6 +1106,7 @@ class MockAPI {
       customOrderPrice: customOrderPrice ?? 0, // Default to 0 if not provided
       customOrderTimeSlot: 1,
       minimumRequiredDesigns: 50,
+      freeMockPdfDownloadsNoPlanPerMonth: (data as any)?.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
       maintenanceMode: false,
       landingPageStats: {
         totalClients: 5000,

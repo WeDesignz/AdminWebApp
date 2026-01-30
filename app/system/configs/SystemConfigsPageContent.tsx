@@ -84,6 +84,7 @@ export default function SystemConfigsPageContent() {
     customOrderPrice: 0,
     customOrderTimeSlot: 1,
     minimumRequiredDesigns: 50,
+    freeMockPdfDownloadsNoPlanPerMonth: 999,
     heroSectionDesigns: [],
     featuredDesigns: [],
     domeGalleryDesigns: [],
@@ -135,6 +136,7 @@ export default function SystemConfigsPageContent() {
         customOrderPrice: configData.data.customOrderPrice ?? 0,
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
+        freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
         heroSectionDesigns,
         featuredDesigns,
         domeGalleryDesigns,
@@ -155,6 +157,7 @@ export default function SystemConfigsPageContent() {
         customOrderPrice: configData.data.customOrderPrice ?? 0,
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
+        freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
         heroSectionDesigns: normalizeIds(configData.data.heroSectionDesigns || []),
         featuredDesigns: normalizeIds(configData.data.featuredDesigns || []),
         domeGalleryDesigns: normalizeIds(configData.data.domeGalleryDesigns || []),
@@ -280,6 +283,7 @@ export default function SystemConfigsPageContent() {
       gstPercentage: formData.gstPercentage !== undefined ? formData.gstPercentage : 18,
       customOrderTimeSlot: formData.customOrderTimeSlot !== undefined ? formData.customOrderTimeSlot : 1,
       minimumRequiredDesigns: formData.minimumRequiredDesigns !== undefined ? formData.minimumRequiredDesigns : 50,
+      freeMockPdfDownloadsNoPlanPerMonth: formData.freeMockPdfDownloadsNoPlanPerMonth !== undefined ? formData.freeMockPdfDownloadsNoPlanPerMonth : 999,
     };
 
     setIsSaving(true);
@@ -832,6 +836,44 @@ export default function SystemConfigsPageContent() {
                   placeholder="50"
                 />
                 <p className="text-xs text-muted mt-1">Minimum designs required for designer onboarding (default: 50)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Free Mock PDFs (No Plan) per Month <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.freeMockPdfDownloadsNoPlanPerMonth ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({
+                        ...formData,
+                        freeMockPdfDownloadsNoPlanPerMonth: undefined,
+                      });
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue)) {
+                        setFormData({
+                          ...formData,
+                          freeMockPdfDownloadsNoPlanPerMonth: numValue,
+                        });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (formData.freeMockPdfDownloadsNoPlanPerMonth === undefined || formData.freeMockPdfDownloadsNoPlanPerMonth === null) {
+                      setFormData({
+                        ...formData,
+                        freeMockPdfDownloadsNoPlanPerMonth: 999,
+                      });
+                    }
+                  }}
+                  placeholder="999"
+                />
+                <p className="text-xs text-muted mt-1">Free mock PDF downloads per month for users without a plan (use 999 or higher for unlimited)</p>
               </div>
             </div>
           </div>
