@@ -2706,6 +2706,69 @@ export const SettlementAPI = {
 };
 
 /**
+ * Mock PDF Reports (admin) - uses existing PDFDownload model
+ */
+export const MockPdfReportsAPI = {
+  /**
+   * Get mock PDF report: stats (total, today, this_week, this_month) and paginated list
+   */
+  async getMockPdfReports(params?: { page?: number; page_size?: number }): Promise<
+    ApiResponse<{
+      stats: { total: number; today: number; this_week: number; this_month: number };
+      downloads: Array<{
+        id: number;
+        customer_name: string;
+        customer_mobile: string;
+        customer_logo_url: string | null;
+        number_of_designs: number;
+        total_pages: number;
+        download_type: string;
+        status: string;
+        created_at: string | null;
+        completed_at: string | null;
+      }>;
+      total_count: number;
+      total_pages: number;
+      current_page: number;
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.page_size) queryParams.append('page_size', String(params.page_size || 20));
+    const qs = queryParams.toString();
+    const url = qs ? `api/coreadmin/mock-pdf-reports/?${qs}` : 'api/coreadmin/mock-pdf-reports/';
+    const response = await apiClient.get<any>(url);
+    return response as ApiResponse<any>;
+  },
+
+  /**
+   * Download a mock PDF file (admin). Returns blob and filename for save.
+   */
+  async downloadMockPdf(downloadId: number): Promise<{ blob: Blob; filename: string }> {
+    const { getApiUrl } = await import('./config');
+    const { useAuthStore } = await import('@/store/authStore');
+    const state = useAuthStore.getState();
+    if (!state.accessToken) throw new Error('Authentication required.');
+    const response = await fetch(getApiUrl(`api/coreadmin/mock-pdf-reports/${downloadId}/download/`), {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${state.accessToken}` },
+    });
+    if (!response.ok) {
+      let msg = response.statusText;
+      try {
+        const err = await response.json();
+        msg = err.error || err.detail || msg;
+      } catch {}
+      throw new Error(msg || 'Failed to download PDF');
+    }
+    const blob = await response.blob();
+    const filename = response.headers.get('X-Filename') || `designs_${downloadId}.pdf`;
+    return { blob, filename };
+  },
+};
+
+/**
  * Export all APIs as a single object for easy import
  */
 export const API = {
@@ -2733,6 +2796,7 @@ export const API = {
   permissionGroups: PermissionGroupsAPI,
   faq: FAQAPI,
   settlement: SettlementAPI,
+  mockPdfReports: MockPdfReportsAPI,
 };
 
 // For backward compatibility, export as default
