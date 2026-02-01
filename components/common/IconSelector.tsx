@@ -69,8 +69,6 @@ export default function IconSelector({ value, onChange }: IconSelectorProps) {
     fetch('http://127.0.0.1:7242/ingest/0d118c33-80b1-4094-b438-34ab212273a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'IconSelector.tsx:42',message:'Filtering complete',data:{filteredCount:filtered.length,firstFew:filtered.slice(0,10)},timestamp:Date.now(),sessionId:'debug-session',runId:'debug1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     const sorted = filtered.sort();
-    console.log('[IconSelector] allIcons count:', sorted.length);
-    console.log('[IconSelector] First few:', sorted.slice(0, 10));
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/0d118c33-80b1-4094-b438-34ab212273a7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'IconSelector.tsx:46',message:'Final allIcons',data:{finalCount:sorted.length,firstFew:sorted.slice(0,10)},timestamp:Date.now(),sessionId:'debug-session',runId:'debug1',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
