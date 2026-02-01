@@ -40,7 +40,10 @@ export default function DesignsPage() {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivityDesign, setSelectedActivityDesign] = useState<Design | null>(null);
   const [approvingDesignId, setApprovingDesignId] = useState<string | null>(null);
-  
+  const [visualSearchResults, setVisualSearchResults] = useState<Array<{ id: number; title: string; product_number?: string; image?: string; [key: string]: any }> | null>(null);
+  const [visualSearchLoading, setVisualSearchLoading] = useState(false);
+  const [visualSearchError, setVisualSearchError] = useState<string | null>(null);
+
   // Wait for auth store to hydrate
   const { isAuthenticated, accessToken } = useAuthStore();
   const { hasPermission } = usePermission();
@@ -157,6 +160,31 @@ export default function DesignsPage() {
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedDesign(null);
+    setVisualSearchResults(null);
+    setVisualSearchLoading(false);
+    setVisualSearchError(null);
+  };
+
+  const handleVisualSearch = async () => {
+    if (!designDetail?.data?.id) return;
+    setVisualSearchLoading(true);
+    setVisualSearchError(null);
+    setVisualSearchResults(null);
+    try {
+      const response = await API.lensSearchByProduct(String(designDetail.data.id), 10);
+      if (response.success && response.data) {
+        setVisualSearchResults(response.data.products || []);
+        if ((response.data.products?.length ?? 0) === 0) {
+          setVisualSearchError(response.data.message || 'No similar designs found.');
+        }
+      } else {
+        setVisualSearchError(response.error || 'Visual search failed.');
+      }
+    } catch {
+      setVisualSearchError('Visual search failed. Please try again.');
+    } finally {
+      setVisualSearchLoading(false);
+    }
   };
 
   const handlePageSizeChange = (newPageSize: number) => {
@@ -1003,6 +1031,71 @@ export default function DesignsPage() {
                 </div>
               );
             })()}
+
+            {/* Similar designs (visual search) – check if such design already exists */}
+            <div className="space-y-4 border-t border-border pt-4">
+              <h3 className="text-xl font-semibold border-b border-border pb-2">Similar designs (visual search)</h3>
+              <p className="text-sm text-muted">
+                Search by this design&apos;s PNG to see if similar designs already exist in the catalog.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleVisualSearch}
+                disabled={visualSearchLoading}
+                isLoading={visualSearchLoading}
+                className="flex items-center gap-2"
+                title="Run visual search using this design's PNG"
+              >
+                <MagnifyingGlassIcon className="w-4 h-4" />
+                {visualSearchLoading ? 'Searching...' : 'Search similar designs'}
+              </Button>
+              {visualSearchError && (
+                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-sm text-warning">
+                  {visualSearchError}
+                </div>
+              )}
+              {visualSearchResults && visualSearchResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted">
+                    Top {visualSearchResults.length} similar design{visualSearchResults.length !== 1 ? 's' : ''}:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    {visualSearchResults.map((product: any) => {
+                      const thumbUrl = product.image ?? product.media?.[0]?.url ?? product.media?.[0]?.file;
+                      return (
+                      <div
+                        key={product.id}
+                        className="rounded-lg border border-border overflow-hidden bg-muted/5 hover:border-primary transition-colors"
+                      >
+                        <div className="aspect-square bg-muted/20 flex items-center justify-center p-1">
+                          {thumbUrl ? (
+                            <img
+                              src={thumbUrl}
+                              alt={product.title || 'Design'}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <PhotoIcon className="w-10 h-10 text-muted" />
+                          )}
+                        </div>
+                        <div className="p-2">
+                          <p className="text-xs font-medium truncate" title={product.title}>
+                            {product.title || 'Untitled'}
+                          </p>
+                          {product.product_number && (
+                            <p className="text-xs text-muted truncate">{product.product_number}</p>
+                          )}
+                        </div>
+                      </div>
+                    );})}
+                  </div>
+                </div>
+              )}
+              {visualSearchResults && visualSearchResults.length === 0 && !visualSearchError && (
+                <p className="text-sm text-muted">No similar designs found.</p>
+              )}
+            </div>
 
             {/* Metadata */}
             {designDetail.data.metadata && (

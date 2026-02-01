@@ -275,6 +275,20 @@ class RealAPI {
     return API.designs.getDesignStats();
   }
 
+  static async lensSearchByProduct(
+    productId: string,
+    numResults?: number
+  ): Promise<
+    ApiResponse<{
+      products: Array<{ id: number; title: string; product_number?: string; image?: string; [key: string]: any }>;
+      count: number;
+      total_matched: number;
+      message?: string;
+    }>
+  > {
+    return API.designs.lensSearchByProduct(productId, numResults ?? 10);
+  }
+
   static async approveDesign(designId: string, data: { approved: boolean; reason?: string }): Promise<ApiResponse<void>> {
     return API.designs.approveDesign(designId, data);
   }

@@ -908,6 +908,60 @@ export const DesignsAPI = {
   },
 
   /**
+   * Visual search by product – run visual search using this design's PNG.
+   * Returns similar products (excluding the current design). Used in Design Details modal.
+   */
+  async lensSearchByProduct(
+    productId: string,
+    numResults: number = 10
+  ): Promise<
+    ApiResponse<{
+      products: Array<{
+        id: number;
+        title: string;
+        product_number?: string;
+        image?: string;
+        media?: any[];
+        [key: string]: any;
+      }>;
+      count: number;
+      total_matched: number;
+      message?: string;
+    }>
+  > {
+    const response = await apiClient.post<{
+      success: boolean;
+      products?: any[];
+      count?: number;
+      total_matched?: number;
+      message?: string;
+      error?: string;
+      details?: string;
+    }>('api/catalog/lens-search-by-product/', {
+      product_id: parseInt(productId, 10),
+      num_results: numResults,
+    });
+
+    if (response.success && response.data && (response.data as any).success) {
+      const data = response.data as any;
+      return {
+        success: true,
+        data: {
+          products: data.products || [],
+          count: data.count ?? 0,
+          total_matched: data.total_matched ?? 0,
+          message: data.message,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: (response.data as any)?.error || response.error || 'Visual search failed',
+    };
+  },
+
+  /**
    * Approve/Reject Design
    */
   async approveDesign(designId: string, data: { approved: boolean; reason?: string }): Promise<ApiResponse<void>> {
