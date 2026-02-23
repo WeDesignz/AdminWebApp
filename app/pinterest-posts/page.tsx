@@ -14,6 +14,8 @@ import {
   EyeIcon,
   ArrowPathIcon,
   PhotoIcon,
+  XMarkIcon,
+  MagnifyingGlassPlusIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,8 +41,11 @@ export default function PinterestPostsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
   const [detailsPost, setDetailsPost] = useState<PinterestPostRow | null>(null);
+  const [previewPost, setPreviewPost] = useState<PinterestPostRow | null>(null);
   const [retryingId, setRetryingId] = useState<number | null>(null);
   const [isBulkPosting, setIsBulkPosting] = useState(false);
+  const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
+  const [hoveredThumbId, setHoveredThumbId] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const { isAuthenticated, accessToken } = useAuthStore();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -69,6 +74,15 @@ export default function PinterestPostsPage() {
     refetchInterval: 60000,
   });
 
+  const { data: statsResponse } = useQuery({
+    queryKey: ['pinterest-posts-stats'],
+    queryFn: () => API.getPinterestPostsStats(),
+    enabled: isReady,
+  });
+
+  const counts = statsResponse?.data;
+  const bulkPostEligible = counts?.bulk_post_eligible ?? 0;
+
   const posts = postsResponse?.data?.data ?? [];
   const pagination = postsResponse?.data?.pagination;
   const isPinterestReady =
@@ -81,6 +95,7 @@ export default function PinterestPostsPage() {
       if (res.success) {
         toast.success('Retry queued');
         queryClient.invalidateQueries({ queryKey: ['pinterest-posts'] });
+        queryClient.invalidateQueries({ queryKey: ['pinterest-posts-stats'] });
       } else {
         toast.error(res.error || 'Failed to queue retry');
       }
@@ -102,6 +117,7 @@ export default function PinterestPostsPage() {
       if (res.success && res.data) {
         toast.success(`Queued ${res.data.queued} design(s) for posting`);
         queryClient.invalidateQueries({ queryKey: ['pinterest-posts'] });
+        queryClient.invalidateQueries({ queryKey: ['pinterest-posts-stats'] });
       } else {
         toast.error((res as any).error || 'Bulk post failed');
       }
@@ -172,18 +188,31 @@ export default function PinterestPostsPage() {
             </h1>
             <p className="text-muted mt-1">View and manage designs posted to Pinterest</p>
           </div>
-          <Button
-            onClick={handleBulkPost}
-            disabled={!isPinterestReady || isBulkPosting}
-            className="flex items-center gap-2"
+          <span
+            title={
+              bulkPostEligible === 0
+                ? 'No designs to post. All designs are either already posted or have no Pinterest post record.'
+                : `Queue ${bulkPostEligible} design(s) for Pinterest. Designs with status Pending, Failed, or Retrying will be posted. Approved designs without a Pinterest post record may also be included.`
+            }
+            className="inline-flex"
           >
-            {isBulkPosting ? (
-              <ArrowPathIcon className="w-5 h-5 animate-spin" />
-            ) : (
-              <ShareIcon className="w-5 h-5" />
-            )}
-            {isBulkPosting ? 'Posting…' : 'Bulk post (not posted)'}
-          </Button>
+            <Button
+              onClick={handleBulkPost}
+              disabled={!isPinterestReady || isBulkPosting}
+              className="flex items-center gap-2"
+            >
+              {isBulkPosting ? (
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
+              ) : (
+                <ShareIcon className="w-5 h-5" />
+              )}
+              {isBulkPosting
+                ? 'Posting…'
+                : bulkPostEligible > 0
+                  ? `Bulk post (${bulkPostEligible})`
+                  : 'Bulk post (not posted)'}
+            </Button>
+          </span>
         </div>
 
         {pinterestStatus?.data && (
@@ -239,22 +268,26 @@ export default function PinterestPostsPage() {
           <div className="flex flex-wrap items-center gap-4 mb-4">
             <span className="text-sm font-medium text-muted-foreground">Filter:</span>
             <div className="flex flex-wrap gap-2">
-              {statusOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setStatusFilter(opt.value);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    statusFilter === opt.value
-                      ? 'bg-primary text-white'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {statusOptions.map((opt) => {
+                const count = counts ? counts[opt.value] ?? 0 : null;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setStatusFilter(opt.value);
+                      setPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      statusFilter === opt.value
+                        ? 'bg-primary text-white'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {opt.label}
+                    {count !== null && ` (${count})`}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -283,17 +316,39 @@ export default function PinterestPostsPage() {
                     <tr key={row.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                            {row.product_thumbnail_url ? (
+                          <div
+                            className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border"
+                            onMouseEnter={() => setHoveredThumbId(row.id)}
+                            onMouseLeave={() => setHoveredThumbId(null)}
+                          >
+                            {row.product_thumbnail_url && !brokenImageIds.has(row.id) ? (
                               <img
                                 src={row.product_thumbnail_url}
                                 alt=""
                                 className="w-full h-full object-cover"
+                                onError={() =>
+                                  setBrokenImageIds((prev) => new Set(prev).add(row.id))
+                                }
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <PhotoIcon className="w-6 h-6 text-muted" />
+                              <div className="w-full h-full flex items-center justify-center text-muted">
+                                <PhotoIcon className="w-7 h-7" />
                               </div>
+                            )}
+                            {(row.product_thumbnail_url && !brokenImageIds.has(row.id)) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewPost(row);
+                                }}
+                                className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg cursor-pointer hover:bg-black/60 transition-opacity duration-200 ${
+                                  hoveredThumbId === row.id ? 'opacity-100' : 'opacity-0'
+                                }`}
+                                title="Preview design"
+                              >
+                                <MagnifyingGlassPlusIcon className="w-7 h-7 text-white" />
+                              </button>
                             )}
                           </div>
                           <span className="font-medium truncate max-w-[200px]" title={row.product_title}>
@@ -371,37 +426,88 @@ export default function PinterestPostsPage() {
       </div>
 
       <AnimatePresence>
+        {previewPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setPreviewPost(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-4xl w-full max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-sm font-medium text-white truncate max-w-[80%]" title={previewPost.product_title}>
+                  {previewPost.product_title}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPost(null)}
+                  className="p-2 rounded-lg hover:bg-white/20 text-white transition-colors"
+                  aria-label="Close preview"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="rounded-xl overflow-hidden bg-muted border border-border shadow-2xl flex-1 min-h-0 flex items-center justify-center">
+                {previewPost.product_thumbnail_url ? (
+                  <img
+                    src={previewPost.product_thumbnail_url}
+                    alt={previewPost.product_title}
+                    className="max-w-full max-h-[85vh] w-auto h-auto object-contain"
+                  />
+                ) : (
+                  <div className="py-24 text-muted-foreground">
+                    <PhotoIcon className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                    <p>No image available</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {detailsPost && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={() => setDetailsPost(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card border border-border rounded-xl shadow-xl max-w-lg w-full p-6"
+              className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Error details</h3>
+                <h3 className="text-lg font-semibold text-foreground">Error details</h3>
                 <button
                   type="button"
                   onClick={() => setDetailsPost(null)}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Close"
                 >
-                  ×
+                  <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">{detailsPost.product_title}</p>
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-sm text-destructive/90 whitespace-pre-wrap break-words">
+              <p className="text-sm text-muted-foreground mb-2 truncate" title={detailsPost.product_title}>
+                {detailsPost.product_title}
+              </p>
+              <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4 text-sm text-destructive dark:text-destructive/95 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
                 {detailsPost.error_message || 'No error message stored.'}
               </div>
               {detailsPost.last_retry_at && (
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-3">
                   Last retry: {new Date(detailsPost.last_retry_at).toLocaleString()} (attempt #{detailsPost.retry_count})
                 </p>
               )}

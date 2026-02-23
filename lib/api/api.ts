@@ -1180,6 +1180,20 @@ export const PinterestAPI = {
   },
 
   /**
+   * Get Pinterest posts counts per status (for filter badges)
+   */
+  async getPostsStats(): Promise<ApiResponse<{
+    all: number;
+    success: number;
+    failed: number;
+    pending: number;
+    retrying: number;
+    bulk_post_eligible: number;
+  }>> {
+    return apiClient.get('api/pinterest/posts/stats/');
+  },
+
+  /**
    * Get Pinterest posts list (designs with Pinterest status)
    */
   async getPosts(params?: {
