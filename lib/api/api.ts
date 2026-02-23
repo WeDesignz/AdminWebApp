@@ -1183,7 +1183,7 @@ export const PinterestAPI = {
    * Get Pinterest posts list (designs with Pinterest status)
    */
   async getPosts(params?: {
-    status?: 'all' | 'success' | 'failed' | 'not_posted';
+    status?: 'all' | 'success' | 'failed' | 'pending' | 'retrying';
     page?: number;
     limit?: number;
   }): Promise<ApiResponse<{

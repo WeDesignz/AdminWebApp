@@ -407,7 +407,7 @@ class RealAPI {
   }
 
   static async getPinterestPosts(params?: {
-    status?: 'all' | 'success' | 'failed' | 'not_posted';
+    status?: 'all' | 'success' | 'failed' | 'pending' | 'retrying';
     page?: number;
     limit?: number;
   }) {
