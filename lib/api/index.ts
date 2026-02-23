@@ -414,6 +414,10 @@ class RealAPI {
     return API.pinterest.getPosts(params);
   }
 
+  static async getPinterestPostsStats() {
+    return API.pinterest.getPostsStats();
+  }
+
   static async retryPinterestPost(postId: number) {
     return API.pinterest.retryPost(postId);
   }
