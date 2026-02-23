@@ -908,6 +908,60 @@ export const DesignsAPI = {
   },
 
   /**
+   * Visual search by product – run visual search using this design's PNG.
+   * Returns similar products (excluding the current design). Used in Design Details modal.
+   */
+  async lensSearchByProduct(
+    productId: string,
+    numResults: number = 10
+  ): Promise<
+    ApiResponse<{
+      products: Array<{
+        id: number;
+        title: string;
+        product_number?: string;
+        image?: string;
+        media?: any[];
+        [key: string]: any;
+      }>;
+      count: number;
+      total_matched: number;
+      message?: string;
+    }>
+  > {
+    const response = await apiClient.post<{
+      success: boolean;
+      products?: any[];
+      count?: number;
+      total_matched?: number;
+      message?: string;
+      error?: string;
+      details?: string;
+    }>('api/catalog/lens-search-by-product/', {
+      product_id: parseInt(productId, 10),
+      num_results: numResults,
+    });
+
+    if (response.success && response.data && (response.data as any).success) {
+      const data = response.data as any;
+      return {
+        success: true,
+        data: {
+          products: data.products || [],
+          count: data.count ?? 0,
+          total_matched: data.total_matched ?? 0,
+          message: data.message,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: (response.data as any)?.error || response.error || 'Visual search failed',
+    };
+  },
+
+  /**
    * Approve/Reject Design
    */
   async approveDesign(designId: string, data: { approved: boolean; reason?: string }): Promise<ApiResponse<void>> {
@@ -1835,6 +1889,7 @@ export const SystemConfigAPI = {
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           freeMockPdfDownloadsNoPlanPerMonth: response.data.free_mock_pdf_downloads_no_plan_per_month ?? 999,
+          paidPdfDesignsOptions: response.data.paid_pdf_designs_options || [],
           maintenanceMode: response.data.maintenance_mode,
           heroSectionDesigns: response.data.hero_section_designs || [],
           featuredDesigns: response.data.featured_designs || [],
@@ -1870,6 +1925,7 @@ export const SystemConfigAPI = {
       custom_order_time_slot_hours: data.customOrderTimeSlot,
       minimum_required_designs: data.minimumRequiredDesigns,
       free_mock_pdf_downloads_no_plan_per_month: data.freeMockPdfDownloadsNoPlanPerMonth,
+      paid_pdf_designs_options: data.paidPdfDesignsOptions,
       maintenance_mode: data.maintenanceMode,
       hero_section_designs: convertIdsToInts(data.heroSectionDesigns),
       featured_designs: convertIdsToInts(data.featuredDesigns),
@@ -1892,6 +1948,7 @@ export const SystemConfigAPI = {
           customOrderTimeSlot: response.data.custom_order_time_slot_hours,
           minimumRequiredDesigns: response.data.minimum_required_designs,
           freeMockPdfDownloadsNoPlanPerMonth: response.data.free_mock_pdf_downloads_no_plan_per_month ?? 999,
+          paidPdfDesignsOptions: response.data.paid_pdf_designs_options || [],
           maintenanceMode: response.data.maintenance_mode,
           heroSectionDesigns: response.data.hero_section_designs || [],
           featuredDesigns: response.data.featured_designs || [],

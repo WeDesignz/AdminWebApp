@@ -85,6 +85,7 @@ export default function SystemConfigsPageContent() {
     customOrderTimeSlot: 1,
     minimumRequiredDesigns: 50,
     freeMockPdfDownloadsNoPlanPerMonth: 999,
+    paidPdfDesignsOptions: [20, 50, 100],
     heroSectionDesigns: [],
     featuredDesigns: [],
     domeGalleryDesigns: [],
@@ -137,6 +138,7 @@ export default function SystemConfigsPageContent() {
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
+        paidPdfDesignsOptions: configData.data.paidPdfDesignsOptions ?? [20, 50, 100],
         heroSectionDesigns,
         featuredDesigns,
         domeGalleryDesigns,
@@ -158,6 +160,7 @@ export default function SystemConfigsPageContent() {
         customOrderTimeSlot: configData.data.customOrderTimeSlot,
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
+        paidPdfDesignsOptions: configData.data.paidPdfDesignsOptions ?? [20, 50, 100],
         heroSectionDesigns: normalizeIds(configData.data.heroSectionDesigns || []),
         featuredDesigns: normalizeIds(configData.data.featuredDesigns || []),
         domeGalleryDesigns: normalizeIds(configData.data.domeGalleryDesigns || []),
@@ -270,6 +273,19 @@ export default function SystemConfigsPageContent() {
       return;
     }
 
+    if (formData.paidPdfDesignsOptions !== undefined && formData.paidPdfDesignsOptions.length > 0) {
+      const invalid = formData.paidPdfDesignsOptions.find(n => !Number.isInteger(n) || n <= 0);
+      if (invalid !== undefined) {
+        toast.error('PDF design options must be positive integers (e.g. 20, 50, 100)');
+        return;
+      }
+      const overLimit = formData.paidPdfDesignsOptions.find(n => n > 100);
+      if (overLimit !== undefined) {
+        toast.error('PDF design options must be 20, 50, or 100 only. Values above 100 are not allowed.');
+        return;
+      }
+    }
+
     // Note: Design validation is handled by the backend
     // The backend will validate that designs have status='active' and visibility_status='show'
     // and return appropriate error messages if validation fails
@@ -284,6 +300,9 @@ export default function SystemConfigsPageContent() {
       customOrderTimeSlot: formData.customOrderTimeSlot !== undefined ? formData.customOrderTimeSlot : 1,
       minimumRequiredDesigns: formData.minimumRequiredDesigns !== undefined ? formData.minimumRequiredDesigns : 50,
       freeMockPdfDownloadsNoPlanPerMonth: formData.freeMockPdfDownloadsNoPlanPerMonth !== undefined ? formData.freeMockPdfDownloadsNoPlanPerMonth : 999,
+      paidPdfDesignsOptions: formData.paidPdfDesignsOptions && formData.paidPdfDesignsOptions.length > 0
+        ? formData.paidPdfDesignsOptions
+        : [20, 50, 100],
     };
 
     setIsSaving(true);
@@ -874,6 +893,26 @@ export default function SystemConfigsPageContent() {
                   placeholder="999"
                 />
                 <p className="text-xs text-muted mt-1">Free mock PDF downloads per month for users without a plan (use 999 or higher for unlimited)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  PDF Download Design Options <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="text"
+                  value={(formData.paidPdfDesignsOptions || []).join(', ')}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const parsed = value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0 && n <= 100);
+                    setFormData({
+                      ...formData,
+                      paidPdfDesignsOptions: parsed.length > 0 ? parsed : [20, 50, 100],
+                    });
+                  }}
+                  placeholder="20, 50, 100"
+                />
+                <p className="text-xs text-muted mt-1">Comma-separated design counts for PDF downloads (e.g. 20, 50, 100). First value is used for free PDFs. Also configurable via .env PAID_PDF_DESIGNS_OPTIONS.</p>
               </div>
             </div>
           </div>

@@ -135,12 +135,7 @@ export default function AdminUsersPage() {
         status: statusFilter || undefined,
         search: debouncedSearch || undefined,
       });
-      
-      // Log for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Admin Users API Response:', response);
-      }
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to fetch admin users');
       }

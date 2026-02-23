@@ -45,10 +45,6 @@ class ApiClient {
       const syncToken = this.getAuthTokenSync();
       if (syncToken) {
         headers['Authorization'] = `Bearer ${syncToken}`;
-        // Only log in development mode
-        if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-          console.log('[apiClient] Token found (sync):', syncToken!.substring(0, 20) + '...');
-        }
         return headers;
       }
 
@@ -59,16 +55,12 @@ class ApiClient {
         const state = useAuthStore.getState();
         if (state.accessToken) {
           headers['Authorization'] = `Bearer ${state.accessToken}`;
-          // Only log in development mode
-          if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-            console.log('[apiClient] Token found (async):', state.accessToken!.substring(0, 20) + '...');
-          }
         } else {
           // No token found - this is expected for public endpoints like login/2FA
           // Don't log warning here as we can't determine if endpoint is public
         }
-      } catch (error) {
-        console.error('[apiClient] Error getting auth headers:', error);
+      } catch {
+        // Auth store not available (e.g. SSR)
       }
     }
 
@@ -217,16 +209,6 @@ class ApiClient {
             }
           });
         }
-      }
-
-      // Only log in development mode for debugging
-      if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-        const authHeader = mergedHeaders.get('Authorization');
-        console.log(`[apiClient.request] ${options.method || 'GET'} ${endpoint}`, {
-          hasAuthHeader: !!authHeader,
-          authHeaderPreview: authHeader ? authHeader!.substring(0, 30) + '...' : 'none',
-          allHeaders: Array.from(mergedHeaders.keys())
-        });
       }
 
       // Build fetch options - ensure headers are set correctly
@@ -533,15 +515,6 @@ class ApiClient {
    * POST request
    */
   async post<T>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
-    // Only log in development mode for debugging
-    if (process.env.NODE_ENV === 'development' && false) { // Set to true for debugging
-      const token = this.getAuthTokenSync();
-      console.log(`[apiClient.post] ${endpoint}`, { 
-        hasToken: !!token, 
-        tokenPreview: token ? token!.substring(0, 20) + '...' : 'none' 
-      });
-    }
-    
     return this.request<T>(endpoint, {
       method: 'POST',
       headers: {
