@@ -24,6 +24,7 @@ import {
   LockClosedIcon,
   CameraIcon,
   DocumentTextIcon,
+  ShareIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -55,6 +56,11 @@ const navigationCategories = [
         name: 'Instagram Posts', 
         href: '/instagram-posts', 
         icon: CameraIcon,
+      },
+      { 
+        name: 'Pinterest Posts', 
+        href: '/pinterest-posts', 
+        icon: ShareIcon,
       },
       { 
         name: 'Plans', 

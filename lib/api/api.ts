@@ -1178,6 +1178,59 @@ export const PinterestAPI = {
   async deleteBoard(boardId: string): Promise<ApiResponse<void>> {
     return apiClient.delete(`api/pinterest/delete-board/${boardId}/`);
   },
+
+  /**
+   * Get Pinterest posts list (designs with Pinterest status)
+   */
+  async getPosts(params?: {
+    status?: 'all' | 'success' | 'failed' | 'not_posted';
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    data: Array<{
+      id: number;
+      product_id: number;
+      product_title: string;
+      product_thumbnail_url: string | null;
+      status: string;
+      error_message: string | null;
+      pin_url: string | null;
+      pins_data: Record<string, { id?: string; url?: string }>;
+      retry_count: number;
+      created_at: string;
+      posted_at: string | null;
+      last_retry_at: string | null;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      total_pages: number;
+      has_next: boolean;
+      has_previous: boolean;
+    };
+  }>> {
+    const query = new URLSearchParams();
+    if (params?.status && params.status !== 'all') query.set('status', params.status);
+    if (params?.page != null) query.set('page', String(params.page));
+    if (params?.limit != null) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return apiClient.get(`api/pinterest/posts/${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Retry a single Pinterest post
+   */
+  async retryPost(postId: number): Promise<ApiResponse<{ success: boolean; message?: string }>> {
+    return apiClient.post(`api/pinterest/posts/${postId}/retry/`, {});
+  },
+
+  /**
+   * Bulk post all designs not yet posted to Pinterest
+   */
+  async bulkPost(): Promise<ApiResponse<{ success: boolean; queued: number }>> {
+    return apiClient.post('api/pinterest/posts/bulk-post/', {});
+  },
 };
 
 /**

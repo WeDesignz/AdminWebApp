@@ -406,6 +406,22 @@ class RealAPI {
     return API.pinterest.deleteBoard(boardId);
   }
 
+  static async getPinterestPosts(params?: {
+    status?: 'all' | 'success' | 'failed' | 'not_posted';
+    page?: number;
+    limit?: number;
+  }) {
+    return API.pinterest.getPosts(params);
+  }
+
+  static async retryPinterestPost(postId: number) {
+    return API.pinterest.retryPost(postId);
+  }
+
+  static async bulkPostPinterest() {
+    return API.pinterest.bulkPost();
+  }
+
   // Customer methods
   static async getCustomers(params: {
     page?: number;
