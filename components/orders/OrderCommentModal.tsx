@@ -107,11 +107,7 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
           // Also refetch comments to get updated is_read status
           queryClient.invalidateQueries({ queryKey: ['orderComments', orderId] });
         })
-        .catch((error: any) => {
-          // Only log non-404 errors (endpoint may not exist yet)
-          if (error?.statusCode !== 404 && error?.error?.statusCode !== 404) {
-            console.error('Error marking messages as read:', error);
-          }
+        .catch(() => {
         });
     }
   }, [isOpen, orderId, queryClient]);
@@ -156,16 +152,6 @@ export function OrderCommentModal({ isOpen, onClose, orderId, orderTitle, orderT
 
   const comments = commentsData?.data?.comments || [];
   
-  // Debug logging
-  useEffect(() => {
-    if (commentsData) {
-      // Comments data loaded
-    }
-    if (error) {
-      console.error('[OrderCommentModal] Error loading comments:', error);
-    }
-  }, [commentsData, orderId, error]);
-
   // Show error if orderId is not valid (might be CustomOrderRequest ID instead of Order ID)
   const hasValidOrderId = orderId && orderId !== 'undefined' && orderId !== 'null';
 

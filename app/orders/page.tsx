@@ -85,7 +85,6 @@ export default function OrdersAndTransactionsPage() {
         ? ordersError.message 
         : 'Failed to fetch orders. Please check the backend logs for details.';
       toast.error(errorMessage);
-      console.error('Orders query error:', ordersError);
     }
   }, [ordersError]);
 
@@ -114,7 +113,6 @@ export default function OrdersAndTransactionsPage() {
               chatDataMap[order.id] = { hasChat, unreadCount };
             }
           } catch (error) {
-            console.error(`Error fetching chat for order ${order.id}:`, error);
           }
         })
       );
@@ -145,7 +143,6 @@ export default function OrdersAndTransactionsPage() {
         ? statsError.message 
         : 'Failed to fetch order statistics. The financial-reports endpoint may require SuperAdmin privileges.';
       toast.error(errorMessage);
-      console.error('Order stats query error:', statsError);
     }
   }, [statsError]);
 
@@ -212,7 +209,6 @@ export default function OrdersAndTransactionsPage() {
       // Immediately refetch chat data to update unread count
       await refetchOrdersChatData();
     } catch (error) {
-      console.error('Error marking messages as read:', error);
     }
   };
 

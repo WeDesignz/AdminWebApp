@@ -510,7 +510,6 @@ export default function CustomOrdersPage() {
       }
     } catch (error: any) {
       toast.error(error?.error || error?.message || 'Failed to upload deliverables');
-      console.error('Error uploading files:', error);
     } finally {
       setIsUploading(false);
     }
@@ -538,7 +537,6 @@ export default function CustomOrdersPage() {
       refetchStats();
     } catch (error) {
       toast.error('Failed to reject order');
-      console.error('Error rejecting order:', error);
     } finally {
       setIsRejecting(false);
     }
@@ -559,7 +557,6 @@ export default function CustomOrdersPage() {
       } else {
         toast.error(errorMessage || 'Failed to update status');
       }
-      console.error('Error updating status:', error);
     } finally {
       setUpdatingOrderId(null);
     }
@@ -587,7 +584,6 @@ export default function CustomOrdersPage() {
         return parsed?.state?.accessToken || null;
       }
     } catch (error) {
-      console.error('Error getting auth token:', error);
     }
     return null;
   };
@@ -611,7 +607,6 @@ export default function CustomOrdersPage() {
       const blob = await response.blob();
       return URL.createObjectURL(blob);
     } catch (error) {
-      console.error('Error fetching authenticated image:', error);
       // Fallback to original URL
       return url;
     }
@@ -644,7 +639,6 @@ export default function CustomOrdersPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      console.error('Error downloading file:', error);
       toast.error('Failed to download file. Please try again.');
     }
   };
@@ -679,7 +673,6 @@ export default function CustomOrdersPage() {
 
       toast.success(`Downloaded ${order.referenceFiles.length} reference file(s)`);
     } catch (error) {
-      console.error('Error downloading reference files:', error);
       toast.error('Failed to download reference files. Please try again.');
     }
   };
@@ -699,7 +692,6 @@ export default function CustomOrdersPage() {
       setPreviewImagesList(authImages);
       setCurrentImageIndex(index);
     } catch (error) {
-      console.error('Error loading preview image:', error);
       toast.error('Failed to load image. Please try again.');
     }
   };
@@ -1369,7 +1361,6 @@ export default function CustomOrdersPage() {
                         return;
                       }
                     } catch (fetchError) {
-                      console.error('Error fetching image with auth:', fetchError);
                     }
                   }
                   
@@ -1432,7 +1423,6 @@ export default function CustomOrdersPage() {
                       document.body.removeChild(link);
                       window.URL.revokeObjectURL(blobUrl);
                     } catch (error) {
-                      console.error('Error downloading image:', error);
                       toast.error('Failed to download image. Please try again.');
                     }
                   }}

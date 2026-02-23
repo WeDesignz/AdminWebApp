@@ -239,8 +239,7 @@ export default function DesignsPage() {
           queryClient.refetchQueries({ queryKey: ['designs'] }),
           queryClient.refetchQueries({ queryKey: ['designStats'] }),
           queryClient.refetchQueries({ queryKey: ['design', rejectedDesignId] }),
-        ]).catch((error) => {
-          console.error('Error refetching queries:', error);
+        ]).catch(() => {
           // Don't show error to user - refetch is non-critical
         });
       } else {
@@ -248,7 +247,6 @@ export default function DesignsPage() {
       }
     } catch (error) {
       toast.error('An error occurred while rejecting the design');
-      console.error(error);
     }
   };
 
@@ -296,12 +294,10 @@ export default function DesignsPage() {
         setIsFlagging(false);
       } else {
         toast.error(response.error || 'Failed to flag design');
-        console.error('Failed to flag design:', response.error);
         setIsFlagging(false);
       }
     } catch (error) {
       toast.error('An error occurred while flagging the design');
-      console.error('Error flagging design:', error);
       setIsFlagging(false);
     }
   };
@@ -322,12 +318,10 @@ export default function DesignsPage() {
         setIsResolvingFlag(false);
       } else {
         toast.error(response.error || 'Failed to resolve flag');
-        console.error('Failed to resolve flag:', response.error);
         setIsResolvingFlag(false);
       }
     } catch (error) {
       toast.error('An error occurred while resolving the flag');
-      console.error('Error resolving flag:', error);
       setIsResolvingFlag(false);
     }
   };

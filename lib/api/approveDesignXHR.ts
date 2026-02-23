@@ -23,7 +23,6 @@ function getTokenFromStorage(): string | null {
       return state.accessToken;
     }
   } catch (error) {
-    console.error('[approveDesignXHR] Error reading token:', error);
   }
   
   return null;
@@ -37,7 +36,6 @@ export async function approveDesignXHR(designId: string): Promise<ApiResponse<vo
   const token = getTokenFromStorage();
   
   if (!token) {
-    console.error('[approveDesignXHR] No token found in localStorage');
     return {
       success: false,
       error: 'Authentication token not found. Please login again.',

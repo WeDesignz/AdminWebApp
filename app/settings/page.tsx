@@ -469,7 +469,6 @@ export default function SettingsPage() {
         toast.error(response.error || 'Failed to setup 2FA');
       }
     } catch (error) {
-      console.error('2FA setup error:', error);
       toast.error('An error occurred during 2FA setup');
     } finally {
       setIs2FASettingUp(false);
@@ -500,7 +499,6 @@ export default function SettingsPage() {
         toast.error(response.error || 'Invalid 2FA code. Please try again.');
       }
     } catch (error) {
-      console.error('2FA enable error:', error);
       toast.error('An error occurred during 2FA enable');
     } finally {
       setIs2FAEnabling(false);
@@ -525,7 +523,6 @@ export default function SettingsPage() {
         toast.error(response.error || 'Failed to disable 2FA. Please check your password.');
       }
     } catch (error) {
-      console.error('2FA disable error:', error);
       toast.error('An error occurred during 2FA disable');
     } finally {
       setIs2FADisabling(false);
