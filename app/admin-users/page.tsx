@@ -167,7 +167,6 @@ export default function AdminUsersPage() {
     if (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch admin users';
       toast.error(errorMessage);
-      console.error('Admin Users query error:', error);
     }
   }, [error]);
 

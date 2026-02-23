@@ -123,13 +123,6 @@ export default function SystemConfigsPageContent() {
       const featuredDesigns = filterActiveDesigns(configData.data.featuredDesigns || []);
       const domeGalleryDesigns = filterActiveDesigns(configData.data.domeGalleryDesigns || []);
 
-      // Log if any designs were filtered out
-      if (heroSectionDesigns.length !== normalizeIds(configData.data.heroSectionDesigns || []).length ||
-          featuredDesigns.length !== normalizeIds(configData.data.featuredDesigns || []).length ||
-          domeGalleryDesigns.length !== normalizeIds(configData.data.domeGalleryDesigns || []).length) {
-        console.warn('Some saved designs are no longer active and have been filtered out');
-      }
-
       setFormData({
         commissionRate: configData.data.commissionRate,
         gstPercentage: configData.data.gstPercentage,

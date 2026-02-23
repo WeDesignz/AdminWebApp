@@ -177,7 +177,6 @@ export default function DesignersPage() {
         toast.error(response.error || 'Failed to reject designer');
       }
     } catch (error: any) {
-      console.error('Error rejecting designer:', error);
       toast.error('An error occurred while rejecting the designer');
     } finally {
       setIsRejecting(false);
@@ -230,7 +229,6 @@ export default function DesignersPage() {
         toast.error(response.error || 'Failed to approve designer');
       }
     } catch (error) {
-      console.error('Error approving designer:', error);
       toast.error('An error occurred while approving the designer');
     } finally {
       setIsApproving(false);

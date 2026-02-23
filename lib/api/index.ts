@@ -556,7 +556,6 @@ class RealAPI {
       return result;
     }
 
-    console.error('[RealAPI.getCustomOrders] Error:', response.error);
     return {
       success: false,
       data: [],

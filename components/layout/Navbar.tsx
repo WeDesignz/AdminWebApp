@@ -59,7 +59,6 @@ export function Navbar() {
       toast.success('Logged out successfully');
     } catch (error) {
       // Even if API call fails, we should still logout locally
-      console.warn('Logout API call failed, but clearing local auth state:', error);
     } finally {
       // Always clear auth state and redirect, regardless of API call result
       logout();

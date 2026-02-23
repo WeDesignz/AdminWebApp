@@ -43,7 +43,6 @@ export function getApiUrl(endpoint: string): string {
   
   // Ensure endpoint is a string
   if (typeof endpoint !== 'string') {
-    console.error('getApiUrl: endpoint must be a string, got:', typeof endpoint, endpoint);
     throw new Error(`Invalid endpoint type: expected string, got ${typeof endpoint}`);
   }
   

@@ -255,7 +255,6 @@ export default function InstagramPostsPage() {
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred while posting to Instagram');
-      console.error(error);
     } finally {
       setIsPosting(false);
     }

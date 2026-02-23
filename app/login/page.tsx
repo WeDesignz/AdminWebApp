@@ -52,7 +52,6 @@ export default function LoginPage() {
           if (response.data.user?.id) {
             setUserId(response.data.user.id);
           } else {
-            console.error('User ID not found in login response:', response.data);
             toast.error('Login response missing user ID');
             return;
           }
@@ -74,7 +73,6 @@ export default function LoginPage() {
         toast.error(errorMessage);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
       // Extract error message from various possible formats
       let errorMessage = 'An error occurred during login';
       
@@ -122,7 +120,6 @@ export default function LoginPage() {
         toast.error(errorMessage);
       }
     } catch (error: any) {
-      console.error('2FA verification error:', error);
       // Extract error message from various possible formats
       let errorMessage = 'An error occurred during verification';
       
