@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type StatusFilter = 'all' | 'success' | 'not_posted' | 'failed';
+type StatusFilter = 'all' | 'success' | 'failed' | 'pending' | 'retrying';
 
 interface PinterestPostRow {
   id: number;
@@ -114,9 +114,10 @@ export default function PinterestPostsPage() {
 
   const statusOptions: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'success', label: 'Posted' },
-    { value: 'not_posted', label: 'Not posted' },
+    { value: 'success', label: 'Success' },
     { value: 'failed', label: 'Failed' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'retrying', label: 'Retrying' },
   ];
 
   const getStatusBadge = (status: string) => {
