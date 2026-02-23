@@ -503,6 +503,7 @@ export interface SystemConfig {
   customOrderTimeSlot: number; // Custom order time slot in hours (default 1 hr)
   minimumRequiredDesigns: number; // Minimum required designs to onboard (default 50)
   freeMockPdfDownloadsNoPlanPerMonth: number; // Free mock PDF downloads per month for users without a plan (use high value for unlimited)
+  paidPdfDesignsOptions?: number[]; // PDF download design count options (e.g. [20, 50, 100]). First value = free PDF size. Managed via .env or Admin.
   maintenanceMode: boolean;
   // Landing Page Controls
   heroSectionDesigns: string[];      // Array of design IDs for Hero Section CardSwap
