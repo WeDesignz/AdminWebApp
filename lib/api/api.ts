@@ -2161,6 +2161,18 @@ export const ScheduledTasksAPI = {
       errors?: Array<{ task_id: string; error: string }>;
     }>('api/coreadmin/scheduled-tasks/bulk-revoke/', { task_ids: taskIds, terminate });
   },
+  async getRegisteredTasks(): Promise<
+    ApiResponse<{ tasks: Array<{ name: string; description: string | null }> }>
+  > {
+    return apiClient.get<{ tasks: Array<{ name: string; description: string | null }> }>(
+      'api/coreadmin/scheduled-tasks/registered/'
+    );
+  },
+  async getRegisteredTaskDetail(taskName: string): Promise<ApiResponse<{ name: string; description: string | null }>> {
+    return apiClient.get<{ name: string; description: string | null }>(
+      `api/coreadmin/scheduled-tasks/registered-detail/?task_name=${encodeURIComponent(taskName)}`
+    );
+  },
 };
 
 /**
