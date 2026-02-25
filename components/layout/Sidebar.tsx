@@ -25,6 +25,7 @@ import {
   CameraIcon,
   DocumentTextIcon,
   ShareIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -139,6 +140,12 @@ const navigationCategories = [
         name: 'Activity Log', 
         href: '/activity-log', 
         icon: ClipboardDocumentListIcon,
+        restrictedTo: ['Super Admin'],
+      },
+      { 
+        name: 'Scheduled Tasks', 
+        href: '/scheduled-tasks', 
+        icon: ClockIcon,
         restrictedTo: ['Super Admin'],
       },
   { name: 'Settings', href: '/settings', icon: CogIcon },

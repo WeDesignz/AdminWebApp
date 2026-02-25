@@ -16,6 +16,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     },
   }));
 
+  // Render Toaster only after mount to avoid hydration mismatch (server has no Toaster div)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Proactive token refresh
   useTokenRefresh();
 
@@ -40,17 +44,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          className: 'glass',
-          style: {
-            background: 'var(--card-bg)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border)',
-          },
-        }}
-      />
+      {mounted && (
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            className: 'glass',
+            style: {
+              background: 'var(--card-bg)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+            },
+          }}
+        />
+      )}
     </QueryClientProvider>
   );
 }

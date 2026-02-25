@@ -2084,6 +2084,110 @@ export const ActivityLogsAPI = {
 };
 
 /**
+ * Scheduled Tasks API (Celery task history, revoke, overview)
+ */
+export interface ScheduledTaskOverview {
+  active: number;
+  reserved: number;
+  scheduled: number;
+  failed_last_24h: number;
+  success_last_24h: number;
+}
+
+export interface ScheduledTaskListItem {
+  task_id: string;
+  task_name: string;
+  status: string;
+  date_created: string | null;
+  date_done: string | null;
+  worker: string;
+  result_preview: string | null;
+  traceback: string | null;
+}
+
+export interface ScheduledTaskDetail extends ScheduledTaskListItem {
+  result: unknown;
+  task_args: string | null;
+  task_kwargs: string | null;
+  meta: string | null;
+}
+
+export const ScheduledTasksAPI = {
+  async getOverview(): Promise<ApiResponse<ScheduledTaskOverview>> {
+    return apiClient.get<ScheduledTaskOverview>('api/coreadmin/scheduled-tasks/overview/');
+  },
+  async getList(params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    task_name?: string;
+  }): Promise<ApiResponse<PaginatedResponse<ScheduledTaskListItem>>> {
+    const query: Record<string, string | number> = {};
+    if (params?.page) query.page = params.page;
+    if (params?.page_size) query.page_size = params.page_size;
+    if (params?.status) query.status = params.status;
+    if (params?.task_name) query.task_name = params.task_name;
+    return apiClient.getPaginated<ScheduledTaskListItem>(
+      'api/coreadmin/scheduled-tasks/',
+      params?.page || 1,
+      params?.page_size || 25,
+      query
+    );
+  },
+  async getDetail(taskId: string): Promise<ApiResponse<ScheduledTaskDetail>> {
+    return apiClient.get<ScheduledTaskDetail>(`api/coreadmin/scheduled-tasks/${encodeURIComponent(taskId)}/`);
+  },
+  async revoke(taskId: string, terminate = true): Promise<ApiResponse<{ success: boolean; message?: string; error?: string }>> {
+    return apiClient.post<{ success: boolean; message?: string; error?: string }>(
+      `api/coreadmin/scheduled-tasks/${encodeURIComponent(taskId)}/revoke/`,
+      { terminate }
+    );
+  },
+};
+
+/**
+ * Periodic Tasks API (Celery Beat schedule definitions)
+ */
+export interface PeriodicTaskOverview {
+  total: number;
+  enabled: number;
+}
+
+export interface PeriodicTaskListItem {
+  id: number;
+  name: string;
+  task: string;
+  enabled: boolean;
+  last_run_at: string | null;
+  total_run_count: number;
+  schedule_display: string;
+}
+
+export const PeriodicTasksAPI = {
+  async getOverview(): Promise<ApiResponse<PeriodicTaskOverview>> {
+    return apiClient.get<PeriodicTaskOverview>('api/coreadmin/periodic-tasks/overview/');
+  },
+  async getList(params?: {
+    page?: number;
+    page_size?: number;
+    enabled?: boolean;
+    task_name?: string;
+  }): Promise<ApiResponse<PaginatedResponse<PeriodicTaskListItem>>> {
+    const query: Record<string, string | number | boolean> = {};
+    if (params?.page) query.page = params.page;
+    if (params?.page_size) query.page_size = params.page_size;
+    if (params?.enabled !== undefined) query.enabled = params.enabled;
+    if (params?.task_name?.trim()) query.task_name = params.task_name.trim();
+    return apiClient.getPaginated<PeriodicTaskListItem>(
+      'api/coreadmin/periodic-tasks/',
+      params?.page || 1,
+      params?.page_size || 25,
+      query
+    );
+  },
+};
+
+/**
  * Categories API
  */
 export const CategoriesAPI = {
@@ -2914,6 +3018,8 @@ export const API = {
   transactions: TransactionsAPI,
   systemConfig: SystemConfigAPI,
   activityLogs: ActivityLogsAPI,
+  scheduledTasks: ScheduledTasksAPI,
+  periodicTasks: PeriodicTasksAPI,
   categories: CategoriesAPI,
   settings: SettingsAPI,
   adminUsers: AdminUsersAPI,
