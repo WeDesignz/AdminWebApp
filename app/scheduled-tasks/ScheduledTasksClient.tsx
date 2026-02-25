@@ -414,21 +414,6 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label="Rows per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    Show {n}
-                  </option>
-                ))}
-              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -442,11 +427,26 @@ export default function ScheduledTasksClient() {
                 Clear
               </Button>
               {!listLoading && pagination != null && (
-                <span className="text-sm text-muted-foreground ml-auto">
+                <span className="text-sm text-muted-foreground">
                   {pagination.total} result{pagination.total !== 1 ? 's' : ''}
                   {(statusFilter || taskNameFilter.trim()) && ' (filtered)'}
                 </span>
               )}
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary ml-auto"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Bulk actions bar */}
@@ -721,21 +721,6 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label="Rows per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    Show {n}
-                  </option>
-                ))}
-              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -749,11 +734,26 @@ export default function ScheduledTasksClient() {
                 Clear
               </Button>
               {!periodicListLoading && periodicPagination != null && (
-                <span className="text-sm text-muted-foreground ml-auto">
+                <span className="text-sm text-muted-foreground">
                   {periodicPagination.total} result{periodicPagination.total !== 1 ? 's' : ''}
                   {(periodicEnabledFilter || periodicTaskNameFilter.trim()) && ' (filtered)'}
                 </span>
               )}
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary ml-auto"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Periodic tasks table */}
