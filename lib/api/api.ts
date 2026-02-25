@@ -2143,6 +2143,24 @@ export const ScheduledTasksAPI = {
       { terminate }
     );
   },
+  async bulkRevoke(
+    taskIds: string[],
+    terminate = true
+  ): Promise<
+    ApiResponse<{
+      success: boolean;
+      revoked: number;
+      failed: number;
+      errors?: Array<{ task_id: string; error: string }>;
+    }>
+  > {
+    return apiClient.post<{
+      success: boolean;
+      revoked: number;
+      failed: number;
+      errors?: Array<{ task_id: string; error: string }>;
+    }>('api/coreadmin/scheduled-tasks/bulk-revoke/', { task_ids: taskIds, terminate });
+  },
 };
 
 /**
