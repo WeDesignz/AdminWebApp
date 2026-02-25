@@ -26,7 +26,8 @@ import {
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE_DEFAULT = 25;
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const MIN_COL_WIDTH = 64;
 type TabId = 'history' | 'periodic';
 
@@ -109,6 +110,7 @@ export default function ScheduledTasksClient() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [isBulkRevoking, setIsBulkRevoking] = useState(false);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -127,11 +129,11 @@ export default function ScheduledTasksClient() {
   });
 
   const { data: listData, isLoading: listLoading } = useQuery({
-    queryKey: ['scheduled-tasks-list', page, statusFilter, taskNameFilter],
+    queryKey: ['scheduled-tasks-list', page, pageSize, statusFilter, taskNameFilter],
     queryFn: () =>
       API.scheduledTasks.getList({
         page,
-        page_size: PAGE_SIZE,
+        page_size: pageSize,
         ...(statusFilter ? { status: statusFilter } : {}),
         ...(taskNameFilter.trim() ? { task_name: taskNameFilter.trim() } : {}),
       }),
@@ -145,11 +147,11 @@ export default function ScheduledTasksClient() {
   });
 
   const { data: periodicListData, isLoading: periodicListLoading } = useQuery({
-    queryKey: ['periodic-tasks-list', page, periodicEnabledFilter, periodicTaskNameFilter],
+    queryKey: ['periodic-tasks-list', page, pageSize, periodicEnabledFilter, periodicTaskNameFilter],
     queryFn: () =>
       API.periodicTasks.getList({
         page,
-        page_size: PAGE_SIZE,
+        page_size: pageSize,
         ...(periodicEnabledFilter === 'true' ? { enabled: true } : periodicEnabledFilter === 'false' ? { enabled: false } : {}),
         ...(periodicTaskNameFilter.trim() ? { task_name: periodicTaskNameFilter.trim() } : {}),
       }),
@@ -412,6 +414,21 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -622,7 +639,7 @@ export default function ScheduledTasksClient() {
               )}
 
               {/* Pagination */}
-              {pagination && pagination.total > PAGE_SIZE && (
+              {pagination && pagination.total > pageSize && (
                 <div className="flex items-center justify-between py-3 px-4 border-t border-border/50">
                   <p className="text-sm text-muted-foreground">
                     Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
@@ -704,6 +721,21 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -836,7 +868,7 @@ export default function ScheduledTasksClient() {
               )}
 
               {/* Pagination */}
-              {periodicPagination && periodicPagination.total > PAGE_SIZE && (
+              {periodicPagination && periodicPagination.total > pageSize && (
                 <div className="flex items-center justify-between py-3 px-4 border-t border-border/50">
                   <p className="text-sm text-muted-foreground">
                     Page {periodicPagination.page} of {periodicPagination.totalPages} ({periodicPagination.total} total)
