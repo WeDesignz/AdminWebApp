@@ -22,6 +22,7 @@ import {
   XMarkIcon,
   CalendarDaysIcon,
   ListBulletIcon,
+  CubeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 const MIN_COL_WIDTH = 64;
-type TabId = 'history' | 'periodic';
+type TabId = 'history' | 'periodic' | 'all';
 
 const HISTORY_DEFAULT_WIDTHS: Record<string, number> = {
   select: 44,
@@ -111,6 +112,8 @@ export default function ScheduledTasksClient() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [isBulkRevoking, setIsBulkRevoking] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
+  const [allTasksFilter, setAllTasksFilter] = useState('');
+  const [selectedRegisteredTaskName, setSelectedRegisteredTaskName] = useState<string | null>(null);
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -164,6 +167,12 @@ export default function ScheduledTasksClient() {
     enabled: !!detailTaskId,
   });
 
+  const { data: registeredTasksData, isLoading: registeredTasksLoading } = useQuery({
+    queryKey: ['registered-tasks'],
+    queryFn: () => API.scheduledTasks.getRegisteredTasks(),
+    enabled: activeTab === 'all',
+  });
+
   const overview = overviewData?.data;
   const tasks = listData?.data?.data ?? [];
   const pagination = listData?.data?.pagination;
@@ -171,6 +180,16 @@ export default function ScheduledTasksClient() {
   const periodicOverview = periodicOverviewData?.data;
   const periodicTasks = periodicListData?.data?.data ?? [];
   const periodicPagination = periodicListData?.data?.pagination;
+  const registeredTasks: Array<{ name: string; description: string | null }> =
+    registeredTasksData?.data?.tasks ?? [];
+  const filteredRegisteredTasks = allTasksFilter.trim()
+    ? registeredTasks.filter((task) =>
+        task.name.toLowerCase().includes(allTasksFilter.trim().toLowerCase())
+      )
+    : registeredTasks;
+  const selectedTaskFromList = selectedRegisteredTaskName
+    ? registeredTasks.find((t) => t.name === selectedRegisteredTaskName)
+    : null;
 
   const handleRevoke = async (taskId: string) => {
     setRevokingId(taskId);
@@ -346,6 +365,18 @@ export default function ScheduledTasksClient() {
               <CalendarDaysIcon className="w-4 h-4" />
               Periodic tasks
             </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('all'); setPage(1); setSelectedTaskIds(new Set()); }}
+              className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                activeTab === 'all'
+                  ? 'border-primary text-primary bg-primary/5'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <CubeIcon className="w-4 h-4" />
+              All tasks
+            </button>
           </nav>
         </div>
 
@@ -414,6 +445,21 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -427,26 +473,11 @@ export default function ScheduledTasksClient() {
                 Clear
               </Button>
               {!listLoading && pagination != null && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground ml-auto">
                   {pagination.total} result{pagination.total !== 1 ? 's' : ''}
                   {(statusFilter || taskNameFilter.trim()) && ' (filtered)'}
                 </span>
               )}
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary ml-auto"
-                aria-label="Rows per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    Show {n}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Bulk actions bar */}
@@ -668,6 +699,83 @@ export default function ScheduledTasksClient() {
           </>
         )}
 
+        {/* Tab content: All tasks (registered) */}
+        {activeTab === 'all' && (
+          <>
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <p className="text-sm text-muted-foreground mb-3">
+                All Celery task names registered in this application. Use Task history to see runs; use Periodic tasks to see the Beat schedule.
+              </p>
+              <input
+                type="text"
+                placeholder="Search task name..."
+                value={allTasksFilter}
+                onChange={(e) => setAllTasksFilter(e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[240px] mb-4"
+                aria-label="Search registered tasks"
+              />
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+              {registeredTasksLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading registered tasks...</div>
+              ) : filteredRegisteredTasks.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  {registeredTasks.length === 0
+                    ? 'No registered tasks found.'
+                    : 'No tasks match your search.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 border-b border-border/50">
+                      <tr className="bg-background">
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">#</th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">Task name</th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">Description</th>
+                        <th className="text-right py-3 px-4 font-medium text-foreground bg-background w-24">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRegisteredTasks.map((task, index) => {
+                        const desc = task.description || '';
+                        const truncated = desc.length > 100 ? desc.slice(0, 100).trim() + '…' : desc;
+                        return (
+                          <tr key={task.name} className="border-b border-border/30 hover:bg-muted/20">
+                            <td className="py-2 px-4 text-muted-foreground font-mono text-xs w-12">{index + 1}</td>
+                            <td className="py-2 px-4 text-foreground font-mono text-xs break-all" title={task.name}>
+                              {task.name}
+                            </td>
+                            <td className="py-2 px-4 text-muted-foreground text-xs max-w-md truncate" title={desc || undefined}>
+                              {truncated || '—'}
+                            </td>
+                            <td className="py-2 px-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedRegisteredTaskName(task.name)}
+                                title="View task details"
+                              >
+                                <EyeIcon className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {!registeredTasksLoading && registeredTasks.length > 0 && (
+                <div className="py-2 px-4 border-t border-border/50 text-sm text-muted-foreground">
+                  {filteredRegisteredTasks.length === registeredTasks.length
+                    ? `${registeredTasks.length} task(s)`
+                    : `${filteredRegisteredTasks.length} of ${registeredTasks.length} task(s) (filtered)`}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Tab content: Periodic tasks */}
         {activeTab === 'periodic' && (
           <>
@@ -721,6 +829,21 @@ export default function ScheduledTasksClient() {
                 onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
               />
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Rows per page"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    Show {n}
+                  </option>
+                ))}
+              </select>
               <Button
                 variant="secondary"
                 size="sm"
@@ -734,26 +857,11 @@ export default function ScheduledTasksClient() {
                 Clear
               </Button>
               {!periodicListLoading && periodicPagination != null && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground ml-auto">
                   {periodicPagination.total} result{periodicPagination.total !== 1 ? 's' : ''}
                   {(periodicEnabledFilter || periodicTaskNameFilter.trim()) && ' (filtered)'}
                 </span>
               )}
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary ml-auto"
-                aria-label="Rows per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    Show {n}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Periodic tasks table */}
@@ -1015,6 +1123,60 @@ export default function ScheduledTasksClient() {
                   </>
                 ) : (
                   <p className="text-muted-foreground">Could not load task.</p>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Registered task detail modal (All tasks tab) */}
+      <AnimatePresence>
+        {selectedRegisteredTaskName && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setSelectedRegisteredTaskName(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h2 className="text-lg font-semibold text-foreground">Task details</h2>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegisteredTaskName(null)}
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                {selectedTaskFromList ? (
+                  <>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Task name</p>
+                      <p className="font-mono text-sm break-all text-foreground">{selectedTaskFromList.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">What it does</p>
+                      {selectedTaskFromList.description ? (
+                        <pre className="rounded-lg bg-muted/30 border border-border p-3 text-sm whitespace-pre-wrap font-sans text-foreground max-h-96 overflow-y-auto">
+                          {selectedTaskFromList.description}
+                        </pre>
+                      ) : (
+                        <p className="text-muted-foreground italic">No description available.</p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Task not found in list.</p>
                 )}
               </div>
             </motion.div>
