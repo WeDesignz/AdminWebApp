@@ -357,6 +357,12 @@ export default function ScheduledTasksClient() {
               >
                 Clear
               </Button>
+              {!listLoading && pagination != null && (
+                <span className="text-sm text-muted-foreground ml-auto">
+                  {pagination.total} result{pagination.total !== 1 ? 's' : ''}
+                  {(statusFilter || taskNameFilter.trim()) && ' (filtered)'}
+                </span>
+              )}
             </div>
 
             {/* Task list table */}
@@ -593,6 +599,12 @@ export default function ScheduledTasksClient() {
               >
                 Clear
               </Button>
+              {!periodicListLoading && periodicPagination != null && (
+                <span className="text-sm text-muted-foreground ml-auto">
+                  {periodicPagination.total} result{periodicPagination.total !== 1 ? 's' : ''}
+                  {(periodicEnabledFilter || periodicTaskNameFilter.trim()) && ' (filtered)'}
+                </span>
+              )}
             </div>
 
             {/* Periodic tasks table */}
