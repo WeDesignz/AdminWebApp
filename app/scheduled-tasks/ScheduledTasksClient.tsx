@@ -31,6 +31,7 @@ const MIN_COL_WIDTH = 64;
 type TabId = 'history' | 'periodic';
 
 const HISTORY_DEFAULT_WIDTHS: Record<string, number> = {
+  select: 44,
   task_id: 120,
   task_name: 200,
   status: 100,
@@ -106,6 +107,8 @@ export default function ScheduledTasksClient() {
   const [periodicTaskNameFilter, setPeriodicTaskNameFilter] = useState('');
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [isBulkRevoking, setIsBulkRevoking] = useState(false);
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -183,6 +186,70 @@ export default function ScheduledTasksClient() {
       toast.error('Failed to revoke task');
     } finally {
       setRevokingId(null);
+    }
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const selectAllTasksOnPage = () => {
+    if (tasks.length === 0) return;
+    const allSelected = tasks.every((t) => selectedTaskIds.has(t.task_id));
+    if (allSelected) {
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev);
+        tasks.forEach((t) => next.delete(t.task_id));
+        return next;
+      });
+    } else {
+      setSelectedTaskIds((prev) => {
+        const next = new Set(prev);
+        tasks.forEach((t) => next.add(t.task_id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkRevoke = async () => {
+    const revokableStatuses = ['PENDING', 'STARTED', 'RETRY'];
+    const idsToRevoke = Array.from(selectedTaskIds).filter((id) => {
+      const task = tasks.find((t) => t.task_id === id);
+      return task && revokableStatuses.includes(task.status);
+    });
+    if (idsToRevoke.length === 0) {
+      toast.error('No selected tasks can be revoked (only Pending, Started, or Retry).');
+      return;
+    }
+    setIsBulkRevoking(true);
+    try {
+      const res = await API.scheduledTasks.bulkRevoke(idsToRevoke, true);
+      const data = res.data;
+      if (res.success && data) {
+        const revoked = data.revoked ?? 0;
+        const failed = data.failed ?? 0;
+        if (revoked > 0) {
+          toast.success(`Revoke requested for ${revoked} task(s).`);
+          queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-overview'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-list'] });
+          setSelectedTaskIds(new Set());
+          if (detailTaskId && idsToRevoke.includes(detailTaskId)) setDetailTaskId(null);
+        }
+        if (failed > 0 && data.errors?.length) {
+          toast.error(`${failed} failed: ${data.errors.map((e) => e.error).join('; ')}`);
+        }
+      } else {
+        toast.error((data as { error?: string })?.error || res.error || 'Bulk revoke failed');
+      }
+    } catch {
+      toast.error('Bulk revoke failed');
+    } finally {
+      setIsBulkRevoking(false);
     }
   };
 
@@ -267,7 +334,7 @@ export default function ScheduledTasksClient() {
             </button>
             <button
               type="button"
-              onClick={() => { setActiveTab('periodic'); setPage(1); }}
+              onClick={() => { setActiveTab('periodic'); setPage(1); setSelectedTaskIds(new Set()); }}
               className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                 activeTab === 'periodic'
                   ? 'border-primary text-primary bg-primary/5'
@@ -365,6 +432,37 @@ export default function ScheduledTasksClient() {
               )}
             </div>
 
+            {/* Bulk actions bar */}
+            {selectedTaskIds.size > 0 && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedTaskIds.size} task(s) selected
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedTaskIds(new Set())}>
+                    Clear selection
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleBulkRevoke}
+                    disabled={isBulkRevoking}
+                  >
+                    {isBulkRevoking ? (
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <StopIcon className="w-4 h-4" />
+                    )}
+                    <span className="ml-1.5">
+                      {isBulkRevoking ? 'Revoking…' : 'Revoke selected'}
+                    </span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Task list table */}
             <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
               {listLoading ? (
@@ -375,6 +473,7 @@ export default function ScheduledTasksClient() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm table-fixed" style={{ minWidth: '100%' }}>
                     <colgroup>
+                      <col style={{ width: historyWidths.select }} />
                       <col style={{ width: historyWidths.task_id }} />
                       <col style={{ width: historyWidths.task_name }} />
                       <col style={{ width: historyWidths.status }} />
@@ -385,7 +484,16 @@ export default function ScheduledTasksClient() {
                     </colgroup>
                     <thead>
                       <tr className="border-b border-border/50 bg-muted/30">
-                        <th className="text-left py-3 px-4 font-medium text-foreground relative select-none border-l border-border first:border-l-0">
+                        <th className="text-left py-3 px-4 font-medium text-foreground border-l border-border first:border-l-0 w-11">
+                          <input
+                            type="checkbox"
+                            checked={tasks.length > 0 && tasks.every((t) => selectedTaskIds.has(t.task_id))}
+                            onChange={selectAllTasksOnPage}
+                            className="rounded border-border"
+                            aria-label="Select all on page"
+                          />
+                        </th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground relative select-none border-l border-border">
                           <span>Task ID</span>
                           <div
                             role="separator"
@@ -460,7 +568,16 @@ export default function ScheduledTasksClient() {
                     <tbody>
                       {tasks.map((t: ScheduledTaskListItem) => (
                         <tr key={t.task_id} className="border-b border-border/30 hover:bg-muted/20">
-                          <td className="py-2 px-4 font-mono text-xs text-muted-foreground break-all border-l border-border first:border-l-0" title={t.task_id}>
+                          <td className="py-2 px-4 border-l border-border first:border-l-0 w-11">
+                            <input
+                              type="checkbox"
+                              checked={selectedTaskIds.has(t.task_id)}
+                              onChange={() => toggleTaskSelection(t.task_id)}
+                              className="rounded border-border"
+                              aria-label={`Select task ${t.task_id}`}
+                            />
+                          </td>
+                          <td className="py-2 px-4 font-mono text-xs text-muted-foreground break-all border-l border-border" title={t.task_id}>
                             {t.task_id}
                           </td>
                           <td className="py-2 px-4 text-foreground truncate border-l border-border" title={t.task_name}>
