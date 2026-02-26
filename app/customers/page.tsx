@@ -58,11 +58,11 @@ export default function CustomersPage() {
     },
   });
 
-  // Filter options
+  // Filter options (values must match backend CustomerAccountStatus: active, deactivated, blocked)
   const statusFilterOptions = [
     { value: '', label: 'All Status' },
     { value: 'active', label: 'Active' },
-    { value: 'inactive', label: 'Deactivated' },
+    { value: 'deactivated', label: 'Deactivated' },
     { value: 'blocked', label: 'Blocked' },
   ];
 
