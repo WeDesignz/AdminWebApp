@@ -3026,6 +3026,126 @@ export const MockPdfReportsAPI = {
   },
 };
 
+export const PDFClientsAPI = {
+  /**
+   * List PDF clients (admin).
+   */
+  async getClients(params?: { search?: string; page?: number; page_size?: number }): Promise<ApiResponse<any>> {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.page_size) query.append('page_size', String(params.page_size));
+    const qs = query.toString();
+    const url = qs ? `api/coreadmin/pdf-clients/?${qs}` : 'api/coreadmin/pdf-clients/';
+    return apiClient.get<any>(url);
+  },
+
+  /**
+   * Create a new PDF client (admin).
+   */
+  async createClient(data: { name: string }): Promise<ApiResponse<any>> {
+    return apiClient.post('api/coreadmin/pdf-clients/', data);
+  },
+
+  /**
+   * Create a PDF client job (admin). Accepts optional logo file.
+   */
+  async createJob(
+    data: {
+      client_id: number;
+      number_of_pdfs: number;
+      designs_per_pdf?: number;
+      customer_name: string;
+      customer_mobile: string;
+    },
+    logoFile?: File | null
+  ): Promise<ApiResponse<any>> {
+    if (logoFile) {
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(data));
+      formData.append('customer_logo', logoFile);
+      return apiClient.post('api/coreadmin/pdf-clients/jobs/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return apiClient.post('api/coreadmin/pdf-clients/jobs/', data);
+  },
+
+  /**
+   * List PDF client jobs (admin). Optional filter by client_id, pagination.
+   */
+  async getJobs(params?: {
+    client_id?: number;
+    page?: number;
+    page_size?: number;
+  }): Promise<
+    ApiResponse<{
+      results: Array<{
+        id: number;
+        client_id: number;
+        client_name: string;
+        status: string;
+        requested_pdfs: number;
+        generated_pdfs: number;
+        total_designs_used: number;
+        created_at: string;
+        error_message?: string;
+      }>;
+      total_count: number;
+      total_pages: number;
+      current_page: number;
+    }>
+  > {
+    const query = new URLSearchParams();
+    if (params?.client_id != null) query.append('client_id', String(params.client_id));
+    if (params?.page != null) query.append('page', String(params.page));
+    if (params?.page_size != null) query.append('page_size', String(params.page_size));
+    const qs = query.toString();
+    const url = qs ? `api/coreadmin/pdf-clients/jobs/?${qs}` : 'api/coreadmin/pdf-clients/jobs/';
+    return apiClient.get(url);
+  },
+
+  /**
+   * Delete a PDF client job. Only allowed for pending or failed jobs.
+   */
+  async deleteJob(jobId: number): Promise<ApiResponse<void>> {
+    return apiClient.delete(`api/coreadmin/pdf-clients/jobs/${jobId}/`);
+  },
+
+  /**
+   * Get status for a PDF client job.
+   */
+  async getJobStatus(jobId: number): Promise<ApiResponse<any>> {
+    return apiClient.get(`api/coreadmin/pdf-clients/jobs/${jobId}/status/`);
+  },
+
+  /**
+   * Download the ZIP file for a completed PDF client job.
+   */
+  async downloadJobZip(jobId: number): Promise<{ blob: Blob; filename: string }> {
+    const { getApiUrl } = await import('./config');
+    const { useAuthStore } = await import('@/store/authStore');
+    const state = useAuthStore.getState();
+    if (!state.accessToken) throw new Error('Authentication required.');
+    const response = await fetch(getApiUrl(`api/coreadmin/pdf-clients/jobs/${jobId}/download/`), {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${state.accessToken}` },
+    });
+    if (!response.ok) {
+      let msg = response.statusText;
+      try {
+        const err = await response.json();
+        msg = err.error || err.detail || msg;
+      } catch {}
+      throw new Error(msg || 'Failed to download ZIP');
+    }
+    const blob = await response.blob();
+    const filename = response.headers.get('X-Filename') || `pdf-client-job-${jobId}.zip`;
+    return { blob, filename };
+  },
+};
+
 /**
  * Export all APIs as a single object for easy import
  */
@@ -3057,6 +3177,7 @@ export const API = {
   faq: FAQAPI,
   settlement: SettlementAPI,
   mockPdfReports: MockPdfReportsAPI,
+  pdfClients: PDFClientsAPI,
 };
 
 // For backward compatibility, export as default
