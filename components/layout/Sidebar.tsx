@@ -53,6 +53,12 @@ const navigationCategories = [
     items: [
   { name: 'Designs', href: '/designs', icon: PhotoIcon },
   { name: 'Coupons', href: '/coupons', icon: TicketIcon },
+      {
+        name: 'Generate PDF',
+        href: '/generate-pdf',
+        icon: DocumentTextIcon,
+        restrictedTo: ['Super Admin'],
+      },
       { 
         name: 'Instagram Posts', 
         href: '/instagram-posts', 
