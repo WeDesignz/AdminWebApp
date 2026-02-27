@@ -321,9 +321,9 @@ export default function GeneratePDFPage() {
         <div className="flex items-center gap-3">
           <Button
             onClick={handleStartJob}
-            disabled={createJobMutation.isLoading || !!(activeJob && activeJob.status !== 'failed' && activeJob.status !== 'completed')}
+            disabled={createJobMutation.isPending || !!(activeJob && activeJob.status !== 'failed' && activeJob.status !== 'completed')}
           >
-            {createJobMutation.isLoading ? (
+            {createJobMutation.isPending ? (
               <>
                 <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
                 Starting...
@@ -359,7 +359,8 @@ export default function GeneratePDFPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
+                  className="p-2 shrink-0"
                   onClick={() => refetchJobStatus()}
                   disabled={!activeJob || activeJob.status === 'completed' || activeJob.status === 'failed'}
                 >
@@ -451,9 +452,9 @@ export default function GeneratePDFPage() {
                   }
                   createClientMutation.mutate({ name: newClientName.trim() });
                 }}
-                disabled={createClientMutation.isLoading}
+                disabled={createClientMutation.isPending}
               >
-                {createClientMutation.isLoading ? 'Saving...' : 'Save'}
+                {createClientMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>

@@ -9,7 +9,7 @@ import { getApiUrl } from '../api/config';
  * Checks token expiration every 2 minutes and refreshes if needed
  */
 export function useTokenRefresh() {
-  const { setTokens } = useAuthStore();
+  useAuthStore(); // Subscribe to store; token updates use getState().setTokens
   const isRefreshingRef = useRef(false); // Prevent concurrent refresh attempts
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -73,18 +73,18 @@ export function useTokenRefresh() {
                   // Silently fail - let normal 401 handling deal with it
                   // Don't log to reduce console noise
                 }
-              } catch (error) {
+              } catch {
                 // Don't log errors - let normal flow handle it
               } finally {
                 isRefreshingRef.current = false;
               }
             }
-          } catch (parseError) {
+          } catch {
             // If we can't parse the token, it might be malformed
             // Don't do anything, let the normal 401 handling deal with it
           }
         }
-      } catch (error) {
+      } catch {
         // Don't log errors - let normal flow handle it
       }
     };
