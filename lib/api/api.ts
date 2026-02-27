@@ -3064,9 +3064,7 @@ export const PDFClientsAPI = {
       const formData = new FormData();
       formData.append('data', JSON.stringify(data));
       formData.append('customer_logo', logoFile);
-      return apiClient.post('api/coreadmin/pdf-clients/jobs/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      return apiClient.upload('api/coreadmin/pdf-clients/jobs/', formData);
     }
     return apiClient.post('api/coreadmin/pdf-clients/jobs/', data);
   },
