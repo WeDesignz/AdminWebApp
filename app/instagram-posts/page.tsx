@@ -34,6 +34,31 @@ interface SelectedProduct {
   selectedMediaType: 'mockup' | 'jpg';
 }
 
+const PAGE_SIZE_STORAGE_KEY = 'instagram-posts-pageSize';
+const INSTAGRAM_FILTER_STORAGE_KEY = 'instagram-posts-instagramFilter';
+const VALID_PAGE_SIZES = [20, 50, 100, 200, 500];
+
+function getStoredPageSize(): number {
+  if (typeof window === 'undefined') return 20;
+  try {
+    const v = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    if (v !== null) {
+      const n = Number(v);
+      if (VALID_PAGE_SIZES.includes(n)) return n;
+    }
+  } catch {}
+  return 20;
+}
+
+function getStoredInstagramFilter(): 'all' | 'posted' | 'not_posted' {
+  if (typeof window === 'undefined') return 'all';
+  try {
+    const v = localStorage.getItem(INSTAGRAM_FILTER_STORAGE_KEY);
+    if (v === 'all' || v === 'posted' || v === 'not_posted') return v;
+  } catch {}
+  return 'all';
+}
+
 export default function InstagramPostsPage() {
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single');
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
@@ -43,9 +68,9 @@ export default function InstagramPostsPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(getStoredPageSize);
   const [statusFilter, setStatusFilter] = useState('approved');
-  const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>('all');
+  const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>(getStoredInstagramFilter);
   const queryClient = useQueryClient();
 
   // Bulk upload state
@@ -89,28 +114,31 @@ export default function InstagramPostsPage() {
     refetchInterval: 60000,
   });
 
-  // Fetch Instagram post history to know which designs are already posted
+  // Fetch Instagram post history: success rows in instagram_post table → product_number counts as posted
   const { data: instagramPostsData } = useQuery({
     queryKey: ['instagram-posts-history'],
     queryFn: async () => {
-      const ids = new Set<string>();
+      const productNumbers = new Set<string>();
       let pageNum = 1;
       const limit = 100;
       let hasMore = true;
       while (hasMore) {
         const res = await API.getInstagramPosts({ page: pageNum, limit, status: 'success' });
-        const body = res.data as { data?: Array<{ product_id: string }>; pagination?: { has_next?: boolean } } | undefined;
+        const body = res.data as { data?: Array<{ product_number?: string | null }>; pagination?: { has_next?: boolean } } | undefined;
         if (!res.success || !body?.data?.length) break;
-        body.data.forEach((p) => ids.add(String(p.product_id)));
+        body.data.forEach((p) => {
+          const pn = p.product_number != null ? String(p.product_number).trim() : '';
+          if (pn) productNumbers.add(pn);
+        });
         hasMore = body.data.length === limit && (body.pagination?.has_next === true);
         pageNum++;
       }
-      return Array.from(ids);
+      return Array.from(productNumbers);
     },
     enabled: isReady,
   });
 
-  const postedProductIds = useMemo(() => {
+  const postedProductNumbers = useMemo(() => {
     if (!instagramPostsData || !Array.isArray(instagramPostsData)) return new Set<string>();
     return new Set(instagramPostsData);
   }, [instagramPostsData]);
@@ -412,28 +440,28 @@ export default function InstagramPostsPage() {
   const filteredProducts = useMemo(() => {
     const list = productsData?.data ?? [];
     if (instagramFilter === 'all') return list;
-    return list.filter((p: { id: string }) => {
-      const id = String(p.id);
-      const isPosted = postedProductIds.has(id);
+    return list.filter((p: { productNumber?: string; product_number?: string }) => {
+      const pn = String((p.productNumber ?? p.product_number ?? '')).trim();
+      const isPosted = pn !== '' && postedProductNumbers.has(pn);
       return instagramFilter === 'posted' ? isPosted : !isPosted;
     });
-  }, [productsData?.data, instagramFilter, postedProductIds]);
+  }, [productsData?.data, instagramFilter, postedProductNumbers]);
 
-  // Calculate counts for posted and not posted designs
+  // Calculate counts from Instagram post table: success → posted (by product_number)
   const instagramCounts = useMemo(() => {
     const list = productsData?.data ?? [];
     let posted = 0;
     let notPosted = 0;
-    list.forEach((p: { id: string }) => {
-      const id = String(p.id);
-      if (postedProductIds.has(id)) {
+    list.forEach((p: { productNumber?: string; product_number?: string }) => {
+      const pn = String((p.productNumber ?? p.product_number ?? '')).trim();
+      if (pn !== '' && postedProductNumbers.has(pn)) {
         posted++;
       } else {
         notPosted++;
       }
     });
     return { posted, notPosted, total: list.length };
-  }, [productsData?.data, postedProductIds]);
+  }, [productsData?.data, postedProductNumbers]);
 
   if (!isHydrated || !isReady) {
     return (
@@ -523,7 +551,13 @@ export default function InstagramPostsPage() {
                 <div className="min-w-[11rem] shrink-0" title="Filter by Instagram post status">
                   <select
                     value={instagramFilter}
-                    onChange={(e) => setInstagramFilter(e.target.value as 'all' | 'posted' | 'not_posted')}
+                    onChange={(e) => {
+                      const value = e.target.value as 'all' | 'posted' | 'not_posted';
+                      setInstagramFilter(value);
+                      try {
+                        localStorage.setItem(INSTAGRAM_FILTER_STORAGE_KEY, value);
+                      } catch {}
+                    }}
                     className="input-field w-full h-9 text-sm py-1.5 rounded-lg"
                   >
                     <option value="all">All designs ({instagramCounts.total})</option>
@@ -612,7 +646,8 @@ export default function InstagramPostsPage() {
                       const isSelected = uploadMode === 'single'
                         ? selectedProduct?.id === product.id
                         : selectedProducts.some(p => p.id === product.id);
-                      const isPosted = postedProductIds.has(String(product.id));
+                      const productNum = String((product.productNumber ?? product.product_number ?? '')).trim();
+                      const isPosted = productNum !== '' && postedProductNumbers.has(productNum);
                       return (
                         <motion.div
                           key={product.id}
@@ -673,13 +708,17 @@ export default function InstagramPostsPage() {
                           <select
                             value={pageSize}
                             onChange={(e) => {
-                              setPageSize(Number(e.target.value));
+                              const value = Number(e.target.value);
+                              setPageSize(value);
                               setPage(1);
+                              try {
+                                localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(value));
+                              } catch {}
                             }}
                             className="input-field h-8 text-sm py-1 px-2.5 rounded-lg w-[5rem] min-w-0"
                             title="Results per page"
                           >
-                            {[20, 50, 100, 200, 500].map((n) => (
+                            {VALID_PAGE_SIZES.map((n) => (
                               <option key={n} value={n}>{n}</option>
                             ))}
                           </select>
