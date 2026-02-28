@@ -34,6 +34,31 @@ interface SelectedProduct {
   selectedMediaType: 'mockup' | 'jpg';
 }
 
+const PAGE_SIZE_STORAGE_KEY = 'instagram-posts-pageSize';
+const INSTAGRAM_FILTER_STORAGE_KEY = 'instagram-posts-instagramFilter';
+const VALID_PAGE_SIZES = [20, 50, 100, 200, 500];
+
+function getStoredPageSize(): number {
+  if (typeof window === 'undefined') return 20;
+  try {
+    const v = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    if (v !== null) {
+      const n = Number(v);
+      if (VALID_PAGE_SIZES.includes(n)) return n;
+    }
+  } catch {}
+  return 20;
+}
+
+function getStoredInstagramFilter(): 'all' | 'posted' | 'not_posted' {
+  if (typeof window === 'undefined') return 'all';
+  try {
+    const v = localStorage.getItem(INSTAGRAM_FILTER_STORAGE_KEY);
+    if (v === 'all' || v === 'posted' || v === 'not_posted') return v;
+  } catch {}
+  return 'all';
+}
+
 export default function InstagramPostsPage() {
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single');
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
@@ -43,9 +68,9 @@ export default function InstagramPostsPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(getStoredPageSize);
   const [statusFilter, setStatusFilter] = useState('approved');
-  const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>('all');
+  const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>(getStoredInstagramFilter);
   const queryClient = useQueryClient();
 
   // Bulk upload state
@@ -523,7 +548,13 @@ export default function InstagramPostsPage() {
                 <div className="min-w-[11rem] shrink-0" title="Filter by Instagram post status">
                   <select
                     value={instagramFilter}
-                    onChange={(e) => setInstagramFilter(e.target.value as 'all' | 'posted' | 'not_posted')}
+                    onChange={(e) => {
+                      const value = e.target.value as 'all' | 'posted' | 'not_posted';
+                      setInstagramFilter(value);
+                      try {
+                        localStorage.setItem(INSTAGRAM_FILTER_STORAGE_KEY, value);
+                      } catch {}
+                    }}
                     className="input-field w-full h-9 text-sm py-1.5 rounded-lg"
                   >
                     <option value="all">All designs ({instagramCounts.total})</option>
@@ -673,13 +704,17 @@ export default function InstagramPostsPage() {
                           <select
                             value={pageSize}
                             onChange={(e) => {
-                              setPageSize(Number(e.target.value));
+                              const value = Number(e.target.value);
+                              setPageSize(value);
                               setPage(1);
+                              try {
+                                localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(value));
+                              } catch {}
                             }}
                             className="input-field h-8 text-sm py-1 px-2.5 rounded-lg w-[5rem] min-w-0"
                             title="Results per page"
                           >
-                            {[20, 50, 100, 200, 500].map((n) => (
+                            {VALID_PAGE_SIZES.map((n) => (
                               <option key={n} value={n}>{n}</option>
                             ))}
                           </select>
