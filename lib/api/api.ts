@@ -1069,6 +1069,14 @@ export const InstagramAPI = {
     const query = queryParams.toString();
     return apiClient.get(`api/common/instagram/posts/${query ? `?${query}` : ''}`);
   },
+
+  /**
+   * Get product_numbers that have at least one InstagramPost with status=success.
+   * One success entry for a product = considered posted.
+   */
+  async getInstagramPostedProductNumbers(): Promise<ApiResponse<{ product_numbers: string[] }>> {
+    return apiClient.get('api/common/instagram/posted-product-numbers/');
+  },
 };
 
 export const PinterestAPI = {
