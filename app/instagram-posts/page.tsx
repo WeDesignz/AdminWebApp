@@ -3,7 +3,7 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RealAPI as API } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
@@ -44,6 +44,7 @@ export default function InstagramPostsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('approved');
+  const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>('all');
   const queryClient = useQueryClient();
 
   // Bulk upload state
@@ -86,6 +87,32 @@ export default function InstagramPostsPage() {
     enabled: isReady,
     refetchInterval: 60000,
   });
+
+  // Fetch Instagram post history to know which designs are already posted
+  const { data: instagramPostsData } = useQuery({
+    queryKey: ['instagram-posts-history'],
+    queryFn: async () => {
+      const ids = new Set<string>();
+      let pageNum = 1;
+      const limit = 100;
+      let hasMore = true;
+      while (hasMore) {
+        const res = await API.getInstagramPosts({ page: pageNum, limit, status: 'success' });
+        const body = res.data as { data?: Array<{ product_id: string }>; pagination?: { has_next?: boolean } } | undefined;
+        if (!res.success || !body?.data?.length) break;
+        body.data.forEach((p) => ids.add(String(p.product_id)));
+        hasMore = body.data.length === limit && (body.pagination?.has_next === true);
+        pageNum++;
+      }
+      return Array.from(ids);
+    },
+    enabled: isReady,
+  });
+
+  const postedProductIds = useMemo(() => {
+    if (!instagramPostsData || !Array.isArray(instagramPostsData)) return new Set<string>();
+    return new Set(instagramPostsData);
+  }, [instagramPostsData]);
 
   const handleSelectProduct = (product: any) => {
     // Extract media files - check both files and media_files (raw API response)
@@ -250,6 +277,7 @@ export default function InstagramPostsPage() {
         });
         handleClearSelection();
         queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
+        queryClient.invalidateQueries({ queryKey: ['instagram-posts-history'] });
       } else {
         toast.error(response.error || 'Failed to post to Instagram');
       }
@@ -357,6 +385,7 @@ export default function InstagramPostsPage() {
     // Clear selections and refresh
     setSelectedProducts([]);
     queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['instagram-posts-history'] });
   };
 
   const getSelectedImageUrl = () => {
@@ -379,6 +408,32 @@ export default function InstagramPostsPage() {
     { value: 'pending', label: 'Pending' },
   ];
 
+  const filteredProducts = useMemo(() => {
+    const list = productsData?.data ?? [];
+    if (instagramFilter === 'all') return list;
+    return list.filter((p: { id: string }) => {
+      const id = String(p.id);
+      const isPosted = postedProductIds.has(id);
+      return instagramFilter === 'posted' ? isPosted : !isPosted;
+    });
+  }, [productsData?.data, instagramFilter, postedProductIds]);
+
+  // Calculate counts for posted and not posted designs
+  const instagramCounts = useMemo(() => {
+    const list = productsData?.data ?? [];
+    let posted = 0;
+    let notPosted = 0;
+    list.forEach((p: { id: string }) => {
+      const id = String(p.id);
+      if (postedProductIds.has(id)) {
+        posted++;
+      } else {
+        notPosted++;
+      }
+    });
+    return { posted, notPosted, total: list.length };
+  }, [productsData?.data, postedProductIds]);
+
   if (!isHydrated || !isReady) {
     return (
       <DashboardLayout>
@@ -395,111 +450,50 @@ export default function InstagramPostsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
               Instagram Posts
             </h1>
             <p className="text-muted mt-1">Create and share your designs on Instagram</p>
           </div>
-        </div>
-
-        {/* Upload Mode Toggle */}
-        <div className="card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-1">Upload Mode</h3>
-              <p className="text-xs text-muted">Choose between single or bulk upload</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setUploadMode('single');
-                  setSelectedProducts([]);
-                  setSelectedProduct(null);
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  uploadMode === 'single'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Single Upload
-              </button>
-              <button
-                onClick={() => {
-                  setUploadMode('bulk');
-                  setSelectedProduct(null);
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  uploadMode === 'bulk'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Bulk Upload
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Instagram Status Banner */}
-        {instagramStatus?.data && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl border ${
-              isInstagramReady
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800'
-                : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {isInstagramReady ? (
-                  <>
-                    <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    <div>
-                      <p className="font-semibold text-green-900 dark:text-green-100">Instagram Connected</p>
-                      <p className="text-sm text-green-700 dark:text-green-300 opacity-80">
-                        Ready to post! Your content will be published to Instagram.
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <p className="font-semibold text-amber-900 dark:text-amber-100">Instagram Not Configured</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">
-                        {!instagramStatus.data.is_configured 
-                          ? 'Please configure Instagram integration in Settings to enable posting.'
-                          : 'Instagram token expired. Please re-authorize in Settings.'}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-              {!isInstagramReady && (
-                <Button
-                  onClick={() => window.location.href = '/settings?tab=instagram'}
-                  size="sm"
-                  variant="outline"
+          {/* Right: Instagram connection status */}
+          {instagramStatus?.data && (
+            <div className="flex items-center gap-2 shrink-0">
+              {isInstagramReady ? (
+                <div
+                  className="inline-flex items-center rounded-full border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40 px-3 py-1.5"
+                  title="Your content will be published to Instagram"
                 >
-                  Configure Instagram
-                </Button>
+                  <span className="text-sm font-medium text-green-800 dark:text-green-200">🟢 Connected</span>
+                </div>
+              ) : (
+                <div
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5"
+                  title="Connect Instagram in Settings to enable posting"
+                >
+                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">🔴 Not connected</span>
+                  <span className="w-px h-4 bg-amber-200 dark:bg-amber-700" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => window.location.href = '/settings?tab=instagram'}
+                    className="text-sm font-semibold text-amber-800 dark:text-amber-200 hover:text-amber-600 dark:hover:text-amber-100 underline underline-offset-2 decoration-amber-400 dark:decoration-amber-600 hover:decoration-amber-600 dark:hover:decoration-amber-400 transition-colors"
+                  >
+                    Connect Instagram
+                  </button>
+                </div>
               )}
             </div>
-          </motion.div>
-        )}
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Product Search & Selection */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Search Bar */}
+            {/* Search Bar + Upload Mode */}
             <div className="card p-4">
-              <div className="flex gap-3">
-                <div className="flex-1 relative">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[200px] relative">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                   <Input
                     placeholder="Search products by title or designer..."
@@ -524,6 +518,47 @@ export default function InstagramPostsPage() {
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
+                </div>
+                <div className="w-40" title="Filter by Instagram post status">
+                  <select
+                    value={instagramFilter}
+                    onChange={(e) => setInstagramFilter(e.target.value as 'all' | 'posted' | 'not_posted')}
+                    className="input-field w-full"
+                  >
+                    <option value="all">All designs ({instagramCounts.total})</option>
+                    <option value="not_posted">Not posted ({instagramCounts.notPosted})</option>
+                    <option value="posted">Posted ({instagramCounts.posted})</option>
+                  </select>
+                </div>
+                {/* Upload Mode - right side of search bar */}
+                <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
+                  <button
+                    onClick={() => {
+                      setUploadMode('single');
+                      setSelectedProducts([]);
+                      setSelectedProduct(null);
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      uploadMode === 'single'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Single
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUploadMode('bulk');
+                      setSelectedProduct(null);
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      uploadMode === 'bulk'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Bulk
+                  </button>
                 </div>
               </div>
             </div>
@@ -553,13 +588,30 @@ export default function InstagramPostsPage() {
                     </Button>
                   )}
                 </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircleIcon className="w-16 h-16 mx-auto text-muted mb-4 opacity-50" />
+                  <p className="text-muted">
+                    {instagramFilter === 'posted'
+                      ? 'No designs on this page have been posted to Instagram yet.'
+                      : 'All designs on this page have already been posted to Instagram.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setInstagramFilter('all')}
+                    className="text-sm font-medium text-primary hover:underline mt-2"
+                  >
+                    Show all designs
+                  </button>
+                </div>
               ) : (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
-                    {productsData.data.map((product: any) => {
+                    {filteredProducts.map((product: any) => {
                       const isSelected = uploadMode === 'single'
                         ? selectedProduct?.id === product.id
                         : selectedProducts.some(p => p.id === product.id);
+                      const isPosted = postedProductIds.has(String(product.id));
                       return (
                         <motion.div
                           key={product.id}
@@ -580,6 +632,12 @@ export default function InstagramPostsPage() {
                               alt={product.title}
                               className="w-full h-full object-cover"
                             />
+                            {isPosted && (
+                              <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-green-600/90 text-white text-xs font-medium flex items-center gap-1 shadow-lg">
+                                <CheckCircleIcon className="w-3.5 h-3.5" />
+                                Posted
+                              </div>
+                            )}
                           </div>
                           <div className="p-3">
                             <p className="text-sm font-medium truncate">{product.title}</p>
@@ -665,9 +723,6 @@ export default function InstagramPostsPage() {
                         alt={selectedProduct.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-primary/90 text-white text-xs font-semibold rounded-lg shadow-lg">
-                        {selectedProduct.selectedMediaType === 'mockup' ? '📱 Mockup' : 'JPG'}
-                      </div>
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm">{selectedProduct.title}</h3>
@@ -699,7 +754,7 @@ export default function InstagramPostsPage() {
                             }`}
                             title={!isAvailable ? `${type === 'mockup' ? 'Mockup' : 'JPG'} not available for this product` : ''}
                           >
-                            {type === 'mockup' ? '📱 Mockup' : 'JPG'}
+                            {type === 'mockup' ? 'Mockup' : 'JPG'}
                           </button>
                         );
                       })}
@@ -921,7 +976,7 @@ export default function InstagramPostsPage() {
                               : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:scale-105 border border-border'
                           }`}
                         >
-                          {type === 'mockup' ? '📱 Mockup' : type.toUpperCase()}
+                          {type === 'mockup' ? 'Mockup' : type.toUpperCase()}
                           {bulkMediaType === type && (
                             <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></div>
                           )}
@@ -1039,7 +1094,7 @@ export default function InstagramPostsPage() {
                             <p className="text-xs text-muted truncate mt-0.5">{product.category}</p>
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-md font-medium">
-                                {bulkMediaType === 'mockup' ? '📱 Mockup' : 'JPG'}
+                                {bulkMediaType === 'mockup' ? 'Mockup' : 'JPG'}
                               </span>
                               <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-md">
                                 {bulkPostType === 'post' ? 'Post' : 'Story'}
