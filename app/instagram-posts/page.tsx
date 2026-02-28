@@ -114,28 +114,31 @@ export default function InstagramPostsPage() {
     refetchInterval: 60000,
   });
 
-  // Fetch Instagram post history to know which designs are already posted
+  // Fetch Instagram post history: success rows in instagram_post table → product_number counts as posted
   const { data: instagramPostsData } = useQuery({
     queryKey: ['instagram-posts-history'],
     queryFn: async () => {
-      const ids = new Set<string>();
+      const productNumbers = new Set<string>();
       let pageNum = 1;
       const limit = 100;
       let hasMore = true;
       while (hasMore) {
         const res = await API.getInstagramPosts({ page: pageNum, limit, status: 'success' });
-        const body = res.data as { data?: Array<{ product_id: string }>; pagination?: { has_next?: boolean } } | undefined;
+        const body = res.data as { data?: Array<{ product_number?: string | null }>; pagination?: { has_next?: boolean } } | undefined;
         if (!res.success || !body?.data?.length) break;
-        body.data.forEach((p) => ids.add(String(p.product_id)));
+        body.data.forEach((p) => {
+          const pn = p.product_number != null ? String(p.product_number).trim() : '';
+          if (pn) productNumbers.add(pn);
+        });
         hasMore = body.data.length === limit && (body.pagination?.has_next === true);
         pageNum++;
       }
-      return Array.from(ids);
+      return Array.from(productNumbers);
     },
     enabled: isReady,
   });
 
-  const postedProductIds = useMemo(() => {
+  const postedProductNumbers = useMemo(() => {
     if (!instagramPostsData || !Array.isArray(instagramPostsData)) return new Set<string>();
     return new Set(instagramPostsData);
   }, [instagramPostsData]);
@@ -437,28 +440,28 @@ export default function InstagramPostsPage() {
   const filteredProducts = useMemo(() => {
     const list = productsData?.data ?? [];
     if (instagramFilter === 'all') return list;
-    return list.filter((p: { id: string }) => {
-      const id = String(p.id);
-      const isPosted = postedProductIds.has(id);
+    return list.filter((p: { productNumber?: string; product_number?: string }) => {
+      const pn = String((p.productNumber ?? p.product_number ?? '')).trim();
+      const isPosted = pn !== '' && postedProductNumbers.has(pn);
       return instagramFilter === 'posted' ? isPosted : !isPosted;
     });
-  }, [productsData?.data, instagramFilter, postedProductIds]);
+  }, [productsData?.data, instagramFilter, postedProductNumbers]);
 
-  // Calculate counts for posted and not posted designs
+  // Calculate counts from Instagram post table: success → posted (by product_number)
   const instagramCounts = useMemo(() => {
     const list = productsData?.data ?? [];
     let posted = 0;
     let notPosted = 0;
-    list.forEach((p: { id: string }) => {
-      const id = String(p.id);
-      if (postedProductIds.has(id)) {
+    list.forEach((p: { productNumber?: string; product_number?: string }) => {
+      const pn = String((p.productNumber ?? p.product_number ?? '')).trim();
+      if (pn !== '' && postedProductNumbers.has(pn)) {
         posted++;
       } else {
         notPosted++;
       }
     });
     return { posted, notPosted, total: list.length };
-  }, [productsData?.data, postedProductIds]);
+  }, [productsData?.data, postedProductNumbers]);
 
   if (!isHydrated || !isReady) {
     return (
@@ -643,7 +646,8 @@ export default function InstagramPostsPage() {
                       const isSelected = uploadMode === 'single'
                         ? selectedProduct?.id === product.id
                         : selectedProducts.some(p => p.id === product.id);
-                      const isPosted = postedProductIds.has(String(product.id));
+                      const productNum = String((product.productNumber ?? product.product_number ?? '')).trim();
+                      const isPosted = productNum !== '' && postedProductNumbers.has(productNum);
                       return (
                         <motion.div
                           key={product.id}
