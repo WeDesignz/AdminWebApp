@@ -470,7 +470,7 @@ export default function DesignsPage() {
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
               <Input
-                placeholder="Search by design title or designer name..."
+                placeholder="Search by design title, product number, or designer name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"

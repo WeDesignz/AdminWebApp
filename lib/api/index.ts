@@ -333,6 +333,31 @@ class RealAPI {
     return API.instagram.postToInstagram(post);
   }
 
+  static async getInstagramPosts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<ApiResponse<{
+    data: Array<{
+      id: number;
+      product_id: string;
+      product_title: string;
+      media_type: string;
+      caption: string;
+      post_type: string;
+      status: string;
+      post_id: string | null;
+      post_url: string | null;
+      error_message: string | null;
+      retry_count: number;
+      created_at: string;
+      posted_at: string | null;
+    }>;
+    pagination: { page: number; limit: number; total: number; total_pages: number; has_next: boolean; has_previous: boolean };
+  }>> {
+    return API.instagram.getInstagramPosts(params);
+  }
+
   // Pinterest methods
   static async getPinterestStatus(): Promise<ApiResponse<{
     is_enabled: boolean;
