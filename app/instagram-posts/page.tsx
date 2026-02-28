@@ -43,6 +43,7 @@ export default function InstagramPostsPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [statusFilter, setStatusFilter] = useState('approved');
   const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>('all');
   const queryClient = useQueryClient();
@@ -70,12 +71,12 @@ export default function InstagramPostsPage() {
 
   // Fetch products
   const { data: productsData, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products-for-instagram', searchQuery, page, statusFilter],
+    queryKey: ['products-for-instagram', searchQuery, page, pageSize, statusFilter],
     queryFn: () => API.getDesigns({ 
       status: statusFilter || 'approved',
       search: searchQuery,
       page,
-      limit: 20
+      limit: pageSize
     }),
     enabled: isReady,
   });
@@ -491,39 +492,39 @@ export default function InstagramPostsPage() {
           {/* Left Column: Product Search & Selection */}
           <div className="lg:col-span-2 space-y-4">
             {/* Search Bar + Upload Mode */}
-            <div className="card p-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex-1 min-w-[200px] relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+            <div className="card p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex-1 min-w-[160px] relative">
+                  <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                   <Input
-                    placeholder="Search products by title or designer..."
+                    placeholder="Search by title, designer, or product number..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setPage(1);
                     }}
-                    className="pl-10"
+                    className="pl-8 h-9 text-sm py-1.5 rounded-lg"
                   />
                 </div>
-                <div className="w-40">
+                <div className="w-[7.5rem] shrink-0">
                   <select
                     value={statusFilter}
                     onChange={(e) => {
                       setStatusFilter(e.target.value);
                       setPage(1);
                     }}
-                    className="input-field w-full"
+                    className="input-field w-full h-9 text-sm py-1.5 rounded-lg min-w-0"
                   >
                     {statusFilterOptions.map(option => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </div>
-                <div className="w-40" title="Filter by Instagram post status">
+                <div className="min-w-[11rem] shrink-0" title="Filter by Instagram post status">
                   <select
                     value={instagramFilter}
                     onChange={(e) => setInstagramFilter(e.target.value as 'all' | 'posted' | 'not_posted')}
-                    className="input-field w-full"
+                    className="input-field w-full h-9 text-sm py-1.5 rounded-lg"
                   >
                     <option value="all">All designs ({instagramCounts.total})</option>
                     <option value="not_posted">Not posted ({instagramCounts.notPosted})</option>
@@ -531,14 +532,14 @@ export default function InstagramPostsPage() {
                   </select>
                 </div>
                 {/* Upload Mode - right side of search bar */}
-                <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5">
+                <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5 shrink-0">
                   <button
                     onClick={() => {
                       setUploadMode('single');
                       setSelectedProducts([]);
                       setSelectedProduct(null);
                     }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
                       uploadMode === 'single'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
@@ -551,7 +552,7 @@ export default function InstagramPostsPage() {
                       setUploadMode('bulk');
                       setSelectedProduct(null);
                     }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
                       uploadMode === 'bulk'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
@@ -661,29 +662,49 @@ export default function InstagramPostsPage() {
                   </div>
 
                   {/* Pagination */}
-                  {productsData?.pagination && productsData.pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-                      <p className="text-sm text-muted">
-                        Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, productsData.pagination.total)} of {productsData.pagination.total}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
-                          disabled={page === 1}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPage(p => p + 1)}
-                          disabled={page >= productsData.pagination.totalPages}
-                        >
-                          Next
-                        </Button>
+                  {productsData?.pagination && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-4 mt-4 border-t border-border">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <p className="text-sm text-muted">
+                          Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, productsData.pagination.total)} of {productsData.pagination.total}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted">Per page:</span>
+                          <select
+                            value={pageSize}
+                            onChange={(e) => {
+                              setPageSize(Number(e.target.value));
+                              setPage(1);
+                            }}
+                            className="input-field h-8 text-sm py-1 px-2.5 rounded-lg w-[5rem] min-w-0"
+                            title="Results per page"
+                          >
+                            {[20, 50, 100, 200, 500].map((n) => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+                      {productsData.pagination.totalPages > 1 && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={page >= productsData.pagination.totalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
