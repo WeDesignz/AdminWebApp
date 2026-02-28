@@ -170,7 +170,6 @@ export default function ScheduledTasksClient() {
   const { data: registeredTasksData, isLoading: registeredTasksLoading } = useQuery({
     queryKey: ['registered-tasks'],
     queryFn: () => API.scheduledTasks.getRegisteredTasks(),
-    enabled: activeTab === 'all',
   });
 
   const overview = overviewData?.data;
@@ -422,29 +421,44 @@ export default function ScheduledTasksClient() {
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All statuses</option>
-                <option value="SUCCESS">Success</option>
-                <option value="FAILURE">Failure</option>
-                <option value="PENDING">Pending</option>
-                <option value="STARTED">Started</option>
-                <option value="RETRY">Retry</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Filter by task name..."
-                value={taskNameFilter}
-                onChange={(e) => setTaskNameFilter(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
-              />
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">All statuses</option>
+                  <option value="SUCCESS">Success</option>
+                  <option value="FAILURE">Failure</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="STARTED">Started</option>
+                  <option value="RETRY">Retry</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Task name</span>
+                <select
+                  value={taskNameFilter}
+                  onChange={(e) => {
+                    setTaskNameFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[220px] max-w-[320px]"
+                  aria-label="Filter by task name"
+                  disabled={registeredTasksLoading}
+                >
+                  <option value="">All tasks</option>
+                  {registeredTasks.map((task) => (
+                    <option key={task.name} value={task.name} title={task.name}>
+                      {task.name.length > 48 ? `${task.name.slice(0, 45)}…` : task.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -809,26 +823,41 @@ export default function ScheduledTasksClient() {
 
             {/* Periodic filters */}
             <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={periodicEnabledFilter}
-                onChange={(e) => {
-                  setPeriodicEnabledFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All</option>
-                <option value="true">Enabled only</option>
-                <option value="false">Disabled only</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Filter by task path..."
-                value={periodicTaskNameFilter}
-                onChange={(e) => setPeriodicTaskNameFilter(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
-                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[200px]"
-              />
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Status</span>
+                <select
+                  value={periodicEnabledFilter}
+                  onChange={(e) => {
+                    setPeriodicEnabledFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">All</option>
+                  <option value="true">Enabled only</option>
+                  <option value="false">Disabled only</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">Task name</span>
+                <select
+                  value={periodicTaskNameFilter}
+                  onChange={(e) => {
+                    setPeriodicTaskNameFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[220px] max-w-[320px]"
+                  aria-label="Filter by task name"
+                  disabled={registeredTasksLoading}
+                >
+                  <option value="">All tasks</option>
+                  {registeredTasks.map((task) => (
+                    <option key={task.name} value={task.name} title={task.name}>
+                      {task.name.length > 48 ? `${task.name.slice(0, 45)}…` : task.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <select
                 value={pageSize}
                 onChange={(e) => {

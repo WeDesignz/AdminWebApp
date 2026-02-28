@@ -114,26 +114,15 @@ export default function InstagramPostsPage() {
     refetchInterval: 60000,
   });
 
-  // Fetch Instagram post history: success rows in instagram_post table → product_number counts as posted
+  // Product numbers that have at least one success in instagram_post table = posted (any 1 success counts)
   const { data: instagramPostsData } = useQuery({
-    queryKey: ['instagram-posts-history'],
+    queryKey: ['instagram-posted-product-numbers'],
     queryFn: async () => {
-      const productNumbers = new Set<string>();
-      let pageNum = 1;
-      const limit = 100;
-      let hasMore = true;
-      while (hasMore) {
-        const res = await API.getInstagramPosts({ page: pageNum, limit, status: 'success' });
-        const body = res.data as { data?: Array<{ product_number?: string | null }>; pagination?: { has_next?: boolean } } | undefined;
-        if (!res.success || !body?.data?.length) break;
-        body.data.forEach((p) => {
-          const pn = p.product_number != null ? String(p.product_number).trim() : '';
-          if (pn) productNumbers.add(pn);
-        });
-        hasMore = body.data.length === limit && (body.pagination?.has_next === true);
-        pageNum++;
-      }
-      return Array.from(productNumbers);
+      const res = await API.getInstagramPostedProductNumbers();
+      if (!res.success || !res.data) return [];
+      const payload = res.data as { product_numbers?: string[] };
+      const list = Array.isArray(payload?.product_numbers) ? payload.product_numbers : [];
+      return list.map((pn) => String(pn).trim()).filter(Boolean);
     },
     enabled: isReady,
   });
@@ -306,7 +295,7 @@ export default function InstagramPostsPage() {
         });
         handleClearSelection();
         queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
-        queryClient.invalidateQueries({ queryKey: ['instagram-posts-history'] });
+        queryClient.invalidateQueries({ queryKey: ['instagram-posted-product-numbers'] });
       } else {
         toast.error(response.error || 'Failed to post to Instagram');
       }
@@ -414,7 +403,7 @@ export default function InstagramPostsPage() {
     // Clear selections and refresh
     setSelectedProducts([]);
     queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
-    queryClient.invalidateQueries({ queryKey: ['instagram-posts-history'] });
+    queryClient.invalidateQueries({ queryKey: ['instagram-posted-product-numbers'] });
   };
 
   const getSelectedImageUrl = () => {

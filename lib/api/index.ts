@@ -341,6 +341,7 @@ class RealAPI {
     data: Array<{
       id: number;
       product_id: string;
+      product_number?: string | null;
       product_title: string;
       media_type: string;
       caption: string;
@@ -356,6 +357,10 @@ class RealAPI {
     pagination: { page: number; limit: number; total: number; total_pages: number; has_next: boolean; has_previous: boolean };
   }>> {
     return API.instagram.getInstagramPosts(params);
+  }
+
+  static async getInstagramPostedProductNumbers(): Promise<ApiResponse<{ product_numbers: string[] }>> {
+    return API.instagram.getInstagramPostedProductNumbers();
   }
 
   // Pinterest methods
