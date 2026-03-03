@@ -361,7 +361,7 @@ class RealAPI {
       created_at: string;
       posted_at: string | null;
     }>;
-    pagination: { page: number; limit: number; total: number; total_pages: number; has_next: boolean; has_previous: boolean };
+    pagination: { page: number; limit: number; total: number; totalPages: number; total_pages?: number; has_next?: boolean; has_previous?: boolean };
   }>> {
     return API.instagram.getInstagramPosts(params);
   }
