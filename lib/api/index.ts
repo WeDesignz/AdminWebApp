@@ -341,12 +341,15 @@ class RealAPI {
     page?: number;
     limit?: number;
     status?: string;
+    from_date?: string;
+    to_date?: string;
   }): Promise<ApiResponse<{
     data: Array<{
       id: number;
       product_id: string;
       product_number?: string | null;
       product_title: string;
+      product_thumbnail_url?: string | null;
       media_type: string;
       caption: string;
       post_type: string;
