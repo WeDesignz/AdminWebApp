@@ -1032,21 +1032,21 @@ export default function ScheduledTasksClient() {
               )}
             </div>
 
-            {/* Command detail modal */}
+            {/* Command detail modal - opaque overlay and solid panel */}
             <AnimatePresence>
               {selectedCommandDetail && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
                   onClick={() => setSelectedCommandDetail(null)}
                 >
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
-                    className="rounded-xl border border-border bg-card shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                    className="rounded-xl border border-border bg-white dark:bg-zinc-900 shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="p-4 border-b border-border flex items-center justify-between">
@@ -1087,21 +1087,21 @@ export default function ScheduledTasksClient() {
               )}
             </AnimatePresence>
 
-            {/* Run result modal */}
+            {/* Run result modal - opaque overlay and solid panel */}
             <AnimatePresence>
               {runResult && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
                   onClick={() => setRunResult(null)}
                 >
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
-                    className="rounded-xl border border-border bg-card shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                    className="rounded-xl border border-border bg-white dark:bg-zinc-900 shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="p-4 border-b border-border flex items-center justify-between">
