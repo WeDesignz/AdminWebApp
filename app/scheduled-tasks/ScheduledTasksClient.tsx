@@ -23,14 +23,16 @@ import {
   CalendarDaysIcon,
   ListBulletIcon,
   CubeIcon,
+  QueueListIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
+const QUEUE_PREVIEW_LIMIT_OPTIONS = [25, 50, 100, 500, 1000] as const;
 const MIN_COL_WIDTH = 64;
-type TabId = 'history' | 'periodic' | 'all';
+type TabId = 'history' | 'periodic' | 'all' | 'queue';
 
 const HISTORY_DEFAULT_WIDTHS: Record<string, number> = {
   select: 44,
@@ -114,6 +116,8 @@ export default function ScheduledTasksClient() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
   const [allTasksFilter, setAllTasksFilter] = useState('');
   const [selectedRegisteredTaskName, setSelectedRegisteredTaskName] = useState<string | null>(null);
+  const [queueLimit, setQueueLimit] = useState<number>(50);
+  const [queueTaskNameFilter, setQueueTaskNameFilter] = useState('');
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -172,6 +176,18 @@ export default function ScheduledTasksClient() {
     queryFn: () => API.scheduledTasks.getRegisteredTasks(),
   });
 
+  const hasRedisQueue = overviewData?.data?.queue_name != null;
+  const { data: queuePreviewData, isLoading: queuePreviewLoading } = useQuery({
+    queryKey: ['scheduled-tasks-queue-preview', queueLimit, queueTaskNameFilter],
+    queryFn: () =>
+      API.scheduledTasks.getQueuePreview({
+        limit: queueLimit,
+        ...(queueTaskNameFilter.trim() ? { task_name: queueTaskNameFilter.trim() } : {}),
+      }),
+    refetchInterval: 20000,
+    enabled: hasRedisQueue && activeTab === 'queue',
+  });
+
   const overview = overviewData?.data;
   const tasks = listData?.data?.data ?? [];
   const pagination = listData?.data?.pagination;
@@ -198,6 +214,7 @@ export default function ScheduledTasksClient() {
         toast.success('Task revoke requested.');
         queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-overview'] });
         queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-list'] });
+        queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-queue-preview'] });
         if (detailTaskId === taskId) setDetailTaskId(null);
       } else {
         toast.error(res.data?.error || res.error || 'Failed to revoke');
@@ -257,6 +274,7 @@ export default function ScheduledTasksClient() {
           toast.success(`Revoke requested for ${revoked} task(s).`);
           queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-overview'] });
           queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-list'] });
+          queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-queue-preview'] });
           setSelectedTaskIds(new Set());
           if (detailTaskId && idsToRevoke.includes(detailTaskId)) setDetailTaskId(null);
         }
@@ -376,6 +394,20 @@ export default function ScheduledTasksClient() {
               <CubeIcon className="w-4 h-4" />
               All tasks
             </button>
+            {hasRedisQueue && (
+              <button
+                type="button"
+                onClick={() => { setActiveTab('queue'); setPage(1); }}
+                className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                  activeTab === 'queue'
+                    ? 'border-primary text-primary bg-primary/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <QueueListIcon className="w-4 h-4" />
+                Broker queue (Redis)
+              </button>
+            )}
           </nav>
         </div>
 
@@ -383,9 +415,9 @@ export default function ScheduledTasksClient() {
         {activeTab === 'history' && (
           <>
             {/* Overview cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {overviewLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-border/50 bg-card p-4 animate-pulse h-24" />
                 ))
               ) : (
@@ -415,6 +447,13 @@ export default function ScheduledTasksClient() {
                     <p className="text-2xl font-semibold text-success mt-1">{overview?.success_last_24h ?? 0}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Last 24 hours</p>
                   </div>
+                  {overview?.queue_name != null && (
+                    <div className="rounded-xl border border-border/50 bg-card p-4">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pending in queue</p>
+                      <p className="text-2xl font-semibold text-foreground mt-1">{overview?.queue_pending ?? '—'}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Redis · {overview.queue_name}</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -784,6 +823,94 @@ export default function ScheduledTasksClient() {
                   {filteredRegisteredTasks.length === registeredTasks.length
                     ? `${registeredTasks.length} task(s)`
                     : `${filteredRegisteredTasks.length} of ${registeredTasks.length} task(s) (filtered)`}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Tab content: Broker queue (Redis) */}
+        {activeTab === 'queue' && hasRedisQueue && (
+          <>
+            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <div className="p-4 border-b border-border/50">
+                <h2 className="text-base font-semibold text-foreground">Broker queue (Redis)</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Read-only peek at messages in the queue. Total in queue: {queuePreviewData?.data?.total ?? (queuePreviewLoading ? '…' : overview?.queue_pending ?? '—')}
+                  {queueTaskNameFilter.trim() && ' (filtered by task name)'}
+                </p>
+              </div>
+              <div className="p-4 border-b border-border/50 flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground whitespace-nowrap">Show</span>
+                  <select
+                    value={queueLimit}
+                    onChange={(e) => setQueueLimit(Number(e.target.value))}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label="Number of results"
+                  >
+                    {QUEUE_PREVIEW_LIMIT_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n} results
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 flex-1 min-w-[200px]">
+                  <span className="text-sm font-medium text-foreground whitespace-nowrap">Filter by task name</span>
+                  <input
+                    type="text"
+                    placeholder="e.g. common.tasks or send_email"
+                    value={queueTaskNameFilter}
+                    onChange={(e) => setQueueTaskNameFilter(e.target.value)}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary flex-1 max-w-md"
+                    aria-label="Filter by task name (substring)"
+                  />
+                </label>
+                {queueTaskNameFilter.trim() && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQueueTaskNameFilter('')}
+                  >
+                    Clear filter
+                  </Button>
+                )}
+              </div>
+              {queuePreviewLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading queue preview...</div>
+              ) : queuePreviewData?.data?.sample?.length ? (
+                <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30 sticky top-0">
+                      <tr>
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">#</th>
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">Task name</th>
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">Task ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {queuePreviewData.data.sample.map((item, idx) => (
+                        <tr key={idx} className="border-t border-border/30 hover:bg-muted/20">
+                          <td className="py-1.5 px-3 text-muted-foreground">{idx + 1}</td>
+                          <td className="py-1.5 px-3 font-mono text-xs break-all">{item.task_name ?? '—'}</td>
+                          <td className="py-1.5 px-3 font-mono text-xs break-all">{item.task_id ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  {queueTaskNameFilter.trim()
+                    ? 'No matching messages in the first 5000 queue entries.'
+                    : 'Queue is empty or preview unavailable.'}
+                </div>
+              )}
+              {!queuePreviewLoading && queuePreviewData?.data && (
+                <div className="py-2 px-4 border-t border-border/50 text-sm text-muted-foreground">
+                  Showing {queuePreviewData.data.sample?.length ?? 0} of {queuePreviewData.data.total ?? 0} in queue
+                  {queueTaskNameFilter.trim() ? ` (filter: task name contains "${queueTaskNameFilter.trim()}")` : null}
                 </div>
               )}
             </div>

@@ -2100,6 +2100,21 @@ export interface ScheduledTaskOverview {
   scheduled: number;
   failed_last_24h: number;
   success_last_24h: number;
+  /** Redis broker queue name (e.g. production). Only present when broker is Redis. */
+  queue_name?: string;
+  /** Number of messages waiting in the broker queue (LLEN). Only present when broker is Redis. */
+  queue_pending?: number | null;
+}
+
+export interface QueuePreviewItem {
+  task_id: string | null;
+  task_name: string | null;
+}
+
+export interface QueuePreviewResponse {
+  queue_name: string;
+  total: number | null;
+  sample: QueuePreviewItem[];
 }
 
 export interface ScheduledTaskListItem {
@@ -2179,6 +2194,14 @@ export const ScheduledTasksAPI = {
   async getRegisteredTaskDetail(taskName: string): Promise<ApiResponse<{ name: string; description: string | null }>> {
     return apiClient.get<{ name: string; description: string | null }>(
       `api/coreadmin/scheduled-tasks/registered-detail/?task_name=${encodeURIComponent(taskName)}`
+    );
+  },
+  async getQueuePreview(params?: { limit?: number; task_name?: string }): Promise<ApiResponse<QueuePreviewResponse>> {
+    const limit = Math.max(1, Math.min(1000, params?.limit ?? 50));
+    const search = new URLSearchParams({ limit: String(limit) });
+    if (params?.task_name?.trim()) search.set('task_name', params.task_name.trim());
+    return apiClient.get<QueuePreviewResponse>(
+      `api/coreadmin/scheduled-tasks/queue-preview/?${search.toString()}`
     );
   },
 };
