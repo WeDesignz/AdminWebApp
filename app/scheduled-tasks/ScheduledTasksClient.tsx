@@ -126,6 +126,8 @@ export default function ScheduledTasksClient() {
   const [queueLimit, setQueueLimit] = useState<number>(50);
   const [queueTaskNameFilter, setQueueTaskNameFilter] = useState('');
   const [queuePage, setQueuePage] = useState(1);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -144,13 +146,15 @@ export default function ScheduledTasksClient() {
   });
 
   const { data: listData, isLoading: listLoading } = useQuery({
-    queryKey: ['scheduled-tasks-list', page, pageSize, statusFilter, taskNameFilter],
+    queryKey: ['scheduled-tasks-list', page, pageSize, statusFilter, taskNameFilter, fromDate, toDate],
     queryFn: () =>
       API.scheduledTasks.getList({
         page,
         page_size: pageSize,
         ...(statusFilter ? { status: statusFilter } : {}),
         ...(taskNameFilter.trim() ? { task_name: taskNameFilter.trim() } : {}),
+        ...(fromDate ? { from_date: fromDate } : {}),
+        ...(toDate ? { to_date: toDate } : {}),
       }),
   });
 
@@ -508,6 +512,32 @@ export default function ScheduledTasksClient() {
                   ))}
                 </select>
               </label>
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">From date</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Filter tasks from this date"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground whitespace-nowrap">To date</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Filter tasks until this date"
+                />
+              </label>
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -529,6 +559,8 @@ export default function ScheduledTasksClient() {
                 onClick={() => {
                   setStatusFilter('');
                   setTaskNameFilter('');
+                  setFromDate('');
+                  setToDate('');
                   setPage(1);
                   queryClient.invalidateQueries({ queryKey: ['scheduled-tasks-list'] });
                 }}
@@ -538,7 +570,7 @@ export default function ScheduledTasksClient() {
               {!listLoading && pagination != null && (
                 <span className="text-sm text-muted-foreground ml-auto">
                   {pagination.total} result{pagination.total !== 1 ? 's' : ''}
-                  {(statusFilter || taskNameFilter.trim()) && ' (filtered)'}
+                  {(statusFilter || taskNameFilter.trim() || fromDate || toDate) && ' (filtered)'}
                 </span>
               )}
             </div>
@@ -904,11 +936,11 @@ export default function ScheduledTasksClient() {
               ) : queuePreviewData?.data?.sample?.length ? (
                 <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/30 sticky top-0">
-                      <tr>
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">#</th>
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">Task name</th>
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground">Task ID</th>
+                    <thead className="sticky top-0 z-10 border-b border-border/50">
+                      <tr className="bg-background">
+                        <th className="text-left py-2 px-3 font-medium text-foreground bg-background">#</th>
+                        <th className="text-left py-2 px-3 font-medium text-foreground bg-background">Task name</th>
+                        <th className="text-left py-2 px-3 font-medium text-foreground bg-background">Task ID</th>
                       </tr>
                     </thead>
                     <tbody>
