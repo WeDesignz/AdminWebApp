@@ -1092,6 +1092,10 @@ export const PinterestAPI = {
     last_successful_post: string | null;
     last_error: string | null;
     last_error_at: string | null;
+    rate_limit_remaining: number | null;
+    rate_limit_limit: number | null;
+    rate_limit_reset_at: string | null;
+    rate_limit_retry_after_at: string | null;
   }>> {
     return apiClient.get('api/pinterest/status/');
   },
@@ -2114,6 +2118,8 @@ export interface QueuePreviewItem {
 export interface QueuePreviewResponse {
   queue_name: string;
   total: number | null;
+  /** When task_name filter is applied, count of matches in scanned range (first 5000). */
+  total_matching?: number | null;
   sample: QueuePreviewItem[];
 }
 
@@ -2196,9 +2202,14 @@ export const ScheduledTasksAPI = {
       `api/coreadmin/scheduled-tasks/registered-detail/?task_name=${encodeURIComponent(taskName)}`
     );
   },
-  async getQueuePreview(params?: { limit?: number; task_name?: string }): Promise<ApiResponse<QueuePreviewResponse>> {
-    const limit = Math.max(1, Math.min(1000, params?.limit ?? 50));
+  async getQueuePreview(params?: {
+    limit?: number;
+    offset?: number;
+    task_name?: string;
+  }): Promise<ApiResponse<QueuePreviewResponse>> {
+    const limit = Math.max(1, Math.min(10000, params?.limit ?? 50));
     const search = new URLSearchParams({ limit: String(limit) });
+    if (params?.offset != null && params.offset > 0) search.set('offset', String(params.offset));
     if (params?.task_name?.trim()) search.set('task_name', params.task_name.trim());
     return apiClient.get<QueuePreviewResponse>(
       `api/coreadmin/scheduled-tasks/queue-preview/?${search.toString()}`

@@ -30,7 +30,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
-const QUEUE_PREVIEW_LIMIT_OPTIONS = [25, 50, 100, 500, 1000] as const;
+const QUEUE_PREVIEW_LIMIT_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 25, label: '25 results' },
+  { value: 50, label: '50 results' },
+  { value: 100, label: '100 results' },
+  { value: 500, label: '500 results' },
+  { value: 1000, label: '1000 results' },
+  { value: 10000, label: 'All' },
+];
 const MIN_COL_WIDTH = 64;
 type TabId = 'history' | 'periodic' | 'all' | 'queue';
 
@@ -118,6 +125,7 @@ export default function ScheduledTasksClient() {
   const [selectedRegisteredTaskName, setSelectedRegisteredTaskName] = useState<string | null>(null);
   const [queueLimit, setQueueLimit] = useState<number>(50);
   const [queueTaskNameFilter, setQueueTaskNameFilter] = useState('');
+  const [queuePage, setQueuePage] = useState(1);
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -177,11 +185,13 @@ export default function ScheduledTasksClient() {
   });
 
   const hasRedisQueue = overviewData?.data?.queue_name != null;
+  const queueOffset = (queuePage - 1) * queueLimit;
   const { data: queuePreviewData, isLoading: queuePreviewLoading } = useQuery({
-    queryKey: ['scheduled-tasks-queue-preview', queueLimit, queueTaskNameFilter],
+    queryKey: ['scheduled-tasks-queue-preview', queueLimit, queueOffset, queueTaskNameFilter],
     queryFn: () =>
       API.scheduledTasks.getQueuePreview({
         limit: queueLimit,
+        offset: queueOffset,
         ...(queueTaskNameFilter.trim() ? { task_name: queueTaskNameFilter.trim() } : {}),
       }),
     refetchInterval: 20000,
@@ -397,7 +407,7 @@ export default function ScheduledTasksClient() {
             {hasRedisQueue && (
               <button
                 type="button"
-                onClick={() => { setActiveTab('queue'); setPage(1); }}
+                onClick={() => { setActiveTab('queue'); setPage(1); setQueuePage(1); }}
                 className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                   activeTab === 'queue'
                     ? 'border-primary text-primary bg-primary/5'
@@ -845,33 +855,45 @@ export default function ScheduledTasksClient() {
                   <span className="text-sm font-medium text-foreground whitespace-nowrap">Show</span>
                   <select
                     value={queueLimit}
-                    onChange={(e) => setQueueLimit(Number(e.target.value))}
+                    onChange={(e) => {
+                      setQueueLimit(Number(e.target.value));
+                      setQueuePage(1);
+                    }}
                     className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     aria-label="Number of results"
                   >
-                    {QUEUE_PREVIEW_LIMIT_OPTIONS.map((n) => (
-                      <option key={n} value={n}>
-                        {n} results
+                    {QUEUE_PREVIEW_LIMIT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="flex items-center gap-2 flex-1 min-w-[200px]">
                   <span className="text-sm font-medium text-foreground whitespace-nowrap">Filter by task name</span>
-                  <input
-                    type="text"
-                    placeholder="e.g. common.tasks or send_email"
+                  <select
                     value={queueTaskNameFilter}
-                    onChange={(e) => setQueueTaskNameFilter(e.target.value)}
-                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary flex-1 max-w-md"
-                    aria-label="Filter by task name (substring)"
-                  />
+                    onChange={(e) => {
+                      setQueueTaskNameFilter(e.target.value);
+                      setQueuePage(1);
+                    }}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[220px] max-w-[360px]"
+                    aria-label="Filter by task name"
+                    disabled={registeredTasksLoading}
+                  >
+                    <option value="">All tasks</option>
+                    {registeredTasks.map((task) => (
+                      <option key={task.name} value={task.name} title={task.name}>
+                        {task.name.length > 48 ? `${task.name.slice(0, 45)}…` : task.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 {queueTaskNameFilter.trim() && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setQueueTaskNameFilter('')}
+                    onClick={() => { setQueueTaskNameFilter(''); setQueuePage(1); }}
                   >
                     Clear filter
                   </Button>
@@ -892,7 +914,7 @@ export default function ScheduledTasksClient() {
                     <tbody>
                       {queuePreviewData.data.sample.map((item, idx) => (
                         <tr key={idx} className="border-t border-border/30 hover:bg-muted/20">
-                          <td className="py-1.5 px-3 text-muted-foreground">{idx + 1}</td>
+                          <td className="py-1.5 px-3 text-muted-foreground">{queueOffset + idx + 1}</td>
                           <td className="py-1.5 px-3 font-mono text-xs break-all">{item.task_name ?? '—'}</td>
                           <td className="py-1.5 px-3 font-mono text-xs break-all">{item.task_id ?? '—'}</td>
                         </tr>
@@ -907,12 +929,41 @@ export default function ScheduledTasksClient() {
                     : 'Queue is empty or preview unavailable.'}
                 </div>
               )}
-              {!queuePreviewLoading && queuePreviewData?.data && (
-                <div className="py-2 px-4 border-t border-border/50 text-sm text-muted-foreground">
-                  Showing {queuePreviewData.data.sample?.length ?? 0} of {queuePreviewData.data.total ?? 0} in queue
-                  {queueTaskNameFilter.trim() ? ` (filter: task name contains "${queueTaskNameFilter.trim()}")` : null}
-                </div>
-              )}
+              {!queuePreviewLoading && queuePreviewData?.data && (() => {
+                const totalForPagination = queuePreviewData.data.total_matching ?? queuePreviewData.data.total ?? 0;
+                const totalPages = Math.ceil(Number(totalForPagination) / queueLimit) || 1;
+                return (
+                  <div className="py-3 px-4 border-t border-border/50 flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Showing {queueOffset + 1}–{queueOffset + (queuePreviewData.data.sample?.length ?? 0)} of {queuePreviewData.data.total_matching ?? queuePreviewData.data.total ?? 0} in queue
+                      {queueTaskNameFilter.trim() ? ` (filtered by task)` : null}
+                    </p>
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">
+                          Page {queuePage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={queuePage <= 1}
+                          onClick={() => setQueuePage((p) => Math.max(1, p - 1))}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={queuePage >= totalPages}
+                          onClick={() => setQueuePage((p) => p + 1)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}
