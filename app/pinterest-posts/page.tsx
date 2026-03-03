@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/common/Button';
 import {
-  ShareIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
@@ -42,8 +41,7 @@ export default function PinterestPostsPage() {
   const [page, setPage] = useState(1);
   const [detailsPost, setDetailsPost] = useState<PinterestPostRow | null>(null);
   const [previewPost, setPreviewPost] = useState<PinterestPostRow | null>(null);
-  const [retryingId, setRetryingId] = useState<number | null>(null);
-  const [isBulkPosting, setIsBulkPosting] = useState(false);
+  const [postingId, setPostingId] = useState<number | null>(null);
   const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
   const [hoveredThumbId, setHoveredThumbId] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -81,50 +79,32 @@ export default function PinterestPostsPage() {
   });
 
   const counts = statsResponse?.data;
-  const bulkPostEligible = counts?.bulk_post_eligible ?? 0;
 
   const posts = postsResponse?.data?.data ?? [];
   const pagination = postsResponse?.data?.pagination;
   const isPinterestReady =
     pinterestStatus?.data?.is_configured && pinterestStatus?.data?.is_token_valid;
 
-  const handleRetry = async (postId: number) => {
-    setRetryingId(postId);
-    try {
-      const res = await API.retryPinterestPost(postId);
-      if (res.success) {
-        toast.success('Retry queued');
-        queryClient.invalidateQueries({ queryKey: ['pinterest-posts'] });
-        queryClient.invalidateQueries({ queryKey: ['pinterest-posts-stats'] });
-      } else {
-        toast.error(res.error || 'Failed to queue retry');
-      }
-    } catch {
-      toast.error('Failed to queue retry');
-    } finally {
-      setRetryingId(null);
-    }
-  };
-
-  const handleBulkPost = async () => {
+  const handlePostAgain = async (postId: number) => {
     if (!isPinterestReady) {
       toast.error('Configure Pinterest in Settings first.');
       return;
     }
-    setIsBulkPosting(true);
+    setPostingId(postId);
     try {
-      const res = await API.bulkPostPinterest();
-      if (res.success && res.data) {
-        toast.success(`Queued ${res.data.queued} design(s) for posting`);
+      const res = await API.retryPinterestPost(postId);
+      if (res.success) {
+        toast.success('Posted to Pinterest');
         queryClient.invalidateQueries({ queryKey: ['pinterest-posts'] });
         queryClient.invalidateQueries({ queryKey: ['pinterest-posts-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['pinterest-status'] });
       } else {
-        toast.error((res as any).error || 'Bulk post failed');
+        toast.error(res.error || 'Post failed');
       }
     } catch {
-      toast.error('Bulk post failed');
+      toast.error('Post failed');
     } finally {
-      setIsBulkPosting(false);
+      setPostingId(null);
     }
   };
 
@@ -181,38 +161,11 @@ export default function PinterestPostsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 bg-clip-text text-transparent">
-              Pinterest Posts
-            </h1>
-            <p className="text-muted mt-1">View and manage designs posted to Pinterest</p>
-          </div>
-          <span
-            title={
-              bulkPostEligible === 0
-                ? 'No designs to post. All designs are either already posted or have no Pinterest post record.'
-                : `Queue ${bulkPostEligible} design(s) for Pinterest. Designs with status Pending, Failed, or Retrying will be posted. Approved designs without a Pinterest post record may also be included.`
-            }
-            className="inline-flex"
-          >
-            <Button
-              onClick={handleBulkPost}
-              disabled={!isPinterestReady || isBulkPosting}
-              className="flex items-center gap-2"
-            >
-              {isBulkPosting ? (
-                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-              ) : (
-                <ShareIcon className="w-5 h-5" />
-              )}
-              {isBulkPosting
-                ? 'Posting…'
-                : bulkPostEligible > 0
-                  ? `Bulk post (${bulkPostEligible})`
-                  : 'Bulk post (not posted)'}
-            </Button>
-          </span>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 bg-clip-text text-transparent">
+            Pinterest Posts
+          </h1>
+          <p className="text-muted mt-1">View and manage designs posted to Pinterest</p>
         </div>
 
         {pinterestStatus?.data && (
@@ -246,7 +199,7 @@ export default function PinterestPostsPage() {
                       <div>
                         <p className="font-semibold text-amber-900 dark:text-amber-100">Pinterest Not Configured</p>
                         <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">
-                          Configure in Settings to enable posting and bulk post.
+                          Configure in Settings to enable posting.
                         </p>
                       </div>
                     </>
@@ -262,43 +215,50 @@ export default function PinterestPostsPage() {
                   </Button>
                 )}
               </div>
-              {isPinterestReady && (pinterestStatus.data.rate_limit_remaining != null || pinterestStatus.data.rate_limit_limit != null || pinterestStatus.data.rate_limit_reset_at || pinterestStatus.data.rate_limit_retry_after_at) && (
-                <div className="pt-2 border-t border-green-200 dark:border-green-800">
-                  <p className="text-xs font-medium text-green-800 dark:text-green-200 mb-1">API rate limit</p>
-                  <div className="text-sm text-green-700 dark:text-green-300 space-y-0.5">
-                    {pinterestStatus.data.rate_limit_retry_after_at ? (
-                      <p>
-                        Rate limited. Safe to retry after{' '}
-                        <span className="font-medium">
-                          {new Date(pinterestStatus.data.rate_limit_retry_after_at).toLocaleString()}
-                        </span>
-                      </p>
-                    ) : (
-                      <>
-                        {pinterestStatus.data.rate_limit_remaining != null && pinterestStatus.data.rate_limit_limit != null && (
-                          <p>
-                            <span className="font-medium">{pinterestStatus.data.rate_limit_remaining}</span>
-                            {' of '}
-                            <span className="font-medium">{pinterestStatus.data.rate_limit_limit}</span>
-                            {' requests remaining'}
-                          </p>
-                        )}
-                        {pinterestStatus.data.rate_limit_reset_at && (
-                          <p className="text-xs opacity-90">
-                            Resets at {new Date(pinterestStatus.data.rate_limit_reset_at).toLocaleString()}
-                          </p>
-                        )}
-                        {pinterestStatus.data.rate_limit_remaining == null && pinterestStatus.data.rate_limit_limit == null && !pinterestStatus.data.rate_limit_reset_at && (
-                          <p className="text-xs opacity-90">Unknown until next API request</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
+
+        {/* Rate limit statistics tile - always visible when status is loaded */}
+        <div className="card p-4 rounded-xl border border-border bg-card">
+          <h3 className="text-base font-semibold text-foreground mb-3">Pinterest API rate limit</h3>
+          {!pinterestStatus?.data ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : !isPinterestReady ? (
+            <p className="text-sm text-muted-foreground">Connect Pinterest in Settings to see rate limit statistics.</p>
+          ) : pinterestStatus.data.rate_limit_retry_after_at ? (
+            <div className="text-sm space-y-2">
+              <p className="font-medium text-amber-600 dark:text-amber-400">Currently rate limited</p>
+              <p className="text-muted-foreground">
+                Safe to retry after: <span className="font-medium text-foreground">{new Date(pinterestStatus.data.rate_limit_retry_after_at).toLocaleString()}</span>
+              </p>
+            </div>
+          ) : pinterestStatus.data.rate_limit_limit != null && pinterestStatus.data.rate_limit_remaining != null ? (
+            <div className="grid gap-2 sm:grid-cols-3 text-sm">
+              <div className="rounded-lg bg-muted/50 dark:bg-muted/30 p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Requests sent</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {Math.max(0, pinterestStatus.data.rate_limit_limit - pinterestStatus.data.rate_limit_remaining)}
+                  <span className="text-sm font-normal text-muted-foreground"> / {pinterestStatus.data.rate_limit_limit}</span>
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/50 dark:bg-muted/30 p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Requests remaining</p>
+                <p className="text-lg font-semibold text-foreground">{pinterestStatus.data.rate_limit_remaining}</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 dark:bg-muted/30 p-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Resets at</p>
+                <p className="text-sm font-medium text-foreground">
+                  {pinterestStatus.data.rate_limit_reset_at
+                    ? new Date(pinterestStatus.data.rate_limit_reset_at).toLocaleString()
+                    : '—'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Unknown until the next Pinterest API request is made.</p>
+          )}
+        </div>
 
         <div className="card p-4">
           <div className="flex flex-wrap items-center gap-4 mb-4">
@@ -414,10 +374,10 @@ export default function PinterestPostsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleRetry(row.id)}
-                              disabled={retryingId === row.id || !isPinterestReady}
+                              onClick={() => handlePostAgain(row.id)}
+                              disabled={postingId === row.id || !isPinterestReady}
                             >
-                              {retryingId === row.id ? (
+                              {postingId === row.id ? (
                                 <ArrowPathIcon className="w-4 h-4 animate-spin" />
                               ) : (
                                 'Post again'

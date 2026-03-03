@@ -296,6 +296,7 @@ export default function InstagramPostsPage() {
         handleClearSelection();
         queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
         queryClient.invalidateQueries({ queryKey: ['instagram-posted-product-numbers'] });
+        queryClient.invalidateQueries({ queryKey: ['instagram-status'] });
       } else {
         toast.error(response.error || 'Failed to post to Instagram');
       }
@@ -404,6 +405,7 @@ export default function InstagramPostsPage() {
     setSelectedProducts([]);
     queryClient.invalidateQueries({ queryKey: ['instagram-posts'] });
     queryClient.invalidateQueries({ queryKey: ['instagram-posted-product-numbers'] });
+    queryClient.invalidateQueries({ queryKey: ['instagram-status'] });
   };
 
   const getSelectedImageUrl = () => {
@@ -504,6 +506,114 @@ export default function InstagramPostsPage() {
             </div>
           )}
         </div>
+
+        {/* Instagram status & rate limit card */}
+        {instagramStatus?.data && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-xl border ${
+              isInstagramReady
+                ? 'bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800'
+                : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800'
+            }`}
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {isInstagramReady ? (
+                    <>
+                      <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      <div>
+                        <p className="font-semibold text-purple-900 dark:text-purple-100">Instagram Connected</p>
+                        <p className="text-sm text-purple-700 dark:text-purple-300 opacity-80">
+                          {instagramStatus.data.username
+                            ? `@${instagramStatus.data.username}`
+                            : 'Ready to post to Instagram'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">Instagram Not Configured</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">
+                          Configure in Settings to enable posting.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {!isInstagramReady && (
+                  <Button
+                    onClick={() => (window.location.href = '/settings?tab=instagram')}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Configure Instagram
+                  </Button>
+                )}
+              </div>
+              {isInstagramReady && (
+                <div className="pt-3 border-t border-purple-200 dark:border-purple-800">
+                  <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-3 uppercase tracking-wide">
+                    API rate limit
+                  </p>
+                  {instagramStatus.data.rate_limit_retry_after_at ? (
+                    <div className="flex flex-wrap gap-3">
+                      <div className="inline-flex items-center gap-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700 px-3 py-2">
+                        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">Rate limited</span>
+                        <span className="text-sm text-amber-700 dark:text-amber-300">
+                          Retry after {new Date(instagramStatus.data.rate_limit_retry_after_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ) : instagramStatus.data.rate_limit_limit != null && instagramStatus.data.rate_limit_remaining != null ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-lg border border-purple-200 dark:border-purple-700 bg-white/60 dark:bg-purple-950/40 p-3">
+                        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-0.5">Limit</p>
+                        <p className="text-lg font-bold text-purple-900 dark:text-purple-100 tabular-nums">
+                          {instagramStatus.data.rate_limit_limit}
+                        </p>
+                        <p className="text-xs text-muted">requests per window</p>
+                      </div>
+                      <div className="rounded-lg border border-green-200 dark:border-green-800 bg-white/60 dark:bg-green-950/40 p-3">
+                        <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-0.5">Remaining</p>
+                        <p className="text-lg font-bold text-green-900 dark:text-green-100 tabular-nums">
+                          {instagramStatus.data.rate_limit_remaining}
+                        </p>
+                        <p className="text-xs text-muted">available</p>
+                      </div>
+                      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white/60 dark:bg-blue-950/40 p-3">
+                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-0.5">Used</p>
+                        <p className="text-lg font-bold text-blue-900 dark:text-blue-100 tabular-nums">
+                          {Math.max(0, instagramStatus.data.rate_limit_limit - instagramStatus.data.rate_limit_remaining)}
+                        </p>
+                        <p className="text-xs text-muted">sent this window</p>
+                      </div>
+                      {instagramStatus.data.rate_limit_reset_at && (
+                        <div className="rounded-lg border border-purple-200 dark:border-purple-700 bg-white/60 dark:bg-purple-950/40 p-3">
+                          <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-0.5">Resets at</p>
+                          <p className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                            {new Date(instagramStatus.data.rate_limit_reset_at).toLocaleTimeString()}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {new Date(instagramStatus.data.rate_limit_reset_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-purple-700/80 dark:text-purple-300/80">
+                      Rate limit stats will appear after the next Instagram API request.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Product Search & Selection */}
