@@ -225,40 +225,76 @@ export default function PinterestPostsPage() {
                 : 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {isPinterestReady ? (
-                  <>
-                    <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    <div>
-                      <p className="font-semibold text-green-900 dark:text-green-100">Pinterest Connected</p>
-                      <p className="text-sm text-green-700 dark:text-green-300 opacity-80">
-                        {pinterestStatus.data.board_name
-                          ? `Board: ${pinterestStatus.data.board_name}`
-                          : 'Designs can be posted to Pinterest'}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <p className="font-semibold text-amber-900 dark:text-amber-100">Pinterest Not Configured</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">
-                        Configure in Settings to enable posting and bulk post.
-                      </p>
-                    </div>
-                  </>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isPinterestReady ? (
+                    <>
+                      <CheckCircleIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      <div>
+                        <p className="font-semibold text-green-900 dark:text-green-100">Pinterest Connected</p>
+                        <p className="text-sm text-green-700 dark:text-green-300 opacity-80">
+                          {pinterestStatus.data.board_name
+                            ? `Board: ${pinterestStatus.data.board_name}`
+                            : 'Designs can be posted to Pinterest'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <p className="font-semibold text-amber-900 dark:text-amber-100">Pinterest Not Configured</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 opacity-80">
+                          Configure in Settings to enable posting and bulk post.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {!isPinterestReady && (
+                  <Button
+                    onClick={() => (window.location.href = '/settings?tab=pinterest')}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Configure Pinterest
+                  </Button>
                 )}
               </div>
-              {!isPinterestReady && (
-                <Button
-                  onClick={() => (window.location.href = '/settings?tab=pinterest')}
-                  size="sm"
-                  variant="outline"
-                >
-                  Configure Pinterest
-                </Button>
+              {isPinterestReady && (pinterestStatus.data.rate_limit_remaining != null || pinterestStatus.data.rate_limit_limit != null || pinterestStatus.data.rate_limit_reset_at || pinterestStatus.data.rate_limit_retry_after_at) && (
+                <div className="pt-2 border-t border-green-200 dark:border-green-800">
+                  <p className="text-xs font-medium text-green-800 dark:text-green-200 mb-1">API rate limit</p>
+                  <div className="text-sm text-green-700 dark:text-green-300 space-y-0.5">
+                    {pinterestStatus.data.rate_limit_retry_after_at ? (
+                      <p>
+                        Rate limited. Safe to retry after{' '}
+                        <span className="font-medium">
+                          {new Date(pinterestStatus.data.rate_limit_retry_after_at).toLocaleString()}
+                        </span>
+                      </p>
+                    ) : (
+                      <>
+                        {pinterestStatus.data.rate_limit_remaining != null && pinterestStatus.data.rate_limit_limit != null && (
+                          <p>
+                            <span className="font-medium">{pinterestStatus.data.rate_limit_remaining}</span>
+                            {' of '}
+                            <span className="font-medium">{pinterestStatus.data.rate_limit_limit}</span>
+                            {' requests remaining'}
+                          </p>
+                        )}
+                        {pinterestStatus.data.rate_limit_reset_at && (
+                          <p className="text-xs opacity-90">
+                            Resets at {new Date(pinterestStatus.data.rate_limit_reset_at).toLocaleString()}
+                          </p>
+                        )}
+                        {pinterestStatus.data.rate_limit_remaining == null && pinterestStatus.data.rate_limit_limit == null && !pinterestStatus.data.rate_limit_reset_at && (
+                          <p className="text-xs opacity-90">Unknown until next API request</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </motion.div>

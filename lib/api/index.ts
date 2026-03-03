@@ -373,6 +373,10 @@ class RealAPI {
     last_successful_post: string | null;
     last_error: string | null;
     last_error_at: string | null;
+    rate_limit_remaining: number | null;
+    rate_limit_limit: number | null;
+    rate_limit_reset_at: string | null;
+    rate_limit_retry_after_at: string | null;
   }>> {
     return API.pinterest.getStatus();
   }
