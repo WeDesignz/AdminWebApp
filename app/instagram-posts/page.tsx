@@ -1446,7 +1446,7 @@ export default function InstagramPostsPage() {
               <div className="flex items-center justify-center py-16">
                 <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
               </div>
-            ) : !postedPostsData?.data?.data?.length ? (
+            ) : !(Array.isArray(postedPostsData?.data?.data) && postedPostsData.data.data.length > 0) ? (
               <div className="text-center py-16">
                 <CheckCircleIcon className="w-16 h-16 mx-auto text-muted mb-4 opacity-50" />
                 <p className="text-muted">No posts in this date range.</p>
@@ -1455,7 +1455,7 @@ export default function InstagramPostsPage() {
             ) : (
               <>
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
-                  {postedPostsData.data.data.map((post: {
+                  {(postedPostsData.data.data as any[]).map((post: {
                     id: number;
                     product_title: string;
                     product_thumbnail_url?: string | null;
@@ -1513,10 +1513,10 @@ export default function InstagramPostsPage() {
                     </motion.div>
                   ))}
                 </div>
-                {postedPostsData.data.pagination && postedPostsData.data.pagination.total_pages > 1 && (
+                {postedPostsData.data.pagination && (postedPostsData.data.pagination.totalPages ?? postedPostsData.data.pagination.total_pages) > 1 && (
                   <div className="flex items-center justify-between pt-4 border-t border-border">
                     <p className="text-sm text-muted">
-                      Showing page {postedPage} of {postedPostsData.data.pagination.total_pages} ({postedPostsData.data.pagination.total} total)
+                      Showing page {postedPage} of {postedPostsData.data.pagination.totalPages ?? postedPostsData.data.pagination.total_pages} ({postedPostsData.data.pagination.total} total)
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -1531,7 +1531,7 @@ export default function InstagramPostsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setPostedPage((p) => p + 1)}
-                        disabled={postedPage >= postedPostsData.data.pagination.total_pages}
+                        disabled={postedPage >= (postedPostsData.data.pagination.totalPages ?? postedPostsData.data.pagination.total_pages)}
                       >
                         Next
                       </Button>

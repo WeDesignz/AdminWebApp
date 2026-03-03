@@ -1059,7 +1059,8 @@ export const InstagramAPI = {
   },
 
   /**
-   * Get Instagram posts history. Optional from_date/to_date (YYYY-MM-DD) filter by posted_at.
+   * Get Instagram posts history with pagination. Optional from_date/to_date (YYYY-MM-DD) filter by posted_at.
+   * Uses getPaginated so response preserves both data and pagination (apiClient.get would strip pagination).
    */
   async getInstagramPosts(params?: {
     page?: number;
@@ -1067,15 +1068,19 @@ export const InstagramAPI = {
     status?: string;
     from_date?: string;
     to_date?: string;
-  }): Promise<ApiResponse<any>> {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', String(params.page));
-    if (params?.limit) queryParams.append('limit', String(params.limit));
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.from_date) queryParams.append('from_date', params.from_date);
-    if (params?.to_date) queryParams.append('to_date', params.to_date);
-    const query = queryParams.toString();
-    return apiClient.get(`api/common/instagram/posts/${query ? `?${query}` : ''}`);
+  }): Promise<ApiResponse<{ data: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 20;
+    const queryParams: Record<string, string | number | boolean> = {};
+    if (params?.status) queryParams.status = params.status;
+    if (params?.from_date) queryParams.from_date = params.from_date;
+    if (params?.to_date) queryParams.to_date = params.to_date;
+    return apiClient.getPaginated<any>(
+      'api/common/instagram/posts/',
+      page,
+      limit,
+      queryParams
+    );
   },
 
   /**
