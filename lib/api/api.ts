@@ -1059,17 +1059,21 @@ export const InstagramAPI = {
   },
 
   /**
-   * Get Instagram posts history
+   * Get Instagram posts history. Optional from_date/to_date (YYYY-MM-DD) filter by posted_at.
    */
   async getInstagramPosts(params?: {
     page?: number;
     limit?: number;
     status?: string;
+    from_date?: string;
+    to_date?: string;
   }): Promise<ApiResponse<any>> {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', String(params.page));
     if (params?.limit) queryParams.append('limit', String(params.limit));
     if (params?.status) queryParams.append('status', params.status);
+    if (params?.from_date) queryParams.append('from_date', params.from_date);
+    if (params?.to_date) queryParams.append('to_date', params.to_date);
     const query = queryParams.toString();
     return apiClient.get(`api/common/instagram/posts/${query ? `?${query}` : ''}`);
   },
@@ -2258,6 +2262,54 @@ export const PeriodicTasksAPI = {
 };
 
 /**
+ * Management Commands API (Django management commands from project apps)
+ */
+export interface ManagementCommandArg {
+  name: string;
+  dest?: string;
+  help: string;
+  optional: boolean;
+  default: unknown;
+}
+
+export interface ManagementCommand {
+  name: string;
+  app: string;
+  help: string;
+  arguments: ManagementCommandArg[];
+}
+
+export interface ManagementCommandsListResponse {
+  commands: ManagementCommand[];
+}
+
+export interface RunManagementCommandResponse {
+  success: boolean;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+}
+
+export const ManagementCommandsAPI = {
+  async getList(): Promise<ApiResponse<ManagementCommandsListResponse>> {
+    const res = await apiClient.get<{ commands: ManagementCommand[] }>('api/coreadmin/management-commands/');
+    if (res.success && res.data) {
+      return { success: true, data: { commands: res.data.commands } };
+    }
+    return res as ApiResponse<ManagementCommandsListResponse>;
+  },
+  async run(
+    commandName: string,
+    body?: { args?: string[]; kwargs?: Record<string, unknown> }
+  ): Promise<ApiResponse<RunManagementCommandResponse>> {
+    return apiClient.post<RunManagementCommandResponse>(
+      `api/coreadmin/management-commands/${encodeURIComponent(commandName)}/run/`,
+      { args: body?.args ?? [], kwargs: body?.kwargs ?? {} }
+    );
+  },
+};
+
+/**
  * Categories API
  */
 export const CategoriesAPI = {
@@ -3208,6 +3260,7 @@ export const API = {
   activityLogs: ActivityLogsAPI,
   scheduledTasks: ScheduledTasksAPI,
   periodicTasks: PeriodicTasksAPI,
+  managementCommands: ManagementCommandsAPI,
   categories: CategoriesAPI,
   settings: SettingsAPI,
   adminUsers: AdminUsersAPI,

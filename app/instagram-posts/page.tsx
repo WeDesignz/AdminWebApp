@@ -16,6 +16,8 @@ import {
   SparklesIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
+  CalendarDaysIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,6 +39,16 @@ interface SelectedProduct {
 const PAGE_SIZE_STORAGE_KEY = 'instagram-posts-pageSize';
 const INSTAGRAM_FILTER_STORAGE_KEY = 'instagram-posts-instagramFilter';
 const VALID_PAGE_SIZES = [20, 50, 100, 200, 500];
+
+function getDefaultPostedFromDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function getDefaultPostedToDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function getStoredPageSize(): number {
   if (typeof window === 'undefined') return 20;
@@ -60,6 +72,7 @@ function getStoredInstagramFilter(): 'all' | 'posted' | 'not_posted' {
 }
 
 export default function InstagramPostsPage() {
+  const [activeTab, setActiveTab] = useState<'create' | 'posted'>('create');
   const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single');
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
@@ -71,6 +84,9 @@ export default function InstagramPostsPage() {
   const [pageSize, setPageSize] = useState(getStoredPageSize);
   const [statusFilter, setStatusFilter] = useState('approved');
   const [instagramFilter, setInstagramFilter] = useState<'all' | 'posted' | 'not_posted'>(getStoredInstagramFilter);
+  const [postedFromDate, setPostedFromDate] = useState(getDefaultPostedFromDate);
+  const [postedToDate, setPostedToDate] = useState(getDefaultPostedToDate);
+  const [postedPage, setPostedPage] = useState(1);
   const queryClient = useQueryClient();
 
   // Bulk upload state
@@ -131,6 +147,20 @@ export default function InstagramPostsPage() {
     if (!instagramPostsData || !Array.isArray(instagramPostsData)) return new Set<string>();
     return new Set(instagramPostsData);
   }, [instagramPostsData]);
+
+  // Posted tab: fetch success posts in date range, sorted by posted_at (recent first)
+  const { data: postedPostsData, isLoading: isLoadingPostedPosts } = useQuery({
+    queryKey: ['instagram-posts', 'posted', postedFromDate, postedToDate, postedPage],
+    queryFn: () =>
+      API.getInstagramPosts({
+        status: 'success',
+        from_date: postedFromDate,
+        to_date: postedToDate,
+        page: postedPage,
+        limit: 20,
+      }),
+    enabled: isReady && activeTab === 'posted',
+  });
 
   const handleSelectProduct = (product: any) => {
     // Extract media files - check both files and media_files (raw API response)
@@ -615,6 +645,34 @@ export default function InstagramPostsPage() {
           </motion.div>
         )}
 
+        {/* Create | Posted tabs */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab('create')}
+            className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'create'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('posted')}
+            className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'posted'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <CalendarDaysIcon className="w-4 h-4" />
+            Posted
+          </button>
+        </div>
+
+        {activeTab === 'create' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Product Search & Selection */}
           <div className="lg:col-span-2 space-y-4">
@@ -1341,6 +1399,149 @@ export default function InstagramPostsPage() {
             )}
           </div>
         </div>
+        )}
+
+        {activeTab === 'posted' && (
+          <div className="card p-6 space-y-6">
+            <h2 className="text-xl font-bold">Recently posted</h2>
+            <p className="text-muted text-sm">Posts successfully published to Instagram, sorted by post date (recent first).</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-foreground">From</label>
+                <input
+                  type="date"
+                  value={postedFromDate}
+                  onChange={(e) => {
+                    setPostedFromDate(e.target.value);
+                    setPostedPage(1);
+                  }}
+                  className="input-field h-9 px-3 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-foreground">To</label>
+                <input
+                  type="date"
+                  value={postedToDate}
+                  onChange={(e) => {
+                    setPostedToDate(e.target.value);
+                    setPostedPage(1);
+                  }}
+                  className="input-field h-9 px-3 rounded-lg text-sm"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPostedFromDate(getDefaultPostedFromDate());
+                  setPostedToDate(getDefaultPostedToDate());
+                  setPostedPage(1);
+                }}
+              >
+                Last 7 days
+              </Button>
+            </div>
+            {isLoadingPostedPosts ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : !postedPostsData?.data?.data?.length ? (
+              <div className="text-center py-16">
+                <CheckCircleIcon className="w-16 h-16 mx-auto text-muted mb-4 opacity-50" />
+                <p className="text-muted">No posts in this date range.</p>
+                <p className="text-sm text-muted mt-1">Adjust the from/to dates or post from the Create tab.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin">
+                  {postedPostsData.data.data.map((post: {
+                    id: number;
+                    product_title: string;
+                    product_thumbnail_url?: string | null;
+                    post_type: string;
+                    post_url: string | null;
+                    posted_at: string | null;
+                    product_number?: string | null;
+                  }) => (
+                    <motion.div
+                      key={post.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+                        {post.product_thumbnail_url ? (
+                          <img
+                            src={post.product_thumbnail_url}
+                            alt={post.product_title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <PhotoIcon className="w-8 h-8 text-muted" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{post.product_title}</p>
+                        {post.product_number && (
+                          <p className="text-xs text-muted truncate">{post.product_number}</p>
+                        )}
+                        <p className="text-xs text-muted mt-0.5">
+                          {post.posted_at
+                            ? new Date(post.posted_at).toLocaleString(undefined, {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
+                            : '—'}
+                          {' · '}
+                          <span className="capitalize">{post.post_type}</span>
+                        </p>
+                      </div>
+                      {post.post_url && (
+                        <a
+                          href={post.post_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          title="Open on Instagram"
+                        >
+                          <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+                        </a>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+                {postedPostsData.data.pagination && postedPostsData.data.pagination.total_pages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <p className="text-sm text-muted">
+                      Showing page {postedPage} of {postedPostsData.data.pagination.total_pages} ({postedPostsData.data.pagination.total} total)
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPostedPage((p) => Math.max(1, p - 1))}
+                        disabled={postedPage <= 1}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPostedPage((p) => p + 1)}
+                        disabled={postedPage >= postedPostsData.data.pagination.total_pages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

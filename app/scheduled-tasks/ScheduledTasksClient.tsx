@@ -7,6 +7,7 @@ import type {
   ScheduledTaskListItem,
   ScheduledTaskDetail,
   PeriodicTaskListItem,
+  ManagementCommand,
 } from '@/lib/api/api';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -24,6 +25,9 @@ import {
   ListBulletIcon,
   CubeIcon,
   QueueListIcon,
+  CommandLineIcon,
+  PlayIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,7 +43,7 @@ const QUEUE_PREVIEW_LIMIT_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 10000, label: 'All' },
 ];
 const MIN_COL_WIDTH = 64;
-type TabId = 'history' | 'periodic' | 'all' | 'queue';
+type TabId = 'history' | 'periodic' | 'all' | 'queue' | 'commands';
 
 const HISTORY_DEFAULT_WIDTHS: Record<string, number> = {
   select: 44,
@@ -128,6 +132,10 @@ export default function ScheduledTasksClient() {
   const [queuePage, setQueuePage] = useState(1);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [commandsFilter, setCommandsFilter] = useState('');
+  const [selectedCommandDetail, setSelectedCommandDetail] = useState<ManagementCommand | null>(null);
+  const [runResult, setRunResult] = useState<{ command: string; success: boolean; stdout: string; stderr: string; error?: string } | null>(null);
+  const [runningCommandName, setRunningCommandName] = useState<string | null>(null);
 
   const [historyWidths, , handleHistoryResize] = useResizableColumns(HISTORY_DEFAULT_WIDTHS);
   const [periodicWidths, , handlePeriodicResize] = useResizableColumns(PERIODIC_DEFAULT_WIDTHS);
@@ -202,6 +210,12 @@ export default function ScheduledTasksClient() {
     enabled: hasRedisQueue && activeTab === 'queue',
   });
 
+  const { data: managementCommandsData, isLoading: managementCommandsLoading } = useQuery({
+    queryKey: ['management-commands'],
+    queryFn: () => API.managementCommands.getList(),
+    enabled: activeTab === 'commands',
+  });
+
   const overview = overviewData?.data;
   const tasks = listData?.data?.data ?? [];
   const pagination = listData?.data?.pagination;
@@ -219,6 +233,42 @@ export default function ScheduledTasksClient() {
   const selectedTaskFromList = selectedRegisteredTaskName
     ? registeredTasks.find((t) => t.name === selectedRegisteredTaskName)
     : null;
+
+  const managementCommandsList: ManagementCommand[] = managementCommandsData?.data?.commands ?? [];
+  const filteredCommands = commandsFilter.trim()
+    ? managementCommandsList.filter(
+        (c) =>
+          c.name.toLowerCase().includes(commandsFilter.trim().toLowerCase()) ||
+          c.app.toLowerCase().includes(commandsFilter.trim().toLowerCase()) ||
+          (c.help && c.help.toLowerCase().includes(commandsFilter.trim().toLowerCase()))
+      )
+    : managementCommandsList;
+
+  const handleRunCommand = async (cmd: ManagementCommand) => {
+    setRunningCommandName(cmd.name);
+    setRunResult(null);
+    try {
+      const res = await API.managementCommands.run(cmd.name);
+      const data = res.data;
+      setRunResult({
+        command: cmd.name,
+        success: data?.success ?? false,
+        stdout: data?.stdout ?? '',
+        stderr: data?.stderr ?? '',
+        error: data?.error,
+      });
+      if (data?.success) {
+        toast.success(`Command "${cmd.name}" completed.`);
+      } else {
+        toast.error(data?.error || 'Command failed.');
+      }
+    } catch {
+      toast.error('Failed to run command');
+      setRunResult({ command: cmd.name, success: false, stdout: '', stderr: '', error: 'Request failed' });
+    } finally {
+      setRunningCommandName(null);
+    }
+  };
 
   const handleRevoke = async (taskId: string) => {
     setRevokingId(taskId);
@@ -422,6 +472,18 @@ export default function ScheduledTasksClient() {
                 Broker queue (Redis)
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => { setActiveTab('commands'); setPage(1); }}
+              className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                activeTab === 'commands'
+                  ? 'border-primary text-primary bg-primary/5'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <CommandLineIcon className="w-4 h-4" />
+              Management commands
+            </button>
           </nav>
         </div>
 
@@ -868,6 +930,218 @@ export default function ScheduledTasksClient() {
                 </div>
               )}
             </div>
+          </>
+        )}
+
+        {/* Tab content: Management commands */}
+        {activeTab === 'commands' && (
+          <>
+            <div className="rounded-xl border border-border/50 bg-card p-4">
+              <p className="text-sm text-muted-foreground mb-3">
+                Django management commands from project apps. Each command runs on the server; use Run to execute with default options. Click the info icon for full description and arguments.
+              </p>
+              <input
+                type="text"
+                placeholder="Search by name, app, or description..."
+                value={commandsFilter}
+                onChange={(e) => setCommandsFilter(e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[280px]"
+                aria-label="Search management commands"
+              />
+            </div>
+            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+              {managementCommandsLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading management commands...</div>
+              ) : filteredCommands.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  {managementCommandsList.length === 0
+                    ? 'No management commands found.'
+                    : 'No commands match your search.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 border-b border-border/50">
+                      <tr className="bg-background">
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">Command</th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">App</th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">Description</th>
+                        <th className="text-left py-3 px-4 font-medium text-foreground bg-background">Arguments</th>
+                        <th className="text-right py-3 px-4 font-medium text-foreground bg-background w-32">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCommands.map((cmd) => {
+                        const desc = cmd.help || '';
+                        const truncated = desc.length > 120 ? desc.slice(0, 120).trim() + '…' : desc;
+                        const argsSummary =
+                          cmd.arguments.length > 0
+                            ? cmd.arguments.map((a) => a.name).join(', ')
+                            : '—';
+                        return (
+                          <tr key={cmd.name} className="border-b border-border/30 hover:bg-muted/20">
+                            <td className="py-2 px-4 font-mono text-xs text-foreground">{cmd.name}</td>
+                            <td className="py-2 px-4 text-muted-foreground text-xs">{cmd.app}</td>
+                            <td className="py-2 px-4 text-muted-foreground text-xs max-w-md" title={desc || undefined}>
+                              {truncated || '—'}
+                            </td>
+                            <td className="py-2 px-4 text-muted-foreground text-xs font-mono max-w-[200px] truncate" title={argsSummary}>
+                              {argsSummary}
+                            </td>
+                            <td className="py-2 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedCommandDetail(cmd)}
+                                  title="View full description and arguments"
+                                  aria-label="Command details"
+                                >
+                                  <InformationCircleIcon className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleRunCommand(cmd)}
+                                  disabled={runningCommandName !== null}
+                                  title="Run command with default options"
+                                  aria-label="Run command"
+                                >
+                                  {runningCommandName === cmd.name ? (
+                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <PlayIcon className="w-4 h-4" />
+                                  )}
+                                  <span className="ml-1">Run</span>
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {!managementCommandsLoading && managementCommandsList.length > 0 && (
+                <div className="py-2 px-4 border-t border-border/50 text-sm text-muted-foreground">
+                  {filteredCommands.length === managementCommandsList.length
+                    ? `${managementCommandsList.length} command(s)`
+                    : `${filteredCommands.length} of ${managementCommandsList.length} command(s) (filtered)`}
+                </div>
+              )}
+            </div>
+
+            {/* Command detail modal */}
+            <AnimatePresence>
+              {selectedCommandDetail && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                  onClick={() => setSelectedCommandDetail(null)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="rounded-xl border border-border bg-card shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-4 border-b border-border flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground font-mono">{selectedCommandDetail.name}</h2>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedCommandDetail(null)} aria-label="Close">
+                        <XMarkIcon className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <div className="p-4 overflow-y-auto space-y-4">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">App</p>
+                        <p className="text-sm text-foreground">{selectedCommandDetail.app}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Description</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{selectedCommandDetail.help || '—'}</p>
+                      </div>
+                      {selectedCommandDetail.arguments.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Arguments</p>
+                          <ul className="space-y-2 text-sm">
+                            {selectedCommandDetail.arguments.map((arg) => (
+                              <li key={arg.name} className="border-b border-border/50 pb-2 last:border-0">
+                                <span className="font-mono text-foreground">{arg.name}</span>
+                                {arg.optional && <span className="text-muted-foreground ml-1">(optional)</span>}
+                                {arg.default != null && (
+                                  <span className="text-muted-foreground ml-1">default: {String(arg.default)}</span>
+                                )}
+                                {arg.help && <p className="text-muted-foreground mt-0.5">{arg.help}</p>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Run result modal */}
+            <AnimatePresence>
+              {runResult && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                  onClick={() => setRunResult(null)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="rounded-xl border border-border bg-card shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-4 border-b border-border flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground">
+                        Run: {runResult.command} {runResult.success ? '(success)' : '(failed)'}
+                      </h2>
+                      <Button variant="ghost" size="sm" onClick={() => setRunResult(null)} aria-label="Close">
+                        <XMarkIcon className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <div className="p-4 overflow-y-auto space-y-3 text-sm">
+                      {runResult.error && (
+                        <div>
+                          <p className="text-xs font-medium text-destructive uppercase tracking-wider mb-1">Error</p>
+                          <pre className="bg-destructive/10 text-destructive p-2 rounded font-mono text-xs whitespace-pre-wrap break-all">
+                            {runResult.error}
+                          </pre>
+                        </div>
+                      )}
+                      {runResult.stdout && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Output</p>
+                          <pre className="bg-muted/30 p-2 rounded font-mono text-xs whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
+                            {runResult.stdout}
+                          </pre>
+                        </div>
+                      )}
+                      {runResult.stderr && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Stderr</p>
+                          <pre className="bg-muted/30 p-2 rounded font-mono text-xs whitespace-pre-wrap break-all max-h-40 overflow-y-auto text-amber-600 dark:text-amber-400">
+                            {runResult.stderr}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
 
