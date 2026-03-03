@@ -19,7 +19,7 @@ import {
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type StatusFilter = 'all' | 'success' | 'failed' | 'pending' | 'retrying';
+type StatusFilter = 'all' | 'success' | 'failed' | 'pending';
 
 interface PinterestPostRow {
   id: number;
@@ -30,10 +30,8 @@ interface PinterestPostRow {
   error_message: string | null;
   pin_url: string | null;
   pins_data: Record<string, { id?: string; url?: string }>;
-  retry_count: number;
   created_at: string;
   posted_at: string | null;
-  last_retry_at: string | null;
 }
 
 export default function PinterestPostsPage() {
@@ -113,7 +111,6 @@ export default function PinterestPostsPage() {
     { value: 'success', label: 'Success' },
     { value: 'failed', label: 'Failed' },
     { value: 'pending', label: 'Pending' },
-    { value: 'retrying', label: 'Retrying' },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -130,13 +127,6 @@ export default function PinterestPostsPage() {
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/15 text-destructive">
             <XCircleIcon className="w-3.5 h-3.5" />
             Failed
-          </span>
-        );
-      case 'retrying':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400">
-            <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-            Retrying
           </span>
         );
       default:
@@ -502,11 +492,6 @@ export default function PinterestPostsPage() {
               <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4 text-sm text-destructive dark:text-destructive/95 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
                 {detailsPost.error_message || 'No error message stored.'}
               </div>
-              {detailsPost.last_retry_at && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  Last retry: {new Date(detailsPost.last_retry_at).toLocaleString()} (attempt #{detailsPost.retry_count})
-                </p>
-              )}
             </motion.div>
           </motion.div>
         )}

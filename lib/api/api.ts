@@ -1203,8 +1203,7 @@ export const PinterestAPI = {
     success: number;
     failed: number;
     pending: number;
-    retrying: number;
-    bulk_post_eligible: number;
+    bulk_post_eligible?: number;
   }>> {
     return apiClient.get('api/pinterest/posts/stats/');
   },
@@ -1213,7 +1212,7 @@ export const PinterestAPI = {
    * Get Pinterest posts list (designs with Pinterest status)
    */
   async getPosts(params?: {
-    status?: 'all' | 'success' | 'failed' | 'pending' | 'retrying';
+    status?: 'all' | 'success' | 'failed' | 'pending';
     page?: number;
     limit?: number;
   }): Promise<ApiResponse<{
@@ -1226,10 +1225,8 @@ export const PinterestAPI = {
       error_message: string | null;
       pin_url: string | null;
       pins_data: Record<string, { id?: string; url?: string }>;
-      retry_count: number;
       created_at: string;
       posted_at: string | null;
-      last_retry_at: string | null;
     }>;
     pagination: {
       page: number;
@@ -2147,12 +2144,16 @@ export const ScheduledTasksAPI = {
     page_size?: number;
     status?: string;
     task_name?: string;
+    from_date?: string;
+    to_date?: string;
   }): Promise<ApiResponse<PaginatedResponse<ScheduledTaskListItem>>> {
     const query: Record<string, string | number> = {};
     if (params?.page) query.page = params.page;
     if (params?.page_size) query.page_size = params.page_size;
     if (params?.status) query.status = params.status;
     if (params?.task_name) query.task_name = params.task_name;
+    if (params?.from_date) query.from_date = params.from_date;
+    if (params?.to_date) query.to_date = params.to_date;
     return apiClient.getPaginated<ScheduledTaskListItem>(
       'api/coreadmin/scheduled-tasks/',
       params?.page || 1,
