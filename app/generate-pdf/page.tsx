@@ -47,8 +47,15 @@ export default function GeneratePDFPage() {
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [deletingJobId, setDeletingJobId] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const isSuperAdmin = hasRole('Super Admin');
+
+  // Avoid hydration mismatch: auth state (isSuperAdmin) can differ between server and client.
+  // Render a consistent shell until after mount, then show role-based content.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch PDF clients
   const { data: clientsResponse, isLoading: clientsLoading } = useQuery({
@@ -215,10 +222,24 @@ export default function GeneratePDFPage() {
     onSettled: () => setDeletingJobId(null),
   });
 
+  // Before mount: render a consistent shell to avoid server/client hydration mismatch
+  // (auth state may differ between server and client).
+  if (!mounted) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="h-8 w-56 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!isSuperAdmin) {
     return (
       <DashboardLayout>
-        <div className="p-6">
+        <div className="p-6 space-y-6">
           <h1 className="text-2xl font-semibold mb-2">Generate PDF</h1>
           <p className="text-muted-foreground">Access denied. This page is restricted to Super Admins only.</p>
         </div>
