@@ -1077,6 +1077,8 @@ class MockAPI {
       minimumRequiredDesigns: 50,
       freeMockPdfDownloadsNoPlanPerMonth: 999,
       paidPdfDesignsOptions: [20, 50, 100],
+      freeDesignsPerAccountOneTime: 10,
+      freeCustomOrdersPerAccount: 2,
       maintenanceMode: false,
       heroSectionDesigns: [],
       featuredDesigns: ['design_1', 'design_2', 'design_3'],
@@ -1109,6 +1111,8 @@ class MockAPI {
       minimumRequiredDesigns: 50,
       freeMockPdfDownloadsNoPlanPerMonth: (data as any)?.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
       paidPdfDesignsOptions: (data as any)?.paidPdfDesignsOptions ?? [20, 50, 100],
+      freeDesignsPerAccountOneTime: (data as any)?.freeDesignsPerAccountOneTime ?? 10,
+      freeCustomOrdersPerAccount: (data as any)?.freeCustomOrdersPerAccount ?? 2,
       maintenanceMode: false,
       landingPageStats: {
         totalClients: 5000,
