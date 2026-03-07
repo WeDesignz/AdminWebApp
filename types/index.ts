@@ -504,6 +504,8 @@ export interface SystemConfig {
   minimumRequiredDesigns: number; // Minimum required designs to onboard (default 50)
   freeMockPdfDownloadsNoPlanPerMonth: number; // Free mock PDF downloads per month for users without a plan (use high value for unlimited)
   paidPdfDesignsOptions?: number[]; // PDF download design count options (e.g. [20, 50, 100]). First value = free PDF size. Managed via .env or Admin.
+  freeDesignsPerAccountOneTime: number; // One-time free design downloads per account (e.g. 10). If admin increases to 12, users who used 10 get 2 more.
+  freeCustomOrdersPerAccount: number; // Free custom orders per account (e.g. 2).
   maintenanceMode: boolean;
   // Landing Page Controls
   heroSectionDesigns: string[];      // Array of design IDs for Hero Section CardSwap

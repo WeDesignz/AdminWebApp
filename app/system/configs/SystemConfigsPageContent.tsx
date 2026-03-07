@@ -86,6 +86,8 @@ export default function SystemConfigsPageContent() {
     minimumRequiredDesigns: 50,
     freeMockPdfDownloadsNoPlanPerMonth: 999,
     paidPdfDesignsOptions: [20, 50, 100],
+    freeDesignsPerAccountOneTime: 10,
+    freeCustomOrdersPerAccount: 2,
     heroSectionDesigns: [],
     featuredDesigns: [],
     domeGalleryDesigns: [],
@@ -132,6 +134,8 @@ export default function SystemConfigsPageContent() {
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
         paidPdfDesignsOptions: configData.data.paidPdfDesignsOptions ?? [20, 50, 100],
+        freeDesignsPerAccountOneTime: configData.data.freeDesignsPerAccountOneTime ?? 10,
+        freeCustomOrdersPerAccount: configData.data.freeCustomOrdersPerAccount ?? 2,
         heroSectionDesigns,
         featuredDesigns,
         domeGalleryDesigns,
@@ -154,6 +158,8 @@ export default function SystemConfigsPageContent() {
         minimumRequiredDesigns: configData.data.minimumRequiredDesigns,
         freeMockPdfDownloadsNoPlanPerMonth: configData.data.freeMockPdfDownloadsNoPlanPerMonth ?? 999,
         paidPdfDesignsOptions: configData.data.paidPdfDesignsOptions ?? [20, 50, 100],
+        freeDesignsPerAccountOneTime: configData.data.freeDesignsPerAccountOneTime ?? 10,
+        freeCustomOrdersPerAccount: configData.data.freeCustomOrdersPerAccount ?? 2,
         heroSectionDesigns: normalizeIds(configData.data.heroSectionDesigns || []),
         featuredDesigns: normalizeIds(configData.data.featuredDesigns || []),
         domeGalleryDesigns: normalizeIds(configData.data.domeGalleryDesigns || []),
@@ -296,6 +302,8 @@ export default function SystemConfigsPageContent() {
       paidPdfDesignsOptions: formData.paidPdfDesignsOptions && formData.paidPdfDesignsOptions.length > 0
         ? formData.paidPdfDesignsOptions
         : [20, 50, 100],
+      freeDesignsPerAccountOneTime: formData.freeDesignsPerAccountOneTime !== undefined ? formData.freeDesignsPerAccountOneTime : 10,
+      freeCustomOrdersPerAccount: formData.freeCustomOrdersPerAccount !== undefined ? formData.freeCustomOrdersPerAccount : 2,
     };
 
     setIsSaving(true);
@@ -906,6 +914,64 @@ export default function SystemConfigsPageContent() {
                   placeholder="20, 50, 100"
                 />
                 <p className="text-xs text-muted mt-1">Comma-separated design counts for PDF downloads (e.g. 20, 50, 100). First value is used for free PDFs. Also configurable via .env PAID_PDF_DESIGNS_OPTIONS.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Free Designs (One-Time) per Account <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.freeDesignsPerAccountOneTime ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, freeDesignsPerAccountOneTime: undefined });
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setFormData({ ...formData, freeDesignsPerAccountOneTime: numValue });
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    if (formData.freeDesignsPerAccountOneTime === undefined || formData.freeDesignsPerAccountOneTime === null) {
+                      setFormData({ ...formData, freeDesignsPerAccountOneTime: 10 });
+                    }
+                  }}
+                  placeholder="10"
+                />
+                <p className="text-xs text-muted mt-1">Number of free design downloads per account, once only. If you increase (e.g. to 12), users who already used 10 get 2 more. Also .env FREE_DESIGNS_PER_ACCOUNT_ONE_TIME.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Free Custom Orders per Account <span className="text-error">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.freeCustomOrdersPerAccount ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({ ...formData, freeCustomOrdersPerAccount: undefined });
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setFormData({ ...formData, freeCustomOrdersPerAccount: numValue });
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    if (formData.freeCustomOrdersPerAccount === undefined || formData.freeCustomOrdersPerAccount === null) {
+                      setFormData({ ...formData, freeCustomOrdersPerAccount: 2 });
+                    }
+                  }}
+                  placeholder="2"
+                />
+                <p className="text-xs text-muted mt-1">Number of free custom orders per account. Also .env FREE_CUSTOM_ORDERS_PER_ACCOUNT.</p>
               </div>
             </div>
           </div>
