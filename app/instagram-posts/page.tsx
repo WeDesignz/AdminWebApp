@@ -129,6 +129,26 @@ export default function InstagramPostsPage() {
     enabled: isReady,
     refetchInterval: 60000,
   });
+  const statusData = instagramStatus?.data;
+  const lastPostCreatedAt = statusData?.last_post_created_at;
+  const minDelaySeconds = statusData?.min_delay_seconds ?? 10;
+  const postsToday = statusData?.posts_today ?? 0;
+  const postsTodayLimit = statusData?.posts_today_limit ?? 25;
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  useEffect(() => {
+    if (!lastPostCreatedAt || !minDelaySeconds) {
+      setCooldownSeconds(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = (Date.now() - new Date(lastPostCreatedAt).getTime()) / 1000;
+      const remaining = Math.ceil(minDelaySeconds - elapsed);
+      setCooldownSeconds(remaining > 0 ? remaining : 0);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lastPostCreatedAt, minDelaySeconds]);
 
   // Product numbers that have at least one success in instagram_post table = posted (any 1 success counts)
   const { data: instagramPostsData } = useQuery({
@@ -147,6 +167,13 @@ export default function InstagramPostsPage() {
     if (!instagramPostsData || !Array.isArray(instagramPostsData)) return new Set<string>();
     return new Set(instagramPostsData);
   }, [instagramPostsData]);
+
+  // Check selected product image size for Meta 8 MB limit (only when connected and product selected)
+  const { data: imageCheck } = useQuery({
+    queryKey: ['instagram-check-image', selectedProduct?.id, selectedProduct?.selectedMediaType],
+    queryFn: () => API.getInstagramCheckImage(selectedProduct!.id, selectedProduct!.selectedMediaType),
+    enabled: isReady && !!selectedProduct && !!instagramStatus?.data?.is_configured,
+  });
 
   // Posted tab: fetch success posts in date range, sorted by posted_at (recent first)
   const { data: postedPostsData, isLoading: isLoadingPostedPosts } = useQuery({
@@ -329,9 +356,11 @@ export default function InstagramPostsPage() {
         queryClient.invalidateQueries({ queryKey: ['instagram-status'] });
       } else {
         toast.error(response.error || 'Failed to post to Instagram');
+        queryClient.invalidateQueries({ queryKey: ['instagram-status'] });
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred while posting to Instagram');
+      queryClient.invalidateQueries({ queryKey: ['instagram-status'] });
     } finally {
       setIsPosting(false);
     }
@@ -586,10 +615,32 @@ export default function InstagramPostsPage() {
                 )}
               </div>
               {isInstagramReady && (
-                <div className="pt-3 border-t border-purple-200 dark:border-purple-800">
-                  <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-3 uppercase tracking-wide">
-                    API rate limit
-                  </p>
+                <div className="pt-3 border-t border-purple-200 dark:border-purple-800 space-y-4">
+                  {/* Meta rate limits */}
+                  <div>
+                    <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-2 uppercase tracking-wide">
+                      Meta limits
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="inline-flex items-center gap-2 rounded-lg bg-white/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-700 px-3 py-2">
+                        <span className="text-sm font-medium text-purple-800 dark:text-purple-200">Posts today</span>
+                        <span className={`text-sm font-bold tabular-nums ${postsToday >= postsTodayLimit ? 'text-red-600 dark:text-red-400' : 'text-purple-900 dark:text-purple-100'}`}>
+                          {postsToday}/{postsTodayLimit}
+                        </span>
+                      </div>
+                      {cooldownSeconds > 0 && (
+                        <div className="inline-flex items-center gap-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700 px-3 py-2">
+                          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">Next post in</span>
+                          <span className="text-sm font-bold tabular-nums text-amber-900 dark:text-amber-100">{cooldownSeconds}s</span>
+                        </div>
+                      )}
+                      <span className="text-xs text-purple-600 dark:text-purple-400">Min 10s between posts · Image &lt; 8 MB</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-3 uppercase tracking-wide">
+                      API rate limit
+                    </p>
                   {instagramStatus.data.rate_limit_retry_after_at ? (
                     <div className="flex flex-wrap gap-3">
                       <div className="inline-flex items-center gap-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700 px-3 py-2">
@@ -639,6 +690,7 @@ export default function InstagramPostsPage() {
                       Rate limit stats will appear after the next Instagram API request.
                     </p>
                   )}
+                  </div>
                 </div>
               )}
             </div>
@@ -978,6 +1030,27 @@ export default function InstagramPostsPage() {
                     </div>
                   </div>
 
+                  {/* Image size (Meta 8 MB limit) */}
+                  {imageCheck?.data !== undefined && (
+                    <div className={`rounded-lg border px-3 py-2 text-sm ${
+                      imageCheck.data.ok
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                    }`}>
+                      {imageCheck.data.ok ? (
+                        <span>
+                          Image OK ({(imageCheck.data.size_bytes != null ? (imageCheck.data.size_bytes / (1024 * 1024)).toFixed(2) : '—')} MB, under 8 MB limit)
+                        </span>
+                      ) : (
+                        <span>
+                          {imageCheck.data.error ?? (imageCheck.data.size_bytes != null
+                            ? `Image too large (${(imageCheck.data.size_bytes / (1024 * 1024)).toFixed(2)} MB). Max 8 MB.`
+                            : 'Image size could not be checked.')}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Post Type Selector */}
                   <div>
                     <label className="text-sm font-semibold text-foreground mb-2 block">
@@ -1058,17 +1131,31 @@ export default function InstagramPostsPage() {
                   )}
 
                   {/* Post Button */}
-                  <Button
-                    onClick={handlePost}
-                    variant="primary"
-                    disabled={isPosting || !isInstagramReady || (postType === 'post' && !caption.trim())}
-                    isLoading={isPosting}
-                    size="lg"
-                    className="w-full shadow-lg"
-                  >
-                    <PaperAirplaneIcon className="w-5 h-5 mr-2" />
-                    {isPosting ? 'Posting...' : `Post ${postType === 'post' ? 'Post' : 'Story'} to Instagram`}
-                  </Button>
+                  {(() => {
+                    const atDailyLimit = postsToday >= postsTodayLimit;
+                    const inCooldown = cooldownSeconds > 0;
+                    const imageOverLimit = imageCheck?.data && !imageCheck.data.ok;
+                    const disabled = isPosting || !isInstagramReady || (postType === 'post' && !caption.trim()) || atDailyLimit || inCooldown || imageOverLimit;
+                    const reason = atDailyLimit ? 'Daily limit reached (25 posts)' : inCooldown ? `Wait ${cooldownSeconds}s (Meta limit)` : imageOverLimit ? 'Image over 8 MB' : null;
+                    return (
+                      <div className="space-y-2">
+                        {reason && (
+                          <p className="text-xs text-amber-700 dark:text-amber-300 text-center">{reason}</p>
+                        )}
+                        <Button
+                          onClick={handlePost}
+                          variant="primary"
+                          disabled={disabled}
+                          isLoading={isPosting}
+                          size="lg"
+                          className="w-full shadow-lg"
+                        >
+                          <PaperAirplaneIcon className="w-5 h-5 mr-2" />
+                          {isPosting ? 'Posting...' : `Post ${postType === 'post' ? 'Post' : 'Story'} to Instagram`}
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               ) : (
                 <motion.div
