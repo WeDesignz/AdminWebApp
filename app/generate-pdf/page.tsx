@@ -15,6 +15,7 @@ import { DocumentTextIcon, ArrowPathIcon, ArrowDownTrayIcon, TrashIcon } from '@
 type PDFClient = {
   id: number;
   name: string;
+  customer_mobile?: string;
 };
 
 type JobStatus = {
@@ -41,7 +42,8 @@ export default function GeneratePDFPage() {
   const [searchClient, setSearchClient] = useState('');
   const [showCreateClientModal, setShowCreateClientModal] = useState(false);
   const [newClientName, setNewClientName] = useState('');
-  const [customerMobile, setCustomerMobile] = useState('');
+  const [newClientMobile, setNewClientMobile] = useState('');
+  const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [numberOfPdfs, setNumberOfPdfs] = useState(1);
   const [activeJob, setActiveJob] = useState<JobStatus | null>(null);
@@ -81,15 +83,37 @@ export default function GeneratePDFPage() {
 
   // Create client mutation
   const createClientMutation = useMutation({
-    mutationFn: (payload: { name: string }) => PDFClientsAPI.createClient(payload),
+    mutationFn: (payload: { name: string; customer_mobile?: string }) => PDFClientsAPI.createClient(payload),
     onSuccess: async () => {
       toast.success('Client created');
       setShowCreateClientModal(false);
       setNewClientName('');
+      setNewClientMobile('');
       await queryClient.invalidateQueries({ queryKey: ['pdfClients'] });
     },
     onError: (error: any) => {
       const msg = error?.error || error?.message || 'Failed to create client';
+      toast.error(msg);
+    },
+  });
+
+  // Update client mutation
+  const updateClientMutation = useMutation({
+    mutationFn: (payload: { id: number; name: string; customer_mobile?: string }) =>
+      PDFClientsAPI.updateClient(payload.id, {
+        name: payload.name,
+        customer_mobile: payload.customer_mobile,
+      }),
+    onSuccess: async () => {
+      toast.success('Client updated');
+      setShowCreateClientModal(false);
+      setEditingClientId(null);
+      setNewClientName('');
+      setNewClientMobile('');
+      await queryClient.invalidateQueries({ queryKey: ['pdfClients'] });
+    },
+    onError: (error: any) => {
+      const msg = error?.error || error?.message || 'Failed to update client';
       toast.error(msg);
     },
   });
@@ -106,7 +130,7 @@ export default function GeneratePDFPage() {
         number_of_pdfs: numberOfPdfs,
         designs_per_pdf: 100,
         customer_name: selectedClient?.name || '',
-        customer_mobile: customerMobile.trim(),
+        customer_mobile: selectedClient?.customer_mobile?.trim?.() || '',
       };
       const res = await PDFClientsAPI.createJob(payload, logoFile);
       return res;
@@ -169,10 +193,6 @@ export default function GeneratePDFPage() {
   const handleStartJob = async () => {
     if (!selectedClientId) {
       toast.error('Please select a client');
-      return;
-    }
-    if (!customerMobile.trim()) {
-      toast.error('Please enter customer mobile number');
       return;
     }
     if (numberOfPdfs < 1 || numberOfPdfs > 10) {
@@ -264,12 +284,12 @@ export default function GeneratePDFPage() {
           </div>
         </div>
 
-        {/* Client selection + creation */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
+        {/* Client selection + creation + PDF config */}
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+          <div className="space-y-2 max-w-md">
             <label className="text-sm font-medium">PDF Client</label>
             <select
-              className="border rounded-md px-3 py-2 bg-background"
+              className="input-field h-10 text-sm rounded-lg bg-background w-full"
               value={selectedClientId}
               onChange={(e) => setSelectedClientId(e.target.value ? Number(e.target.value) : '')}
               disabled={clientsLoading}
@@ -295,47 +315,62 @@ export default function GeneratePDFPage() {
                 Refresh
               </Button>
             </div>
-            <Button
-              variant="outline"
-              className="mt-2"
-              onClick={() => setShowCreateClientModal(true)}
-            >
-              Add New Client
-            </Button>
-          </div>
-
-          {/* Customer details */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Customer Mobile</label>
-            <Input
-              placeholder="Enter mobile number"
-              value={customerMobile}
-              onChange={(e) => setCustomerMobile(e.target.value)}
-            />
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingClientId(null);
+                  setNewClientName('');
+                  setNewClientMobile('');
+                  setShowCreateClientModal(true);
+                }}
+              >
+                Add New Client
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!selectedClientId}
+                onClick={() => {
+                  if (!selectedClientId) return;
+                  const selectedClient = clients.find((c) => c.id === selectedClientId);
+                  if (!selectedClient) return;
+                  setEditingClientId(selectedClient.id);
+                  setNewClientName(selectedClient.name);
+                  setNewClientMobile(selectedClient.customer_mobile || '');
+                  setShowCreateClientModal(true);
+                }}
+              >
+                Edit Client
+              </Button>
+            </div>
           </div>
 
           {/* PDF config */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Number of PDFs</label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={numberOfPdfs}
-              onChange={(e) => setNumberOfPdfs(Number(e.target.value || 1))}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Each PDF contains <span className="font-semibold">100 designs</span>. Maximum 10 PDFs per job.
-            </p>
-            <label className="text-sm font-medium mt-3">Logo (optional)</label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setLogoFile(file);
-              }}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Number of PDFs</label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={numberOfPdfs}
+                onChange={(e) => setNumberOfPdfs(Number(e.target.value || 1))}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Each PDF contains <span className="font-semibold">100 designs</span>. Maximum 10 PDFs per job.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Logo (optional)</label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setLogoFile(file);
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -448,11 +483,14 @@ export default function GeneratePDFPage() {
           </AnimatePresence>
         )}
 
-        {/* Create client modal */}
+        {/* Create / edit client modal */}
         <Modal
           isOpen={showCreateClientModal}
-          onClose={() => setShowCreateClientModal(false)}
-          title="Add PDF Client"
+          onClose={() => {
+            setShowCreateClientModal(false);
+            setEditingClientId(null);
+          }}
+          title={editingClientId ? 'Edit PDF Client' : 'Add PDF Client'}
         >
           <div className="space-y-4">
             <Input
@@ -460,6 +498,12 @@ export default function GeneratePDFPage() {
               placeholder="Enter client name"
               value={newClientName}
               onChange={(e) => setNewClientName(e.target.value)}
+            />
+            <Input
+              label="Customer mobile"
+              placeholder="Enter mobile number"
+              value={newClientMobile}
+              onChange={(e) => setNewClientMobile(e.target.value)}
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreateClientModal(false)}>
@@ -471,11 +515,28 @@ export default function GeneratePDFPage() {
                     toast.error('Client name is required');
                     return;
                   }
-                  createClientMutation.mutate({ name: newClientName.trim() });
+                  const payload = {
+                    name: newClientName.trim(),
+                    customer_mobile: newClientMobile.trim() || undefined,
+                  };
+                  if (editingClientId) {
+                    updateClientMutation.mutate({
+                      id: editingClientId,
+                      ...payload,
+                    });
+                  } else {
+                    createClientMutation.mutate(payload);
+                  }
                 }}
-                disabled={createClientMutation.isPending}
+                disabled={createClientMutation.isPending || updateClientMutation.isPending}
               >
-                {createClientMutation.isPending ? 'Saving...' : 'Save'}
+                {editingClientId
+                  ? updateClientMutation.isPending
+                    ? 'Saving...'
+                    : 'Save changes'
+                  : createClientMutation.isPending
+                  ? 'Saving...'
+                  : 'Save'}
               </Button>
             </div>
           </div>
