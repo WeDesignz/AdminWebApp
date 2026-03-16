@@ -3163,8 +3163,18 @@ export const PDFClientsAPI = {
   /**
    * Create a new PDF client (admin).
    */
-  async createClient(data: { name: string }): Promise<ApiResponse<any>> {
+  async createClient(data: { name: string; customer_mobile?: string }): Promise<ApiResponse<any>> {
     return apiClient.post('api/coreadmin/pdf-clients/', data);
+  },
+
+  /**
+   * Update an existing PDF client (admin).
+   */
+  async updateClient(
+    clientId: number,
+    data: { name?: string; customer_mobile?: string }
+  ): Promise<ApiResponse<any>> {
+    return apiClient.patch(`api/coreadmin/pdf-clients/${clientId}/`, data);
   },
 
   /**
