@@ -1021,8 +1021,25 @@ export const InstagramAPI = {
     rate_limit_limit: number | null;
     rate_limit_reset_at: string | null;
     rate_limit_retry_after_at: string | null;
+    posts_today?: number;
+    posts_today_limit?: number;
+    last_post_created_at?: string | null;
+    min_delay_seconds?: number;
+    max_image_bytes?: number;
   }>> {
     return apiClient.get('api/common/instagram/status/');
+  },
+
+  /**
+   * Check if product image is under Meta 8 MB limit for Instagram.
+   */
+  async checkImage(productId: string, mediaType: 'mockup' | 'jpg' | 'png'): Promise<ApiResponse<{
+    ok: boolean;
+    size_bytes: number | null;
+    max_bytes: number;
+    error?: string | null;
+  }>> {
+    return apiClient.get(`api/common/instagram/check-image/?product_id=${encodeURIComponent(productId)}&media_type=${encodeURIComponent(mediaType)}`);
   },
 
   /**
