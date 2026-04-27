@@ -3146,6 +3146,59 @@ export const MockPdfReportsAPI = {
   },
 };
 
+export const LensUsageReportsAPI = {
+  async getLensUsageReport(params?: {
+    page?: number;
+    page_size?: number;
+    days?: number;
+    source?: string;
+    success?: 'true' | 'false' | '';
+    search?: string;
+  }): Promise<
+    ApiResponse<{
+      stats: {
+        total_searches: number;
+        today_searches: number;
+        this_week_searches: number;
+        success_count: number;
+        failed_count: number;
+        success_rate: number;
+        unique_users: number;
+        guest_searches: number;
+        avg_processing_time_ms: number | null;
+        period_days: number;
+      };
+      source_breakdown: Array<{ source: string; count: number }>;
+      top_users: Array<{
+        user_id: number;
+        user__username: string;
+        user__email: string;
+        user__last_login: string | null;
+        searches: number;
+        successful: number;
+      }>;
+      top_products: Array<{ product_number: string; count: number }>;
+      top_error_reasons: Array<{ error_message: string; count: number }>;
+      events: any[];
+      total_count: number;
+      total_pages: number;
+      current_page: number;
+    }>
+  > {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.page_size) queryParams.append('page_size', String(params.page_size || 20));
+    if (params?.days) queryParams.append('days', String(params.days));
+    if (params?.source) queryParams.append('source', params.source);
+    if (params?.success) queryParams.append('success', params.success);
+    if (params?.search) queryParams.append('search', params.search);
+    const qs = queryParams.toString();
+    const url = qs ? `api/coreadmin/lens-usage-report/?${qs}` : 'api/coreadmin/lens-usage-report/';
+    const response = await apiClient.get<any>(url);
+    return response as ApiResponse<any>;
+  },
+};
+
 export const PDFClientsAPI = {
   /**
    * List PDF clients (admin).
@@ -3306,6 +3359,7 @@ export const API = {
   faq: FAQAPI,
   settlement: SettlementAPI,
   mockPdfReports: MockPdfReportsAPI,
+  lensUsageReports: LensUsageReportsAPI,
   pdfClients: PDFClientsAPI,
 };
 
