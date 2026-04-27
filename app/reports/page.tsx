@@ -18,6 +18,7 @@ import {
   DocumentArrowDownIcon,
   DocumentTextIcon,
   ArrowDownTrayIcon,
+  CameraIcon,
 } from '@heroicons/react/24/outline';
 import { AdminUser } from '@/types';
 import ExcelJS from 'exceljs';
@@ -30,6 +31,13 @@ export default function ReportsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [mockPdfPage, setMockPdfPage] = useState(1);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [lensPage, setLensPage] = useState(1);
+  const [lensSearch, setLensSearch] = useState('');
+  const [lensDebouncedSearch, setLensDebouncedSearch] = useState('');
+  const [lensSource, setLensSource] = useState('all');
+  const [lensSuccessFilter, setLensSuccessFilter] = useState<'all' | 'true' | 'false'>('all');
+  const [lensDays, setLensDays] = useState(30);
+  const [mounted, setMounted] = useState(false);
 
   // Debounce search input (hooks must be called before any early returns)
   useEffect(() => {
@@ -38,6 +46,21 @@ export default function ReportsPage() {
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLensDebouncedSearch(lensSearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [lensSearch]);
+
+  useEffect(() => {
+    setLensPage(1);
+  }, [lensDebouncedSearch, lensDays, lensSource, lensSuccessFilter]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch moderators (hooks must be called before any early returns)
   const { data, isLoading, error } = useQuery({
@@ -55,7 +78,7 @@ export default function ReportsPage() {
 
       return response;
     },
-    enabled: hasRole('Super Admin'),
+    enabled: mounted && hasRole('Super Admin'),
   });
 
   // Fetch Mock PDF report (stats + list)
@@ -75,16 +98,40 @@ export default function ReportsPage() {
       }
       return response.data;
     },
-    enabled: hasRole('Super Admin'),
+    enabled: mounted && hasRole('Super Admin'),
+  });
+
+  const {
+    data: lensUsageData,
+    isLoading: lensUsageLoading,
+    error: lensUsageError,
+  } = useQuery({
+    queryKey: ['lensUsageReport', lensPage, lensDays, lensSource, lensSuccessFilter, lensDebouncedSearch],
+    queryFn: async () => {
+      const response = await API.lensUsageReports.getLensUsageReport({
+        page: lensPage,
+        page_size: 20,
+        days: lensDays,
+        source: lensSource !== 'all' ? lensSource : undefined,
+        success: lensSuccessFilter !== 'all' ? lensSuccessFilter : '',
+        search: lensDebouncedSearch || undefined,
+      });
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to fetch lens usage report');
+      }
+      return response.data;
+    },
+    enabled: mounted && hasRole('Super Admin'),
   });
 
   // Redirect moderators away from this page
   useEffect(() => {
+    if (!mounted) return;
     if (!hasRole('Super Admin')) {
       toast.error('Access denied. This page is restricted to Super Admins only.');
       router.replace('/dashboard');
     }
-  }, [hasRole, router]);
+  }, [mounted, hasRole, router]);
 
   // Show error toast
   useEffect(() => {
@@ -99,6 +146,12 @@ export default function ReportsPage() {
       toast.error(mockPdfError instanceof Error ? mockPdfError.message : 'Failed to fetch mock PDF report');
     }
   }, [mockPdfError]);
+
+  useEffect(() => {
+    if (lensUsageError) {
+      toast.error(lensUsageError instanceof Error ? lensUsageError.message : 'Failed to fetch lens usage report');
+    }
+  }, [lensUsageError]);
 
   const handleDownloadPdf = async (downloadId: number) => {
     try {
@@ -175,6 +228,10 @@ export default function ReportsPage() {
   };
 
   // Don't render if not Super Admin
+  if (!mounted) {
+    return null;
+  }
+
   if (!hasRole('Super Admin')) {
     return null;
   }
@@ -184,6 +241,25 @@ export default function ReportsPage() {
   const downloads = mockPdfData?.downloads ?? [];
   const totalPages = mockPdfData?.total_pages ?? 1;
   const currentPage = mockPdfData?.current_page ?? 1;
+  const lensStats = lensUsageData?.stats ?? {
+    total_searches: 0,
+    today_searches: 0,
+    this_week_searches: 0,
+    success_count: 0,
+    failed_count: 0,
+    success_rate: 0,
+    unique_users: 0,
+    guest_searches: 0,
+    avg_processing_time_ms: null,
+    period_days: lensDays,
+  };
+  const lensEvents = lensUsageData?.events ?? [];
+  const lensTopUsers = lensUsageData?.top_users ?? [];
+  const lensTopProducts = lensUsageData?.top_products ?? [];
+  const lensSources = lensUsageData?.source_breakdown ?? [];
+  const lensErrorReasons = lensUsageData?.top_error_reasons ?? [];
+  const lensTotalPages = lensUsageData?.total_pages ?? 1;
+  const lensCurrentPage = lensUsageData?.current_page ?? 1;
 
   const handleViewReport = (moderatorId: number) => {
     router.push(`/reports/${moderatorId}`);
@@ -261,6 +337,208 @@ export default function ReportsPage() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Lens Usage Section */}
+        <div className="space-y-6 border-t border-border pt-8">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CameraIcon className="w-7 h-7 text-primary" />
+                Lens Usage Analytics
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                Who searched, where they searched, and what outcomes lens search produced.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <Input
+              type="text"
+              placeholder="Search by user/email/ip/source/file..."
+              value={lensSearch}
+              onChange={(e) => setLensSearch(e.target.value)}
+            />
+            <select
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              value={lensSource}
+              onChange={(e) => setLensSource(e.target.value)}
+            >
+              <option value="all">All sources</option>
+              {lensSources.map((s: any) => (
+                <option key={s.source || 'unknown'} value={s.source || ''}>
+                  {s.source || 'unknown'}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              value={lensSuccessFilter}
+              onChange={(e) => setLensSuccessFilter(e.target.value as 'all' | 'true' | 'false')}
+            >
+              <option value="all">All results</option>
+              <option value="true">Successful only</option>
+              <option value="false">Failed only</option>
+            </select>
+            <select
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              value={lensDays}
+              onChange={(e) => setLensDays(Number(e.target.value))}
+            >
+              <option value={7}>Last 7 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+              <option value={180}>Last 180 days</option>
+            </select>
+            <Button variant="outline" onClick={() => setLensPage(1)}>Apply filters</Button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="card p-4"><p className="text-sm text-muted-foreground">Total searches</p><p className="text-2xl font-bold mt-1">{lensStats.total_searches}</p></div>
+            <div className="card p-4"><p className="text-sm text-muted-foreground">Success rate</p><p className="text-2xl font-bold mt-1">{lensStats.success_rate}%</p></div>
+            <div className="card p-4"><p className="text-sm text-muted-foreground">Avg processing</p><p className="text-2xl font-bold mt-1">{lensStats.avg_processing_time_ms ? `${Math.round(lensStats.avg_processing_time_ms)}ms` : '—'}</p></div>
+            <div className="card p-4"><p className="text-sm text-muted-foreground">Unique users</p><p className="text-2xl font-bold mt-1">{lensStats.unique_users}</p></div>
+            <div className="card p-4"><p className="text-sm text-muted-foreground">Guest searches</p><p className="text-2xl font-bold mt-1">{lensStats.guest_searches}</p></div>
+          </div>
+
+          {lensUsageLoading && (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          )}
+
+          {!lensUsageLoading && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="card p-4">
+                  <h3 className="font-semibold mb-3">Top users by lens searches</h3>
+                  {lensTopUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No user search activity in selected period.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lensTopUsers.slice(0, 8).map((u: any) => (
+                        <div key={u.user_id} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
+                          <div>
+                            <p className="font-medium">{u.user__username || 'Unknown user'}</p>
+                            <p className="text-muted-foreground">{u.user__email || '—'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p>{u.searches} searches</p>
+                            <p className="text-muted-foreground">{u.successful} successful</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="card p-4">
+                  <h3 className="font-semibold mb-3">Top matched products</h3>
+                  {lensTopProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No matched products yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lensTopProducts.map((p: any) => (
+                        <div key={p.product_number} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
+                          <span className="font-mono">{p.product_number}</span>
+                          <span className="text-muted-foreground">{p.count} hits</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="p-3 font-semibold">When</th>
+                        <th className="p-3 font-semibold">Who</th>
+                        <th className="p-3 font-semibold">What searched</th>
+                        <th className="p-3 font-semibold">Result</th>
+                        <th className="p-3 font-semibold">Time</th>
+                        <th className="p-3 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lensEvents.map((event: any) => (
+                        <tr key={event.id} className="border-b border-border last:border-0 align-top">
+                          <td className="p-3 text-sm">{event.searched_at ? format(new Date(event.searched_at), 'PPp') : '—'}</td>
+                          <td className="p-3 text-sm">
+                            <p className="font-medium">{event.user?.email || 'Guest user'}</p>
+                            <p className="text-muted-foreground">{event.user?.last_login ? `Last login: ${format(new Date(event.user.last_login), 'PPp')}` : 'No login data'}</p>
+                          </td>
+                          <td className="p-3 text-sm">
+                            <p>{event.search_input?.image_file_name || '—'}</p>
+                            <p className="text-muted-foreground">
+                              Requested: {event.search_input?.num_results_requested ?? 0}
+                              {event.source ? ` · ${event.source}` : ''}
+                            </p>
+                          </td>
+                          <td className="p-3 text-sm">
+                            <p>{event.results?.results_count ?? 0} shown / {event.results?.total_matched ?? 0} matched</p>
+                            <p className="text-muted-foreground truncate max-w-[240px]">{(event.results?.product_numbers || []).slice(0, 3).join(', ') || '—'}</p>
+                          </td>
+                          <td className="p-3 text-sm">{event.processing_time_ms ? `${event.processing_time_ms}ms` : '—'}</td>
+                          <td className="p-3 text-sm">
+                            <span className={event.success ? 'text-green-600' : 'text-destructive'}>
+                              {event.success ? 'Success' : 'Failed'}
+                            </span>
+                            {!event.success && event.error_message && (
+                              <p className="text-muted-foreground max-w-[260px] truncate">{event.error_message}</p>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {lensErrorReasons.length > 0 && (
+                <div className="card p-4">
+                  <h3 className="font-semibold mb-3">Top failure reasons</h3>
+                  <div className="space-y-2">
+                    {lensErrorReasons.map((item: any, idx: number) => (
+                      <div key={`${item.error_message}-${idx}`} className="flex items-start justify-between text-sm border-b border-border pb-2 last:border-0">
+                        <p className="text-muted-foreground pr-4">{item.error_message || 'Unknown error'}</p>
+                        <p className="font-medium">{item.count}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {lensTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {lensCurrentPage} of {lensTotalPages}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={lensCurrentPage <= 1}
+                      onClick={() => setLensPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={lensCurrentPage >= lensTotalPages}
+                      onClick={() => setLensPage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
